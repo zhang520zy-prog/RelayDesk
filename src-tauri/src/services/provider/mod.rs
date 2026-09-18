@@ -114,6 +114,7 @@ pub struct SwitchResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app_config::{McpApps, McpServer};
     #[cfg(any(target_os = "macos", windows))]
     use crate::claude_desktop_config::PROFILE_ID;
     use crate::config::{get_claude_settings_path, read_json_file, write_json_file};
@@ -4621,6 +4622,130 @@ wire_api = "responses"
 
     #[test]
     #[serial]
+    fn sync_universal_to_app_only_projects_requested_target() {
+        with_test_home(|state, _home| {
+            let mut universal = UniversalProvider::new(
+                "targeted".into(),
+                "Targeted".into(),
+                "newapi".into(),
+                "https://relay.invalid".into(),
+                "sk-test-only".into(),
+            );
+            universal.apps.claude = true;
+            universal.apps.codex = true;
+            universal.models.claude = Some(ClaudeModelConfig {
+                model: Some("claude-old".into()),
+                ..Default::default()
+            });
+            universal.models.codex = Some(crate::provider::CodexModelConfig {
+                model: Some("codex-old".into()),
+                ..Default::default()
+            });
+            state.db.save_universal_provider(&universal).unwrap();
+            ProviderService::sync_universal_to_apps(state, &universal.id).unwrap();
+
+            let claude_id = "universal-claude-targeted";
+            let claude_before = state
+                .db
+                .get_provider_by_id(claude_id, "claude")
+                .unwrap()
+                .unwrap();
+
+            universal.apps.claude = false;
+            universal.models.codex = Some(crate::provider::CodexModelConfig {
+                model: Some("codex-new".into()),
+                ..Default::default()
+            });
+            state.db.save_universal_provider(&universal).unwrap();
+
+            let codex_id =
+                ProviderService::sync_universal_to_app(state, &universal.id, AppType::Codex)
+                    .expect("targeted Codex projection succeeds");
+
+            assert_eq!(codex_id, "universal-codex-targeted");
+            assert_eq!(
+                state
+                    .db
+                    .get_provider_by_id(claude_id, "claude")
+                    .unwrap()
+                    .unwrap()
+                    .settings_config,
+                claude_before.settings_config,
+                "a targeted retry must not delete or rewrite another app child"
+            );
+            let codex = state
+                .db
+                .get_provider_by_id(&codex_id, "codex")
+                .unwrap()
+                .unwrap();
+            assert!(codex.settings_config["config"]
+                .as_str()
+                .unwrap()
+                .contains("model = \"codex-new\""));
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn relay_projection_succeeds_after_live_write_even_when_mcp_is_malformed() {
+        with_test_home(|state, home| {
+            let mut universal = UniversalProvider::new(
+                "relay-mcp-boundary".into(),
+                "Relay MCP boundary".into(),
+                "newapi".into(),
+                "https://relay.invalid".into(),
+                "sk-synthetic-relay".into(),
+            );
+            universal.apps.claude = true;
+            universal.models.claude = Some(ClaudeModelConfig {
+                model: Some("fixture-old-model".into()),
+                ..Default::default()
+            });
+            state.db.save_universal_provider(&universal).unwrap();
+            ProviderService::sync_universal_to_app(state, &universal.id, AppType::Claude).unwrap();
+            let child_id = "universal-claude-relay-mcp-boundary";
+            state.db.set_current_provider("claude", child_id).unwrap();
+            crate::settings::set_current_provider(&AppType::Claude, Some(child_id)).unwrap();
+
+            state
+                .db
+                .save_mcp_server(&McpServer {
+                    id: "synthetic-mcp".into(),
+                    name: "Synthetic MCP".into(),
+                    server: json!({"command": "synthetic-command"}),
+                    apps: McpApps {
+                        claude: true,
+                        ..Default::default()
+                    },
+                    description: None,
+                    homepage: None,
+                    docs: None,
+                    tags: Vec::new(),
+                })
+                .unwrap();
+            fs::write(home.join(".claude.json"), "{ malformed synthetic json")
+                .expect("seed malformed isolated MCP config");
+            assert!(McpService::sync_enabled_for_app(state, &AppType::Claude).is_err());
+
+            universal.models.claude = Some(ClaudeModelConfig {
+                model: Some("fixture-new-model".into()),
+                ..Default::default()
+            });
+            state.db.save_universal_provider(&universal).unwrap();
+
+            ProviderService::sync_universal_to_app(state, &universal.id, AppType::Claude)
+                .expect("Relay model write is successful independently of MCP maintenance");
+
+            let live: Value = read_json_file(&get_claude_settings_path()).unwrap();
+            assert_eq!(
+                live["env"]["ANTHROPIC_MODEL"].as_str(),
+                Some("fixture-new-model")
+            );
+        });
+    }
+
+    #[test]
+    #[serial]
     fn sync_universal_to_apps_reprojects_current_child_to_live() {
         with_test_home(|state, _home| {
             let mut universal = UniversalProvider::new(
@@ -7460,126 +7585,78 @@ impl ProviderService {
             .get_universal_provider(id)?
             .ok_or_else(|| AppError::Message(format!("统一供应商 {id} 不存在")))?;
 
-        // Keep DB and live projections in sync independently per application:
-        // one broken config file must not prevent the other two apps from being
-        // updated, but it must still be reported instead of returning success.
-        let mut live_failures = Vec::new();
-
-        // 同步到 Claude
-        if let Some(mut claude_provider) = provider.to_claude_provider() {
-            // 合并已有配置
-            if let Some(existing) = state.db.get_provider_by_id(&claude_provider.id, "claude")? {
-                let mut merged = existing.settings_config.clone();
-                Self::merge_json(&mut merged, &claude_provider.settings_config);
-                claude_provider.settings_config = merged;
-                // 已有子供应商的应用专属配置与排序不属于统一供应商管理的字段。
-                claude_provider.meta = existing.meta;
-                claude_provider.created_at = existing.created_at;
-                claude_provider.sort_index = existing.sort_index;
+        let mut failures = Vec::new();
+        for (app_type, enabled) in [
+            (AppType::Claude, provider.apps.claude),
+            (AppType::Codex, provider.apps.codex),
+            (AppType::Gemini, provider.apps.gemini),
+        ] {
+            if enabled {
+                if let Err(err) = Self::sync_universal_to_app(state, id, app_type.clone()) {
+                    log::warn!("同步统一供应商到 {} 失败: {err}", app_type.as_str());
+                    failures.push(app_type.as_str().to_string());
+                }
+            } else {
+                let child_id = format!("universal-{}-{id}", app_type.as_str());
+                if let Err(err) = state.db.delete_provider(app_type.as_str(), &child_id) {
+                    log::warn!("删除已禁用的统一供应商子项 {child_id} 失败: {err}");
+                    failures.push(app_type.as_str().to_string());
+                }
             }
-            state.db.save_provider("claude", &claude_provider)?;
-            Self::project_universal_child_to_live(
-                state,
-                AppType::Claude,
-                &claude_provider.id,
-                &mut live_failures,
-            );
-        } else {
-            // 如果禁用了 Claude，删除对应的子供应商
-            let claude_id = format!("universal-claude-{id}");
-            let _ = state.db.delete_provider("claude", &claude_id);
         }
 
-        // 同步到 Codex
-        if let Some(mut codex_provider) = provider.to_codex_provider() {
-            // 合并已有配置
-            if let Some(existing) = state.db.get_provider_by_id(&codex_provider.id, "codex")? {
-                let mut merged = existing.settings_config.clone();
-                Self::merge_json(&mut merged, &codex_provider.settings_config);
-                codex_provider.settings_config = merged;
-                // 已有子供应商的应用专属配置与排序不属于统一供应商管理的字段。
-                codex_provider.meta = existing.meta;
-                codex_provider.created_at = existing.created_at;
-                codex_provider.sort_index = existing.sort_index;
-            }
-            state.db.save_provider("codex", &codex_provider)?;
-            Self::project_universal_child_to_live(
-                state,
-                AppType::Codex,
-                &codex_provider.id,
-                &mut live_failures,
-            );
-        } else {
-            let codex_id = format!("universal-codex-{id}");
-            let _ = state.db.delete_provider("codex", &codex_id);
-        }
-
-        // 同步到 Gemini
-        if let Some(mut gemini_provider) = provider.to_gemini_provider() {
-            // 合并已有配置
-            if let Some(existing) = state.db.get_provider_by_id(&gemini_provider.id, "gemini")? {
-                let mut merged = existing.settings_config.clone();
-                Self::merge_json(&mut merged, &gemini_provider.settings_config);
-                gemini_provider.settings_config = merged;
-                // 已有子供应商的应用专属配置与排序不属于统一供应商管理的字段。
-                gemini_provider.meta = existing.meta;
-                gemini_provider.created_at = existing.created_at;
-                gemini_provider.sort_index = existing.sort_index;
-            }
-            state.db.save_provider("gemini", &gemini_provider)?;
-            Self::project_universal_child_to_live(
-                state,
-                AppType::Gemini,
-                &gemini_provider.id,
-                &mut live_failures,
-            );
-        } else {
-            let gemini_id = format!("universal-gemini-{id}");
-            let _ = state.db.delete_provider("gemini", &gemini_id);
-        }
-
-        if live_failures.is_empty() {
+        if failures.is_empty() {
             Ok(true)
         } else {
             Err(AppError::Message(format!(
-                "统一供应商已保存到数据库，但以下应用的配置文件未能写入，仍是旧内容：{}。请重试同步，或切换一次该应用的供应商。",
-                live_failures.join("、")
+                "统一供应商未能同步到以下应用：{}。请重试同步。",
+                failures.join("、")
             )))
         }
     }
 
-    /// Re-project a generated universal child only when it is the effective
-    /// current provider for that app. Failures are collected by the caller so
-    /// the other applications can continue syncing.
-    fn project_universal_child_to_live(
+    /// Project and persist exactly one enabled universal-provider child.
+    ///
+    /// This helper deliberately never deletes or rewrites another application's
+    /// child. RelayDesk uses it for per-tool results and targeted retries.
+    pub(crate) fn sync_universal_to_app(
         state: &AppState,
+        id: &str,
         app_type: AppType,
-        child_id: &str,
-        failures: &mut Vec<String>,
-    ) {
-        let is_current = match crate::settings::get_effective_current_provider(&state.db, &app_type)
-        {
-            Ok(current) => current.as_deref() == Some(child_id),
-            Err(err) => {
-                log::warn!(
-                    "读取 {} 当前供应商失败，跳过统一供应商的 live 重投影: {err}",
-                    app_type.as_str()
-                );
-                failures.push(app_type.as_str().to_string());
-                return;
-            }
+    ) -> Result<String, AppError> {
+        let universal = state
+            .db
+            .get_universal_provider(id)?
+            .ok_or_else(|| AppError::Message(format!("统一供应商 {id} 不存在")))?;
+        let mut child = match app_type {
+            AppType::Claude => universal.to_claude_provider(),
+            AppType::Codex => universal.to_codex_provider(),
+            AppType::Gemini => universal.to_gemini_provider(),
+            _ => return Err(AppError::Message("relay.invalid_target".to_string())),
         };
-        if !is_current {
-            return;
+        let mut child = child
+            .take()
+            .ok_or_else(|| AppError::Message("relay.no_targets".to_string()))?;
+
+        if let Some(existing) = state.db.get_provider_by_id(&child.id, app_type.as_str())? {
+            let mut merged = existing.settings_config.clone();
+            Self::merge_json(&mut merged, &child.settings_config);
+            child.settings_config = merged;
+            child.meta = existing.meta;
+            child.created_at = existing.created_at;
+            child.sort_index = existing.sort_index;
+        }
+        state.db.save_provider(app_type.as_str(), &child)?;
+
+        let current = crate::settings::get_effective_current_provider(&state.db, &app_type)?;
+        if current.as_deref() == Some(child.id.as_str()) {
+            // Relay applies own only the provider model projection. MCP lives in
+            // a separate maintenance domain; a malformed MCP file must not turn
+            // an already-successful live model write into a failed Relay result.
+            live::sync_live_for_provider_respecting_takeover(state, &app_type, &child)?;
         }
 
-        if let Err(err) = Self::sync_current_provider_for_app(state, app_type.clone()) {
-            log::warn!(
-                "统一供应商同步后重写 {} live 配置失败: {err}",
-                app_type.as_str()
-            );
-            failures.push(app_type.as_str().to_string());
-        }
+        Ok(child.id)
     }
 
     /// 递归合并 JSON：base 为底，patch 覆盖同名字段

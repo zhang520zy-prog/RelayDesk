@@ -158,7 +158,7 @@ pub struct TrayAppSection {
 
 /// Auto 菜单项后缀
 pub const AUTO_SUFFIX: &str = "auto";
-pub const TRAY_ID: &str = "cc-switch";
+pub const TRAY_ID: &str = "relaydesk";
 
 pub const TRAY_SECTIONS: [TrayAppSection; 4] = [
     TrayAppSection {
@@ -731,6 +731,28 @@ pub fn create_tray_menu(
     app: &tauri::AppHandle,
     app_state: &AppState,
 ) -> Result<Menu<tauri::Wry>, AppError> {
+    if relaydesk_tray_menu_only() {
+        let language = crate::settings::get_settings()
+            .language
+            .as_deref()
+            .map(map_locale_to_tray_language)
+            .unwrap_or_else(detect_system_tray_language);
+        let texts = TrayTexts::from_language(language);
+        let show_main = MenuItem::with_id(app, "show_main", texts.show_main, true, None::<&str>)
+            .map_err(|e| AppError::Message(format!("创建打开 RelayDesk 菜单失败: {e}")))?;
+        let quit = MenuItem::with_id(app, "quit", texts.quit, true, None::<&str>)
+            .map_err(|e| AppError::Message(format!("创建退出菜单失败: {e}")))?;
+        *TRAY_SECTION_SUBMENUS
+            .lock()
+            .unwrap_or_else(|p| p.into_inner()) = std::collections::HashMap::new();
+        return MenuBuilder::new(app)
+            .item(&show_main)
+            .separator()
+            .item(&quit)
+            .build()
+            .map_err(|e| AppError::Message(format!("构建 RelayDesk 托盘菜单失败: {e}")));
+    }
+
     let app_settings = crate::settings::get_settings();
     // 用户未显式设置语言（首次安装）时，按系统区域回退而非硬编码简体，
     // 否则繁中系统的托盘会固定显示简体直到用户手动切换一次。
@@ -967,6 +989,10 @@ pub fn create_tray_menu(
     Ok(menu)
 }
 
+fn relaydesk_tray_menu_only() -> bool {
+    true
+}
+
 /// 就地更新各 app 分区子菜单的标题（usage 后缀变化时走这条），
 /// 避免 `set_menu` 导致用户打开中的菜单被关闭。
 /// 句柄由上一次 `create_tray_menu` 填充；为空（从未构建过菜单）时无事发生。
@@ -1099,8 +1125,10 @@ pub fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
     }
 }
 
+#[allow(dead_code)]
 static LAST_TRAY_USAGE_REFRESH: std::sync::Mutex<Option<std::time::Instant>> =
     std::sync::Mutex::new(None);
+#[allow(dead_code)]
 const MIN_TRAY_USAGE_REFRESH_INTERVAL: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// 合并多次快速触发的"usage 标题软更新"：批量刷新期间多个 usage 命令
@@ -1132,6 +1160,7 @@ pub fn schedule_tray_refresh(app: &tauri::AppHandle) {
 /// 刷新面与 `format_usage_suffix` 的展示面严格对齐 —— 每次悬停最多发
 /// `TRAY_SECTIONS.len()` 个用量查询；按供应商用量开关查询，Codex 托管账号
 /// 未保存开关时与卡片一致默认启用。
+#[allow(dead_code)]
 pub(crate) async fn refresh_all_usage_in_tray(app: &tauri::AppHandle) {
     use crate::commands::CopilotAuthState;
     use futures::future::join_all;
@@ -1252,7 +1281,7 @@ mod tests {
 
     #[test]
     fn tray_id_is_unique_to_app() {
-        assert_eq!(TRAY_ID, "cc-switch");
+        assert_eq!(TRAY_ID, "relaydesk");
         assert_ne!(TRAY_ID, "main");
     }
 

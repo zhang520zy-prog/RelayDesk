@@ -16,6 +16,17 @@ export { sessionsApi } from "./sessions";
 export { workspaceApi } from "./workspace";
 export * as configApi from "./config";
 export * as authApi from "./auth";
+export { relayApi, quotaToUsd } from "./relay";
+export type {
+  RelayAccountInfo,
+  RelayApplyApps,
+  RelayAppliedModel,
+  RelayApplyResult,
+  RelayGroup,
+  RelayGroupModels,
+  RelayModelInfo,
+  RelayToken,
+} from "./relay";
 export * as copilotApi from "./copilot";
 export type { ProviderSwitchEvent } from "./providers";
 export type { Prompt } from "./prompts";

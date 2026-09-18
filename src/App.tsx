@@ -27,6 +27,7 @@ import {
   LayoutDashboard,
   Loader2,
   RefreshCw,
+  Server,
 } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Provider, VisibleApps } from "@/types";
@@ -93,6 +94,7 @@ import { DeepLinkImportDialog } from "@/components/DeepLinkImportDialog";
 import { FirstRunNoticeDialog } from "@/components/FirstRunNoticeDialog";
 import { AgentsPanel } from "@/components/agents/AgentsPanel";
 import { UniversalProviderPanel } from "@/components/universal";
+import { RelayPanel } from "@/components/relay/RelayPanel";
 import { McpIcon } from "@/components/BrandIcons";
 import { Button } from "@/components/ui/button";
 import { SessionManagerPage } from "@/components/sessions/SessionManagerPage";
@@ -122,6 +124,7 @@ type View =
   | "mcp"
   | "agents"
   | "universal"
+  | "relay"
   | "sessions"
   | "workspace"
   | "openclawEnv"
@@ -157,6 +160,7 @@ const VALID_VIEWS: View[] = [
   "mcp",
   "agents",
   "universal",
+  "relay",
   "sessions",
   "workspace",
   "openclawEnv",
@@ -170,7 +174,8 @@ const getInitialView = (): View => {
   if (saved && VALID_VIEWS.includes(saved)) {
     return saved;
   }
-  return "providers";
+  // RelayDesk：中转站是主界面
+  return "relay";
 };
 
 function App() {
@@ -1074,6 +1079,8 @@ function App() {
               <UniversalProviderPanel />
             </div>
           );
+        case "relay":
+          return <RelayPanel />;
 
         case "sessions":
           return (
@@ -1316,6 +1323,8 @@ function App() {
                     t("universalProvider.title", {
                       defaultValue: "统一供应商",
                     })}
+                  {currentView === "relay" &&
+                    t("relay.title", { defaultValue: "中转站" })}
                   {currentView === "sessions" && t("sessionManager.title")}
                   {currentView === "workspace" && t("workspace.title")}
                   {currentView === "openclawEnv" && t("openclaw.env.title")}
@@ -1345,6 +1354,15 @@ function App() {
                   className="hover:bg-black/5 dark:hover:bg-white/5"
                 >
                   <Settings className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setCurrentView("relay")}
+                  title={t("relay.title", { defaultValue: "中转站" })}
+                  className="hover:bg-black/5 dark:hover:bg-white/5"
+                >
+                  <Server className="w-4 h-4" />
                 </Button>
                 <UpdateBadge
                   onClick={() => {

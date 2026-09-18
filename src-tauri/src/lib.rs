@@ -31,6 +31,7 @@ mod prompt;
 mod prompt_files;
 mod provider;
 mod proxy;
+pub mod relay;
 mod services;
 mod session_manager;
 mod settings;
@@ -78,7 +79,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::{fmt, sync::Arc};
 #[cfg(target_os = "macos")]
 use tauri::image::Image;
-use tauri::tray::{TrayIconBuilder, TrayIconEvent};
+use tauri::tray::TrayIconBuilder;
 use tauri::RunEvent;
 use tauri::{Emitter, Manager};
 use tauri_plugin_window_state::{AppHandleExt, StateFlags};
@@ -239,7 +240,7 @@ fn runtime_log_level_allows(level: log::Level, max_level: log::LevelFilter) -> b
     max_level.to_level().is_some_and(|maximum| level <= maximum)
 }
 
-/// 统一处理 ccswitch:// 深链接 URL
+/// 统一处理 relaydesk:// 深链接 URL
 ///
 /// - 解析 URL
 /// - 向前端发射 `deeplink-import` / `deeplink-error` 事件
@@ -250,8 +251,12 @@ fn handle_deeplink_url(
     focus_main_window: bool,
     source: &str,
 ) -> bool {
-    if !url_str.starts_with("ccswitch://") {
+    if !url_str.starts_with("relaydesk://") {
         return false;
+    }
+    if relaydesk_m1_mode() {
+        log::debug!("RelayDesk M1 ignores legacy deep-link actions");
+        return true;
     }
 
     log::info!(
@@ -305,6 +310,10 @@ fn handle_deeplink_url(
     true
 }
 
+fn relaydesk_m1_mode() -> bool {
+    true
+}
+
 /// 更新托盘菜单的Tauri命令
 #[tauri::command]
 async fn update_tray_menu(
@@ -342,7 +351,7 @@ fn macos_tray_icon() -> Option<Image<'static>> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // 设置 panic hook，在应用崩溃时记录日志到 <app_config_dir>/crash.log（默认 ~/.cc-switch/crash.log）
+    // 设置 panic hook，在应用崩溃时记录日志到 <app_config_dir>/crash.log（默认 ~/.relaydesk/crash.log）
     panic_hook::setup_panic_hook();
 
     let mut builder = tauri::Builder::default();
@@ -480,7 +489,7 @@ pub fn run() {
                             Target::new(TargetKind::Stdout),
                             Target::new(TargetKind::Folder {
                                 path: log_dir,
-                                file_name: Some("cc-switch".into()),
+                                file_name: Some("relaydesk".into()),
                             }),
                         ])
                         // KeepSome(4) 保留 4 个轮转归档，加上当前文件最多约 100 MiB。
@@ -493,7 +502,7 @@ pub fn run() {
 
                 // 用户配置存在数据库中，数据库尚未打开时使用保守的 Info 级别。
                 log::set_max_level(log::LevelFilter::Info);
-                log::info!("=== CC Switch v{} started ===", env!("CARGO_PKG_VERSION"));
+                log::info!("=== RelayDesk v{} started ===", env!("CARGO_PKG_VERSION"));
             }
 
             // 首次读取覆盖路径时 logger 尚未可用；此处重放一次，
@@ -655,6 +664,8 @@ pub fn run() {
             // 设置 AppHandle 用于代理故障转移时的 UI 更新
             app_state.proxy_service.set_app_handle(app.handle().clone());
 
+            if !relaydesk_m1_mode() {
+
             // ============================================================
             // 按表独立判断的导入逻辑（各类数据独立检查，互不影响）
             // ============================================================
@@ -715,7 +726,7 @@ pub fn run() {
             // 落成 "default" provider 设为 current，再追加官方预设（is_current=false）。
             // 这样用户切到官方预设时，回填机制会保护原 live 配置不丢失。
             //
-            // 捕获首次运行快照：所有全新装用户都会看到欢迎弹窗介绍 CC Switch 的工作方式。
+            // 捕获首次运行快照：所有全新装用户都会看到欢迎弹窗介绍 RelayDesk 的工作方式。
             // 读失败时默认不弹，宁可漏弹也不要因为故障打扰用户。
             let first_run_already_confirmed = crate::settings::get_settings()
                 .first_run_notice_confirmed
@@ -1004,6 +1015,7 @@ pub fn run() {
                     }
                 }
             }
+            }
 
             // 迁移旧的 app_config_dir 配置到 Store
             if let Err(e) = app_store::migrate_app_config_dir_from_settings(app.handle()) {
@@ -1069,7 +1081,7 @@ pub fn run() {
                         log::debug!("  URL[{i}]: {}", url_for_log(url_str));
 
                         if handle_deeplink_url(&app_handle, url_str, true, "on_open_url") {
-                            break; // Process only first ccswitch:// URL
+                            break; // Process only first relaydesk:// URL
                         }
                     }
                 }
@@ -1081,19 +1093,7 @@ pub fn run() {
 
             // 构建托盘
             let mut tray_builder = TrayIconBuilder::with_id(tray::TRAY_ID)
-                .tooltip("CC Switch") // 鼠标悬停提示
-                .on_tray_icon_event(|tray, event| match event {
-                    // 鼠标悬停/点击到托盘图标时，后台异步刷新用量缓存，
-                    // 让用户下一次（或快速打开菜单的那一刻）看到较新的数字。
-                    // refresh_all_usage_in_tray 内部有 10 秒防抖。
-                    TrayIconEvent::Enter { .. } | TrayIconEvent::Click { .. } => {
-                        let app = tray.app_handle().clone();
-                        tauri::async_runtime::spawn(async move {
-                            crate::tray::refresh_all_usage_in_tray(&app).await;
-                        });
-                    }
-                    _ => log::debug!("unhandled event {event:?}"),
-                })
+                .tooltip("RelayDesk") // 鼠标悬停提示
                 .menu(&menu)
                 .on_menu_event(|app, event| {
                     tray::handle_tray_menu_event(app, &event.id.0);
@@ -1123,14 +1123,16 @@ pub fn run() {
             }
 
             let _tray = tray_builder.build(app)?;
-            crate::services::webdav_auto_sync::start_worker(
-                app_state.db.clone(),
-                app.handle().clone(),
-            );
-            crate::services::s3_auto_sync::start_worker(
-                app_state.db.clone(),
-                app.handle().clone(),
-            );
+            if !relaydesk_m1_mode() {
+                crate::services::webdav_auto_sync::start_worker(
+                    app_state.db.clone(),
+                    app.handle().clone(),
+                );
+                crate::services::s3_auto_sync::start_worker(
+                    app_state.db.clone(),
+                    app.handle().clone(),
+                );
+            }
             // 将同一个实例注入到全局状态，避免重复创建导致的不一致
             app.manage(app_state);
 
@@ -1204,8 +1206,9 @@ pub fn run() {
             }
 
             // 异常退出恢复 + 代理状态自动恢复
-            let app_handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
+            if !relaydesk_m1_mode() {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
                 let state = app_handle.state::<AppState>();
 
                 // 检查是否有 Live 备份（表示上次异常退出时可能处于接管状态）
@@ -1316,7 +1319,8 @@ pub fn run() {
                         run_session_sync(db_for_session_sync.clone(), false).await;
                     }
                 });
-            });
+                });
+            }
 
             // Linux: 禁用 WebKitGTK 硬件加速，防止 EGL 初始化失败导致白屏
             #[cfg(target_os = "linux")]
@@ -1632,6 +1636,17 @@ pub fn run() {
             commands::upsert_universal_provider,
             commands::delete_universal_provider,
             commands::sync_universal_provider,
+            // Relay (new-api 中转站) integration
+            commands::relay_login,
+            commands::relay_get_account,
+            commands::relay_refresh_account,
+            commands::relay_logout,
+            commands::relay_list_groups,
+            commands::relay_list_models,
+            commands::relay_apply_model,
+            commands::relay_set_apply_apps,
+            commands::relay_list_tokens,
+            commands::relay_export_diagnostics,
             // OpenCode specific
             commands::import_opencode_providers_from_live,
             commands::get_opencode_live_provider_ids,
@@ -1763,7 +1778,7 @@ pub fn run() {
             let app_handle = app_handle.clone();
             tauri::async_runtime::spawn(async move {
                 save_window_state_before_exit(&app_handle);
-                cleanup_before_exit(&app_handle).await;
+                run_legacy_exit_cleanup_if_enabled(|| cleanup_before_exit(&app_handle)).await;
                 // 先于 std::process::exit 显式移除托盘图标。
                 // 进程直接退出时 Tauri 运行时不走正常 Drop 流程，
                 // 不会向 Windows Shell 发送 NIM_DELETE，导致已退出的进程
@@ -1800,65 +1815,22 @@ pub fn run() {
                         }
                     }
                 }
-                // 处理通过自定义 URL 协议触发的打开事件（例如 ccswitch://...）
+                // 处理通过自定义 URL 协议触发的打开事件（例如 relaydesk://...）
                 RunEvent::Opened { urls } => {
                     if let Some(url) = urls.first() {
                         let url_str = url.to_string();
-                        log::info!(
-                            "RunEvent::Opened with URL: {}",
-                            url_for_log(&url_str)
-                        );
+                        log::info!("RunEvent::Opened with URL: {}", url_for_log(&url_str));
 
-                        if url_str.starts_with("ccswitch://") {
-                            if crate::lightweight::is_lightweight_mode() {
-                                if let Err(e) = crate::lightweight::exit_lightweight_mode(app_handle)
+                        if url_str.starts_with("relaydesk://") {
+                            if !relaydesk_m1_mode() && crate::lightweight::is_lightweight_mode() {
+                                if let Err(e) =
+                                    crate::lightweight::exit_lightweight_mode(app_handle)
                                 {
                                     log::error!("退出轻量模式重建窗口失败: {e}");
                                 }
                             }
 
-                            // 解析并广播深链接事件，复用与 single_instance 相同的逻辑
-                            match crate::deeplink::parse_deeplink_url(&url_str) {
-                                Ok(request) => {
-                                    log::info!(
-                                        "Successfully parsed deep link from RunEvent::Opened: resource={}, app={:?}",
-                                        request.resource,
-                                        request.app
-                                    );
-
-                                    if let Err(e) =
-                                        app_handle.emit("deeplink-import", &request)
-                                    {
-                                        log::error!(
-                                            "Failed to emit deep link event from RunEvent::Opened: {e}"
-                                        );
-                                    }
-                                }
-                                Err(e) => {
-                                    log::error!(
-                                        "Failed to parse deep link URL from RunEvent::Opened: {e}"
-                                    );
-
-                                    if let Err(emit_err) = app_handle.emit(
-                                        "deeplink-error",
-                                        serde_json::json!({
-                                            "url": url_str,
-                                            "error": e.to_string()
-                                        }),
-                                    ) {
-                                        log::error!(
-                                            "Failed to emit deep link error event from RunEvent::Opened: {emit_err}"
-                                        );
-                                    }
-                                }
-                            }
-
-                            // 确保主窗口可见
-                            if let Some(window) = app_handle.get_webview_window("main") {
-                                let _ = window.unminimize();
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
+                            handle_deeplink_url(app_handle, &url_str, true, "RunEvent::Opened");
                         }
                     }
                 }
@@ -1883,6 +1855,10 @@ pub fn run() {
 /// 确保 Claude Code/Codex/Gemini 的配置不会处于损坏状态。
 /// 使用 stop_with_restore_keep_state 保留 settings 表中的代理状态，下次启动时自动恢复。
 pub async fn cleanup_before_exit(app_handle: &tauri::AppHandle) {
+    if relaydesk_m1_mode() {
+        return;
+    }
+
     if let Some(state) = app_handle.try_state::<store::AppState>() {
         let proxy_service = &state.proxy_service;
 
@@ -1916,6 +1892,16 @@ pub async fn cleanup_before_exit(app_handle: &tauri::AppHandle) {
             }
             log::info!("代理服务器清理完成");
         }
+    }
+}
+
+async fn run_legacy_exit_cleanup_if_enabled<F, Fut>(cleanup: F)
+where
+    F: FnOnce() -> Fut,
+    Fut: std::future::Future<Output = ()>,
+{
+    if !relaydesk_m1_mode() {
+        cleanup().await;
     }
 }
 
@@ -2104,7 +2090,7 @@ fn show_migration_error_dialog(app: &tauri::AppHandle, error: &str) -> bool {
         format!(
             "从旧版本迁移配置时发生错误：\n\n{error}\n\n\
             您的数据尚未丢失，旧配置文件仍然保留。\n\
-            建议回退到旧版本 CC Switch 以保护数据。\n\n\
+            建议回退到旧版本 RelayDesk 以保护数据。\n\n\
             点击「重试」重新尝试迁移\n\
             点击「退出」关闭程序（可回退版本后重新打开）"
         )
@@ -2112,7 +2098,7 @@ fn show_migration_error_dialog(app: &tauri::AppHandle, error: &str) -> bool {
         format!(
             "An error occurred while migrating configuration:\n\n{error}\n\n\
             Your data is NOT lost - the old config file is still preserved.\n\
-            Consider rolling back to an older CC Switch version.\n\n\
+            Consider rolling back to an older RelayDesk version.\n\n\
             Click 'Retry' to attempt migration again\n\
             Click 'Exit' to close the program"
         )
@@ -2177,7 +2163,7 @@ fn show_database_init_error_dialog(
             Common causes include: newer database version, corrupted file, permission issues, or low disk space.\n\n\
             Suggestions:\n\
             1) Back up the entire config directory (including cc-switch.db)\n\
-            2) If you see “database version is newer”, please upgrade CC Switch\n\
+            2) If you see “database version is newer”, please upgrade RelayDesk\n\
             3) If this happened right after upgrading, consider rolling back to export/backup then upgrade again\n\n\
             Click 'Retry' to attempt initialization again\n\
             Click 'Exit' to close the program",
@@ -2288,7 +2274,27 @@ mod tests {
         redact_url_for_log_with_secrets, redact_url_origin_for_log, runtime_log_level_allows,
         ExitRequestAction,
     };
+
     use crate::database::Database;
+
+    #[tokio::test]
+    async fn relaydesk_m1_exit_does_not_run_legacy_live_cleanup() {
+        let temp = tempfile::tempdir().expect("isolated CLI home");
+        let shared_cli_config = temp.path().join("config.toml");
+        std::fs::write(&shared_cli_config, "managed_by = \"another-app\"\n")
+            .expect("seed shared CLI config");
+
+        super::run_legacy_exit_cleanup_if_enabled(|| async {
+            std::fs::write(&shared_cli_config, "restored_by = \"legacy-cleanup\"\n")
+                .expect("simulate legacy cleanup");
+        })
+        .await;
+
+        assert_eq!(
+            std::fs::read_to_string(&shared_cli_config).unwrap(),
+            "managed_by = \"another-app\"\n"
+        );
+    }
 
     #[test]
     fn log_url_redaction_strips_credentials_and_query_keeps_path() {

@@ -1,14 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
-import { DatabaseUpgrade } from "./components/DatabaseUpgrade";
-import { UpdateProvider } from "./contexts/UpdateContext";
+import RelayDeskApp from "./relaydesk/RelayDeskApp";
+import { RecoveryPage } from "./relaydesk/RecoveryPage";
 import "./index.css";
+import "./relaydesk/design/brand.css";
 // 导入国际化配置
 import i18n from "./i18n";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/theme-provider";
-import { queryClient } from "@/lib/query";
+import { queryClient } from "@/lib/query/queryClient";
 import { Toaster } from "@/components/ui/sonner";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
@@ -19,10 +19,6 @@ import {
   installGlobalErrorHandlers,
   reportFrontendError,
 } from "./lib/frontendLogger";
-import {
-  MODELS_DEV_SYNC_CONFIG_QUERY_KEY,
-  syncModelsDevPricingOnStartup,
-} from "./lib/modelsDevAutoSync";
 import { initializeWindowActivity } from "@/lib/windowActivity";
 
 installGlobalErrorHandlers();
@@ -54,8 +50,9 @@ interface ConfigLoadErrorPayload {
 async function handleConfigLoadError(
   payload: ConfigLoadErrorPayload | null,
 ): Promise<void> {
-  const path = payload?.path ?? "~/.cc-switch/config.json";
-  const detail = payload?.error ?? "Unknown error";
+  const path = "~/.relaydesk";
+  const detail = i18n.t("relaydesk:genericError");
+  void payload;
 
   await message(
     i18n.t("errors.configLoadFailedMessage", {
@@ -96,9 +93,9 @@ async function bootstrap() {
       ReactDOM.createRoot(document.getElementById("root")!).render(
         <React.StrictMode>
           <FrontendErrorBoundary>
-            <ThemeProvider defaultTheme="system" storageKey="cc-switch-theme">
-              <DatabaseUpgrade payload={initError} />
-              <Toaster />
+            <ThemeProvider defaultTheme="dark" storageKey="relaydesk-theme">
+              <RecoveryPage />
+              <Toaster position="bottom-right" />
             </ThemeProvider>
           </FrontendErrorBoundary>
         </React.StrictMode>,
@@ -121,35 +118,14 @@ async function bootstrap() {
     <React.StrictMode>
       <FrontendErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <ThemeProvider defaultTheme="system" storageKey="cc-switch-theme">
-            <UpdateProvider>
-              <App />
-              <Toaster />
-            </UpdateProvider>
+          <ThemeProvider defaultTheme="dark" storageKey="relaydesk-theme">
+            <RelayDeskApp />
+            <Toaster position="bottom-right" />
           </ThemeProvider>
         </QueryClientProvider>
       </FrontendErrorBoundary>
     </React.StrictMode>,
   );
-
-  void syncModelsDevPricingOnStartup()
-    .then((result) => {
-      if (!result.skipped) {
-        return Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["usage"] }),
-          queryClient.invalidateQueries({
-            queryKey: MODELS_DEV_SYNC_CONFIG_QUERY_KEY,
-          }),
-        ]);
-      }
-    })
-    .catch((error) => {
-      // 离线或 models.dev 暂时不可用不应阻塞应用启动。
-      reportFrontendError("models_dev_startup_sync", error);
-      void queryClient.invalidateQueries({
-        queryKey: MODELS_DEV_SYNC_CONFIG_QUERY_KEY,
-      });
-    });
 }
 
 void bootstrap();
