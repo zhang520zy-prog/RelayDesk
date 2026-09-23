@@ -1,5 +1,5 @@
-use cc_switch_lib::relay::{RelayService, RelayUsageQuery};
-use cc_switch_lib::{AppState, Database};
+use relaydesk_lib::relay::{RelayService, RelayUsageQuery};
+use relaydesk_lib::{AppState, Database};
 use std::sync::Arc;
 #[tokio::main]
 async fn main() {

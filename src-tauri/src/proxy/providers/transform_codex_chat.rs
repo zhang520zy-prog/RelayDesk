@@ -2122,7 +2122,7 @@ mod tests {
     use base64::{engine::general_purpose::STANDARD, Engine as _};
 
     fn large_test_image_data_url() -> String {
-        let bytes = b"CC_SWITCH_TOOL_MEDIA_SENTINEL".repeat(400);
+        let bytes = b"RELAYDESK_TOOL_MEDIA_SENTINEL".repeat(400);
         format!("data:image/png;base64,{}", STANDARD.encode(bytes))
     }
 
@@ -3598,7 +3598,7 @@ mod tests {
 
         assert_eq!(
             messages[2]["content"][0]["text"],
-            "[cc-switch: media output of tool call call_image]"
+            "[relaydesk: media output of tool call call_image]"
         );
         assert_eq!(messages[2]["content"][1]["type"], "image_url");
         assert_eq!(messages[2]["content"][1]["image_url"]["url"], data_url);
@@ -3975,7 +3975,7 @@ mod tests {
             serde_json::from_str(messages[1]["content"].as_str().unwrap()).unwrap();
         let rewritten = tool_item["output"].as_str().unwrap();
 
-        assert!(rewritten.contains("[cc-switch: omitted 20000 bytes]"));
+        assert!(rewritten.contains("[relaydesk: omitted 20000 bytes]"));
         assert!(!rewritten.contains(&"A".repeat(64)));
         assert!(!rewritten.contains("CUSTOM_STRING_IMAGE_SENTINEL"));
         assert_eq!(messages[2]["content"][1]["type"], "image_url");
@@ -4424,7 +4424,7 @@ mod tests {
         assert!(tool_content[2]["data"]
             .as_str()
             .unwrap()
-            .starts_with("[cc-switch: omitted 20000 bytes]"));
+            .starts_with("[relaydesk: omitted 20000 bytes]"));
         assert!(!tool_content_text.contains(&data_url));
         assert!(!tool_content_text.contains("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"));
     }
@@ -5032,7 +5032,7 @@ mod tests {
         assert_eq!(result["error"]["type"], "upstream_error");
     }
     // Regression tests for tool_choice without tools guard
-    // https://github.com/farion1231/cc-switch/issues/3557
+    // https://github.com/zhang520zy-prog/RelayDesk/issues/3557
 
     #[test]
     fn responses_request_to_chat_drops_tool_choice_when_no_tools() {

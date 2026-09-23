@@ -297,7 +297,7 @@ struct CodexAccountData {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id_token: Option<String>,
     /// 最近一次取得或采纳这组 OAuth token 的时间。用于在 Codex CLI 与
-    /// cc-switch 都可能轮换 refresh_token 时拒绝从 live 采纳更旧的一代。
+    /// relaydesk 都可能轮换 refresh_token 时拒绝从 live 采纳更旧的一代。
     #[serde(default)]
     pub token_updated_at_ms: i64,
 }
@@ -1184,7 +1184,7 @@ impl CodexOAuthManager {
     ///
     /// For an existing account, carries the refresh token observed on disk.
     /// Callers compare it immediately before their live write/delete; the external Codex
-    /// CLI does not participate in cc-switch's switch lock and may refresh in
+    /// CLI does not participate in relaydesk's switch lock and may refresh in
     /// the adopt-to-write window.
     pub(crate) async fn prepare_live_auth_for_account_switch_away(
         &self,

@@ -44,11 +44,11 @@ fn lock_codex_official_history_op() -> std::sync::MutexGuard<'static, ()> {
 /// Codex 内建默认 provider id：config.toml 没有 `model_provider` 键时会话归入此桶。
 /// 官方订阅（ChatGPT OAuth / OpenAI API key）的历史会话都记录这个 id。
 const OFFICIAL_OPENAI_CODEX_MODEL_PROVIDER_ID: &str = "openai";
-const LEGACY_CC_SWITCH_CODEX_MODEL_PROVIDER_ID: &str = "ccswitch";
+const LEGACY_RELAYDESK_CODEX_MODEL_PROVIDER_ID: &str = "ccswitch";
 // If a Codex preset ever used a temporary routing key, keep that old key here
 // so local history can be bucketed under the current custom provider id.
-const CC_SWITCH_LEGACY_CODEX_MODEL_PROVIDER_IDS: &[&str] = &[
-    LEGACY_CC_SWITCH_CODEX_MODEL_PROVIDER_ID,
+const RELAYDESK_LEGACY_CODEX_MODEL_PROVIDER_IDS: &[&str] = &[
+    LEGACY_RELAYDESK_CODEX_MODEL_PROVIDER_ID,
     "aicodemirror",
     "aicoding",
     "aigocode",
@@ -716,7 +716,7 @@ fn collect_source_model_provider_ids(db: &Database) -> Result<BTreeSet<String>, 
             continue;
         }
 
-        insert_known_cc_switch_legacy_source_id(&mut ids, &provider.id);
+        insert_known_relaydesk_legacy_source_id(&mut ids, &provider.id);
 
         let Some(config_text) = provider
             .settings_config
@@ -727,21 +727,21 @@ fn collect_source_model_provider_ids(db: &Database) -> Result<BTreeSet<String>, 
         };
 
         for provider_id in trusted_legacy_codex_model_provider_ids_from_config(config_text) {
-            insert_known_cc_switch_legacy_source_id(&mut ids, &provider_id);
+            insert_known_relaydesk_legacy_source_id(&mut ids, &provider_id);
         }
         if let Some(provider_id) =
             legacy_codex_model_provider_id_from_normalized_config(config_text)
         {
-            insert_known_cc_switch_legacy_source_id(&mut ids, &provider_id);
+            insert_known_relaydesk_legacy_source_id(&mut ids, &provider_id);
         }
     }
 
     Ok(ids)
 }
 
-fn insert_known_cc_switch_legacy_source_id(ids: &mut BTreeSet<String>, provider_id: &str) {
+fn insert_known_relaydesk_legacy_source_id(ids: &mut BTreeSet<String>, provider_id: &str) {
     let trimmed = provider_id.trim();
-    if is_known_cc_switch_legacy_codex_model_provider_id(trimmed) {
+    if is_known_relaydesk_legacy_codex_model_provider_id(trimmed) {
         ids.insert(trimmed.to_string());
     }
 }
@@ -753,8 +753,8 @@ fn migration_backup_root(migration_name: &str) -> PathBuf {
         .join(Local::now().format("%Y%m%d_%H%M%S").to_string())
 }
 
-fn is_known_cc_switch_legacy_codex_model_provider_id(provider_id: &str) -> bool {
-    CC_SWITCH_LEGACY_CODEX_MODEL_PROVIDER_IDS
+fn is_known_relaydesk_legacy_codex_model_provider_id(provider_id: &str) -> bool {
+    RELAYDESK_LEGACY_CODEX_MODEL_PROVIDER_IDS
         .iter()
         .any(|known| known.eq_ignore_ascii_case(provider_id))
 }
@@ -766,7 +766,7 @@ fn legacy_codex_model_provider_id_from_normalized_config(config_text: &str) -> O
         .and_then(|item| item.as_str())
         .map(str::trim)?;
     if provider_id != RELAYDESK_CODEX_MODEL_PROVIDER_ID
-        && provider_id != LEGACY_CC_SWITCH_CODEX_MODEL_PROVIDER_ID
+        && provider_id != LEGACY_RELAYDESK_CODEX_MODEL_PROVIDER_ID
     {
         return None;
     }
@@ -784,8 +784,8 @@ fn legacy_codex_model_provider_id_from_normalized_config(config_text: &str) -> O
 }
 
 fn normalized_legacy_codex_provider_name(name: &str) -> Option<&'static str> {
-    if is_known_cc_switch_legacy_codex_model_provider_id(name) {
-        return CC_SWITCH_LEGACY_CODEX_MODEL_PROVIDER_IDS
+    if is_known_relaydesk_legacy_codex_model_provider_id(name) {
+        return RELAYDESK_LEGACY_CODEX_MODEL_PROVIDER_IDS
             .iter()
             .copied()
             .find(|known| known.eq_ignore_ascii_case(name));
@@ -834,7 +834,7 @@ fn insert_trusted_legacy_config_model_provider_id(
         return;
     };
     if provider_id.is_empty()
-        || !is_known_cc_switch_legacy_codex_model_provider_id(provider_id)
+        || !is_known_relaydesk_legacy_codex_model_provider_id(provider_id)
         || !config_defines_model_provider(doc, provider_id)
     {
         return;
@@ -1335,7 +1335,7 @@ name = "AIHubMix"
 base_url = "https://aihubmix.example/v1"
 "#
         ));
-        // cc-switch / 第三方写入的 custom 路由不是 RelayDesk 的命名空间
+        // relaydesk / 第三方写入的 custom 路由不是 RelayDesk 的命名空间
         assert!(!codex_config_text_routes_custom(
             r#"model_provider = "custom"
 
@@ -2281,7 +2281,7 @@ model_provider = "my-private-relay"
     }
 
     #[test]
-    fn collects_legacy_ccswitch_provider_id_from_stored_config() {
+    fn collects_legacy_relaydesk_provider_id_from_stored_config() {
         let db = Database::memory().expect("memory db");
         let mut provider = Provider::with_id(
             "generated-uuid".to_string(),
@@ -2383,7 +2383,7 @@ model = "gpt-5.4"
     }
 
     #[test]
-    fn migrates_legacy_ccswitch_provider_template_to_custom() {
+    fn migrates_legacy_relaydesk_provider_template_to_custom() {
         let db = Database::memory().expect("memory db");
         let provider = Provider::with_id(
             "legacy-ccswitch".to_string(),
@@ -2596,7 +2596,7 @@ model_provider = "aihubmix"
     }
 
     #[test]
-    fn skips_custom_category_unknown_provider_when_created_by_cc_switch() {
+    fn skips_custom_category_unknown_provider_when_created_by_relaydesk() {
         let db = Database::memory().expect("memory db");
         let mut provider = Provider::with_id(
             "generated-uuid".to_string(),

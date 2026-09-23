@@ -32,16 +32,16 @@ describe("useOpencodeFormState", () => {
       npm: "@ai-sdk/openai-compatible",
       options: {
         headers: {
-          "HTTP-Referer": "https://cc-switch.app",
-          "X-Title": "CC Switch",
+          "HTTP-Referer": "https://relaydesk.app",
+          "X-Title": "RelayDesk",
         },
       },
       models: {},
     });
 
     expect(result.current.opencodeHeaders).toEqual({
-      "HTTP-Referer": "https://cc-switch.app",
-      "X-Title": "CC Switch",
+      "HTTP-Referer": "https://relaydesk.app",
+      "X-Title": "RelayDesk",
     });
   });
 
@@ -54,12 +54,12 @@ describe("useOpencodeFormState", () => {
 
     act(() => {
       result.current.handleOpencodeHeadersChange({
-        "X-Title": "CC Switch",
+        "X-Title": "RelayDesk",
       });
     });
 
     expect(JSON.parse(getSettingsConfig()).options.headers).toEqual({
-      "X-Title": "CC Switch",
+      "X-Title": "RelayDesk",
     });
   });
 
@@ -68,7 +68,7 @@ describe("useOpencodeFormState", () => {
       npm: "@ai-sdk/openai-compatible",
       options: {
         headers: {
-          "X-Title": "CC Switch",
+          "X-Title": "RelayDesk",
         },
       },
       models: {},

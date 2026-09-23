@@ -1,7 +1,7 @@
 # RelayDesk UI 真实验收与 Devin Handoff
 
 日期：2026-09-23
-工作区：/Users/ilaohuyo/Documents/projects/RelayDesk/cc-switch
+工作区：/Users/ilaohuyo/Documents/projects/RelayDesk/relaydesk
 分支：codex/relaydesk-m1-ui
 备份快照：09dd22ba
 状态：当前工作区包含大量未提交实现；没有执行 reset --hard、clean、覆盖 HEAD 或提交。
@@ -87,7 +87,7 @@
 3. 复核已完成的 R1：钱包配置/历史/报价、用量的 relay.session_expired 已联动全局登录，并保留普通网络错误不登出；定向钱包/用量测试已通过。
 4. 复核已完成的 R2：RestartToolsAction 已在列表返回时刷新能力并按 operationId + app 过滤；定向重启测试已通过。
 5. 明确 remember=false 的产品语义：当前普通密码登录未勾选会删除同账号已有保存记录，失效恢复也会删除失效记录；主动退出登录不会删除。若产品要求只有“忘记此账号”才删除，调整实现、文案和测试。
-6. 继续保持：不读取或迁移 ~/.cc-switch，不恢复 OS Keychain，不由 renderer 直连中转站，不自动重启、强杀、静默安装或自动支付。
+6. 继续保持：不读取或迁移 ~/.relaydesk，不恢复 OS Keychain，不由 renderer 直连中转站，不自动重启、强杀、静默安装或自动支付。
 
 ## 交付文件
 
@@ -101,4 +101,4 @@
 
 ## 可直接转给 Devin 的摘要
 
-请在 /Users/ilaohuyo/Documents/projects/RelayDesk/cc-switch 当前工作区继续 RelayDesk UI 收尾，先阅读 docs/RelayDesk-UI真实验收与Devin-Handoff-20260923-final.md、docs/qa-2026-09-23/astra-review-2026-09-23.md 和 docs/qa-2026-09-23/native/capture-results.jsonl。本轮已用真实中转站账号完成 RelayDesk 原生登录、退出后保存账号恢复、完全重启后显式选择保存账号恢复；真实模型中心读取余额、48 个模型、11 个分组，真实近 7 天用量显示 4 次请求和 973 Token。已完成 216 张真实 Tauri 窗口矩阵截图（中英文 × 浅色/深色/系统 × 900×600/1000×650/1440×900 × 侧栏展开/折叠），另有 252 组合成布局矩阵。新鲜验证结果：TypeScript 通过；148 个文件、1292 项前端测试通过；renderer build 通过；Rust 2957 passed、14 ignored；fmt 和 diff check 通过。R1 钱包/用量 session_expired 联动和 R2 重启能力快照刷新、operationId/app 过滤已有实现与定向测试证据；请继续明确 remember=false 删除语义，并复核原生截图中的长文本和 900×600 布局。禁止 reset/clean、明文凭据、Keychain、自动登录、自动支付、静默安装、强杀或自动重启。
+请在 /Users/ilaohuyo/Documents/projects/RelayDesk/relaydesk 当前工作区继续 RelayDesk UI 收尾，先阅读 docs/RelayDesk-UI真实验收与Devin-Handoff-20260923-final.md、docs/qa-2026-09-23/astra-review-2026-09-23.md 和 docs/qa-2026-09-23/native/capture-results.jsonl。本轮已用真实中转站账号完成 RelayDesk 原生登录、退出后保存账号恢复、完全重启后显式选择保存账号恢复；真实模型中心读取余额、48 个模型、11 个分组，真实近 7 天用量显示 4 次请求和 973 Token。已完成 216 张真实 Tauri 窗口矩阵截图（中英文 × 浅色/深色/系统 × 900×600/1000×650/1440×900 × 侧栏展开/折叠），另有 252 组合成布局矩阵。新鲜验证结果：TypeScript 通过；148 个文件、1292 项前端测试通过；renderer build 通过；Rust 2957 passed、14 ignored；fmt 和 diff check 通过。R1 钱包/用量 session_expired 联动和 R2 重启能力快照刷新、operationId/app 过滤已有实现与定向测试证据；请继续明确 remember=false 删除语义，并复核原生截图中的长文本和 900×600 布局。禁止 reset/clean、明文凭据、Keychain、自动登录、自动支付、静默安装、强杀或自动重启。

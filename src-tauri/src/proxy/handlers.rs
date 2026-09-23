@@ -78,18 +78,18 @@ pub async fn get_status(State(state): State<ProxyState>) -> Result<Json<ProxySta
 /// GET /v1/models — Codex model list (reachability check)
 ///
 /// Codex CLI probes this endpoint at startup and deserializes the response as a
-/// catalog with a top-level `models` field.  Return the cc-switch–managed model
+/// catalog with a top-level `models` field.  Return the relaydesk–managed model
 /// catalog file directly so the format always matches what the current version
 /// of Codex expects.
 ///
 /// Only serves the catalog when the live config.toml still references the
-/// cc-switch–owned `model_catalog_json`, using the same path ownership rules as
+/// relaydesk–owned `model_catalog_json`, using the same path ownership rules as
 /// Codex live-setting import.
 pub async fn handle_models() -> Result<Json<Value>, ProxyError> {
     let config_dir = crate::codex_config::get_codex_config_dir();
     let active_catalog_path = match crate::codex_config::read_codex_config_text() {
         Ok(config_text) => {
-            crate::codex_config::resolve_cc_switch_catalog_path(&config_text, &config_dir)
+            crate::codex_config::resolve_relaydesk_catalog_path(&config_text, &config_dir)
         }
         Err(_) => None,
     };
@@ -107,7 +107,7 @@ pub async fn handle_models() -> Result<Json<Value>, ProxyError> {
     } else {
         if active_catalog_path.is_none() {
             log::debug!(
-                "[models] stale guard: catalog not served (model_catalog_json not set to cc-switch catalog)"
+                "[models] stale guard: catalog not served (model_catalog_json not set to relaydesk catalog)"
             );
         }
         json!({"models": []})
@@ -2032,26 +2032,26 @@ fn codex_proxy_error_json(
 
 fn codex_proxy_error_code(error: &ProxyError) -> &'static str {
     match error {
-        ProxyError::ForwardFailed(_) => "cc_switch_forward_failed",
-        ProxyError::Timeout(_) | ProxyError::StreamIdleTimeout(_) => "cc_switch_timeout",
-        ProxyError::NoAvailableProvider => "cc_switch_no_available_provider",
-        ProxyError::AllProvidersCircuitOpen => "cc_switch_all_providers_circuit_open",
-        ProxyError::NoProvidersConfigured => "cc_switch_no_providers_configured",
-        ProxyError::MaxRetriesExceeded => "cc_switch_max_retries_exceeded",
-        ProxyError::ProviderUnhealthy(_) => "cc_switch_provider_unhealthy",
-        ProxyError::ConfigError(_) => "cc_switch_config_error",
-        ProxyError::TransformError(_) => "cc_switch_transform_error",
-        ProxyError::InvalidRequest(_) => "cc_switch_invalid_request",
-        ProxyError::AuthError(_) => "cc_switch_auth_error",
-        ProxyError::UpstreamError { .. } => "cc_switch_upstream_error",
-        ProxyError::DatabaseError(_) => "cc_switch_database_error",
-        ProxyError::Internal(_) => "cc_switch_internal_error",
+        ProxyError::ForwardFailed(_) => "relaydesk_forward_failed",
+        ProxyError::Timeout(_) | ProxyError::StreamIdleTimeout(_) => "relaydesk_timeout",
+        ProxyError::NoAvailableProvider => "relaydesk_no_available_provider",
+        ProxyError::AllProvidersCircuitOpen => "relaydesk_all_providers_circuit_open",
+        ProxyError::NoProvidersConfigured => "relaydesk_no_providers_configured",
+        ProxyError::MaxRetriesExceeded => "relaydesk_max_retries_exceeded",
+        ProxyError::ProviderUnhealthy(_) => "relaydesk_provider_unhealthy",
+        ProxyError::ConfigError(_) => "relaydesk_config_error",
+        ProxyError::TransformError(_) => "relaydesk_transform_error",
+        ProxyError::InvalidRequest(_) => "relaydesk_invalid_request",
+        ProxyError::AuthError(_) => "relaydesk_auth_error",
+        ProxyError::UpstreamError { .. } => "relaydesk_upstream_error",
+        ProxyError::DatabaseError(_) => "relaydesk_database_error",
+        ProxyError::Internal(_) => "relaydesk_internal_error",
         ProxyError::AlreadyRunning
         | ProxyError::NotRunning
         | ProxyError::BindFailed(_)
         | ProxyError::StopTimeout
         | ProxyError::StopFailed(_)
-        | ProxyError::ResponseBodyTooLarge(_) => "cc_switch_proxy_error",
+        | ProxyError::ResponseBodyTooLarge(_) => "relaydesk_proxy_error",
     }
 }
 
@@ -3550,7 +3550,7 @@ data: {\"type\":\"response.output_item.done\",\"item\":{\"type\":\"message\"}}\n
         assert!(message.contains("deepseek-chat"));
         assert!(message.contains("/responses"));
         assert!(message.contains("dns lookup failed"));
-        assert_eq!(body["error"]["code"], "cc_switch_forward_failed");
+        assert_eq!(body["error"]["code"], "relaydesk_forward_failed");
         assert_eq!(body["error"]["provider"], "DeepSeek");
         assert_eq!(body["error"]["model"], "deepseek-chat");
     }

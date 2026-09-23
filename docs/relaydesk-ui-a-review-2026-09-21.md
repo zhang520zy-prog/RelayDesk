@@ -2,7 +2,7 @@
 
 日期：2026-09-21  
 状态：代码与本轮 UI 验证完成，等待用户审阅；**不是最终 Handoff**。  
-工作区：`/Users/ilaohuyo/Documents/projects/RelayDesk/cc-switch`。本轮没有提交代码，也没有重置、清理或覆盖既有未提交实现。
+工作区：`/Users/ilaohuyo/Documents/projects/RelayDesk/relaydesk`。本轮没有提交代码，也没有重置、清理或覆盖既有未提交实现。
 
 ## 本轮成果
 

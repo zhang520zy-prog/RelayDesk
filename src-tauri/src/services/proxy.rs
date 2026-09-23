@@ -3619,7 +3619,7 @@ impl ProxyService {
     }
 
     /// The login state Codex will observe for `config_text`, as far as
-    /// cc-switch can tell without touching the keyring: `Some(true)` signed
+    /// relaydesk can tell without touching the keyring: `Some(true)` signed
     /// in, `Some(false)` signed out, `None` undecidable. Which store Codex
     /// reads is decided first (`cli_auth_credentials_store`), and
     /// `auth.json` is only opened for the one mode that reads it:
@@ -4120,11 +4120,11 @@ mod tests {
             let dir = TempDir::new().expect("failed to create temp home");
             let original_home = env::var("HOME").ok();
             let original_userprofile = env::var("USERPROFILE").ok();
-            let original_test_home = env::var("CC_SWITCH_TEST_HOME").ok();
+            let original_test_home = env::var("RELAYDESK_TEST_HOME").ok();
 
             env::set_var("HOME", dir.path());
             env::set_var("USERPROFILE", dir.path());
-            env::set_var("CC_SWITCH_TEST_HOME", dir.path());
+            env::set_var("RELAYDESK_TEST_HOME", dir.path());
 
             Self {
                 dir,
@@ -4148,8 +4148,8 @@ mod tests {
             }
 
             match &self.original_test_home {
-                Some(value) => env::set_var("CC_SWITCH_TEST_HOME", value),
-                None => env::remove_var("CC_SWITCH_TEST_HOME"),
+                Some(value) => env::set_var("RELAYDESK_TEST_HOME", value),
+                None => env::remove_var("RELAYDESK_TEST_HOME"),
             }
         }
     }
@@ -9127,7 +9127,7 @@ requires_openai_auth = true
         let catalog_path = crate::codex_config::get_codex_model_catalog_path();
         assert!(
             catalog_path.exists(),
-            "cc-switch-model-catalog.json must be created on provider switch"
+            "relaydesk-model-catalog.json must be created on provider switch"
         );
         let catalog_text = std::fs::read_to_string(&catalog_path).expect("read catalog json");
         let catalog: serde_json::Value =
@@ -9499,7 +9499,7 @@ requires_openai_auth = true
         let db = Arc::new(Database::memory().expect("init db"));
         let service = ProxyService::new(db.clone());
 
-        // Pre-takeover Live state: config.toml points at the cc-switch generated
+        // Pre-takeover Live state: config.toml points at the relaydesk generated
         // catalog file, and that file exists on disk (takeover never touches it).
         let catalog_path = crate::codex_config::get_codex_model_catalog_path();
         if let Some(parent) = catalog_path.parent() {
@@ -9544,7 +9544,7 @@ requires_openai_auth = true
         );
         assert!(
             restored.contains(pointer.as_str()),
-            "restored pointer must still reference the cc-switch generated catalog file"
+            "restored pointer must still reference the relaydesk generated catalog file"
         );
     }
 
@@ -9607,7 +9607,7 @@ requires_openai_auth = true
         );
         assert!(
             catalog_path.exists(),
-            "restore must generate the cc-switch catalog file on disk"
+            "restore must generate the relaydesk catalog file on disk"
         );
         let catalog: Value = serde_json::from_str(
             &std::fs::read_to_string(&catalog_path).expect("read generated catalog"),
@@ -9676,7 +9676,7 @@ requires_openai_auth = true
         );
         assert!(
             crate::codex_config::get_codex_model_catalog_path().exists(),
-            "empty-auth restore must generate the cc-switch catalog file"
+            "empty-auth restore must generate the relaydesk catalog file"
         );
         assert!(
             !crate::codex_config::get_codex_auth_path().exists(),

@@ -1013,7 +1013,7 @@ fn apply_provider_to_paths_inner(
 fn restore_official_at_paths_inner(paths: &ClaudeDesktopPaths) -> Result<(), AppError> {
     write_deployment_mode(&paths.normal_config_path, "1p")?;
     write_deployment_mode(&paths.threep_config_path, "1p")?;
-    remove_cc_switch_enterprise_config(&paths.threep_config_path)?;
+    remove_relaydesk_enterprise_config(&paths.threep_config_path)?;
 
     if paths.profile_path.exists() {
         delete_file(&paths.profile_path)?;
@@ -1112,7 +1112,7 @@ fn write_deployment_mode(path: &Path, mode: &str) -> Result<(), AppError> {
     write_json_file(path, &value)
 }
 
-fn remove_cc_switch_enterprise_config(path: &Path) -> Result<(), AppError> {
+fn remove_relaydesk_enterprise_config(path: &Path) -> Result<(), AppError> {
     if !path.exists() {
         return Ok(());
     }
@@ -1414,9 +1414,9 @@ mod tests {
 
     #[cfg(target_os = "linux")]
     #[test]
-    fn linux_config_dir_uses_host_config_when_cc_switch_runs_in_flatpak() {
+    fn linux_config_dir_uses_host_config_when_relaydesk_runs_in_flatpak() {
         let home = Path::new("/home/tester");
-        let private_xdg = Path::new("/home/tester/.var/app/com.ccswitch.desktop/config");
+        let private_xdg = Path::new("/home/tester/.var/app/com.relaydesk.desktop/config");
 
         assert_eq!(
             linux_config_dir_from_home(home, Some(private_xdg), true),
@@ -2211,7 +2211,7 @@ mod tests {
     }
 
     #[test]
-    fn claude_desktop_restore_switches_to_1p_and_removes_cc_switch_profile() {
+    fn claude_desktop_restore_switches_to_1p_and_removes_relaydesk_profile() {
         let temp = TempDir::new().expect("tempdir");
         let paths = test_paths(temp.path());
         let provider = direct_provider("direct");

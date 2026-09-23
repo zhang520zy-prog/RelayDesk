@@ -205,8 +205,8 @@ describe("App integration with MSW", () => {
     skillsPanelMocks.checkUpdates.mockReset();
     skillsPanelMocks.openDiscovery.mockReset();
     // RelayDesk 默认首页是中转站；这组用例验证供应商流程，显式落到 providers 视图
-    localStorage.setItem("cc-switch-last-view", "providers");
-    localStorage.removeItem("cc-switch-last-app");
+    localStorage.setItem("relaydesk-last-view", "providers");
+    localStorage.removeItem("relaydesk-last-app");
   });
 
   it("covers basic provider flows via real hooks", async () => {
@@ -352,7 +352,7 @@ describe("App integration with MSW", () => {
   });
 
   it("warns without blocking when removing Pi's global default provider", async () => {
-    localStorage.setItem("cc-switch-last-app", "pi");
+    localStorage.setItem("relaydesk-last-app", "pi");
     setProviders("pi", {
       custom: {
         id: "custom",
@@ -445,7 +445,7 @@ describe("App integration with MSW", () => {
   });
 
   it("hosts the Skills check-update action in the App toolbar", async () => {
-    localStorage.setItem("cc-switch-last-view", "skills");
+    localStorage.setItem("relaydesk-last-view", "skills");
     const { default: App } = await import("@/App");
     renderApp(App);
 
@@ -462,7 +462,7 @@ describe("App integration with MSW", () => {
   });
 
   it("routes the Skills discover toolbar action through the panel guard", async () => {
-    localStorage.setItem("cc-switch-last-view", "skills");
+    localStorage.setItem("relaydesk-last-view", "skills");
     const { default: App } = await import("@/App");
     renderApp(App);
 

@@ -40,7 +40,7 @@ pub(crate) const CODEX_WEB_SEARCH_FIELD: &str = "web_search";
 /// Value that disables the web-search tool. Some native `/responses` gateways
 /// reject a `web_search` tool with `responses_feature_not_supported` ("tool type
 /// 'web_search' is not supported by this gateway phase"), so for those we write
-/// this per the vendors' official Codex docs. Also doubles as cc-switch's
+/// this per the vendors' official Codex docs. Also doubles as relaydesk's
 /// ownership sentinel: we only ever remove a `web_search` key whose value equals
 /// this string, never a user's own setting.
 pub(crate) const CODEX_WEB_SEARCH_DISABLED: &str = "disabled";
@@ -157,7 +157,7 @@ const CODEX_MANAGED_OAUTH_LIVE_AUTH_MARKER_FILENAME: &str = "codex_managed_oauth
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CodexManagedOAuthLiveAuthMarker {
     version: u32,
-    /// cc-switch 本地托管账号 ID，用于区分同一 ChatGPT workspace 下的登录。
+    /// relaydesk 本地托管账号 ID，用于区分同一 ChatGPT workspace 下的登录。
     account_id: String,
     /// 原生 auth.json 的 `tokens.account_id`，即 ChatGPT workspace ID。
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -230,7 +230,7 @@ impl CodexLiveFileState {
     }
 }
 
-/// Rollback point for the cc-switch-owned model catalog. Catalog projection
+/// Rollback point for the relaydesk-owned model catalog. Catalog projection
 /// writes this file before the caller commits `config.toml`, so guarded restore
 /// paths use this snapshot when a concurrently changing `auth.json` cancels the
 /// commit.
@@ -392,7 +392,7 @@ impl CodexLiveStateSnapshot {
 
 /// Which Codex tool surface the generated model catalog should target.
 ///
-/// - `ProxyChat`: cc-switch's proxy takes over and converts Responses<->Chat,
+/// - `ProxyChat`: relaydesk's proxy takes over and converts Responses<->Chat,
 ///   so the catalog keeps Codex's default tool set (incl. the freeform
 ///   `apply_patch` custom tool, which the proxy rewrites to a function tool).
 /// - `NativeResponses`: Codex talks directly to a provider's native
@@ -403,7 +403,7 @@ impl CodexLiveStateSnapshot {
 pub enum CodexCatalogToolProfile {
     ProxyChat,
     NativeResponses,
-    /// Codex talks (through cc-switch's proxy) to a native Anthropic Messages
+    /// Codex talks (through relaydesk's proxy) to a native Anthropic Messages
     /// gateway. Like `NativeResponses` it must suppress Codex's freeform custom
     /// tools — the Responses→Anthropic transform keeps only `function` tools.
     /// Additionally the Codex `web_search` hosted tool is unusable on this path
@@ -472,7 +472,7 @@ pub(crate) fn codex_managed_oauth_live_auth_marker_exists() -> bool {
 /// 仅接受 ChatGPT 登录形状（`auth_mode == "chatgpt"`、`OPENAI_API_KEY` 可清空）。
 /// 托管账号写入的完整 bundle 会额外带 `tokens.refresh_token` 与顶层 `last_refresh`，
 /// 这里一并容忍。Codex CLI 自刷新会轮换 access_token，因此短期 token 指纹不能
-/// 作为稳定的所有权谓词；cc-switch 的本地账号 ID 单独记录在 marker 中。
+/// 作为稳定的所有权谓词；relaydesk 的本地账号 ID 单独记录在 marker 中。
 fn extract_codex_managed_oauth_account_id(auth: &Value) -> Option<String> {
     let auth_obj = auth.as_object()?;
 
@@ -569,7 +569,7 @@ pub(crate) fn test_codex_id_token(subject: &str) -> String {
     format!("{header}.{payload}.")
 }
 
-/// Build the native-shaped ChatGPT auth bundle shared by cc-switch and Codex CLI.
+/// Build the native-shaped ChatGPT auth bundle shared by relaydesk and Codex CLI.
 pub fn codex_managed_oauth_auth_value(
     account_id: &str,
     access_token: &str,
@@ -767,7 +767,7 @@ pub(crate) fn clear_codex_managed_oauth_live_auth_marker_for_account(
 /// 切走托管 provider 或从认证中心删除账号时，清理其残留在
 /// `~/.codex/auth.json` 的 ChatGPT 登录。
 ///
-/// 删除谓词同时校验 cc-switch marker 中的本地账号 ID 与原生 auth.json 中的
+/// 删除谓词同时校验 relaydesk marker 中的本地账号 ID 与原生 auth.json 中的
 /// workspace ID，不依赖会被 Codex CLI 自刷新破坏的 access-token 指纹。切换路径必须
 /// 先把盘上轮换后的 refresh token 采纳回 manager，再调用本函数。
 pub fn clear_codex_live_auth_for_managed_account(account_id: &str) -> Result<(), AppError> {
@@ -837,10 +837,10 @@ pub fn clear_codex_live_auth_for_managed_account_if_unchanged(
     Ok(())
 }
 
-/// 判断给定的 Codex `auth` 是否属于指定的 cc-switch 本地托管账号。
+/// 判断给定的 Codex `auth` 是否属于指定的 relaydesk 本地托管账号。
 ///
 /// 原生 `tokens.account_id` 是 workspace ID，可能被多个本地账号共享；因此必须同时
-/// 命中 cc-switch marker 中的本地账号 ID，不能只按 auth.json 内容判断。
+/// 命中 relaydesk marker 中的本地账号 ID，不能只按 auth.json 内容判断。
 ///
 /// 用于 Live 备份剥离：避免把托管账号的可刷新 token 持久化进备份配置。
 pub fn codex_live_auth_is_managed_chatgpt_login(auth: &Value, account_id: &str) -> bool {
@@ -927,7 +927,7 @@ pub(crate) fn read_codex_live_auth_refresh_for_managed_account(
 ///
 /// The write is compare-and-swap-like: immediately before replacing auth.json,
 /// it verifies that the file still contains the refresh token used for the
-/// network request. Codex CLI does not share cc-switch's process lock, so this
+/// network request. Codex CLI does not share relaydesk's process lock, so this
 /// is a best-effort guard that narrows (but cannot make atomic) the cross-process
 /// check-to-replace window.
 /// Ownership is local-account scoped through the marker, while auth.json keeps
@@ -2037,7 +2037,7 @@ fn load_codex_native_responses_template() -> Value {
 }
 
 /// Hosts whose native `/responses` gateway publishes an OFFICIAL Codex model
-/// catalog (models.json) that cc-switch mirrors verbatim. Matched against
+/// catalog (models.json) that relaydesk mirrors verbatim. Matched against
 /// `base_url` ONLY — deliberately NOT by model brand, unlike
 /// `CODEX_WEB_SEARCH_REJECT_MODEL_PREFIXES`: the official entries GRANT
 /// capabilities (freeform `apply_patch`, vendor harness), and an aggregator
@@ -2065,7 +2065,7 @@ fn load_codex_deepseek_official_catalog_models() -> Vec<Value> {
 
 /// Official vendor catalog entries for the provider in `config_text`, if its
 /// gateway ships one. Only the `NativeResponses` profile qualifies: ProxyChat
-/// runs through cc-switch's converter (gpt-5.5 template contract) and the
+/// runs through relaydesk's converter (gpt-5.5 template contract) and the
 /// Anthropic transform drops custom tools, so both must keep their existing
 /// templates. Host-driven like the web_search blacklist, so existing providers
 /// pick it up on their next switch without a re-save.
@@ -2328,11 +2328,11 @@ fn set_codex_model_catalog_json_field(
 
     match catalog_path {
         Some(_) => {
-            // Only claim the pointer when it is absent or already cc-switch-owned.
+            // Only claim the pointer when it is absent or already relaydesk-owned.
             // A user-managed external catalog file (custom filename or path) is
             // left untouched, mirroring the None arm's ownership rule that
-            // `resolve_cc_switch_catalog_path` relies on.
-            let is_cc_switch_owned = doc
+            // `resolve_relaydesk_catalog_path` relies on.
+            let is_relaydesk_owned = doc
                 .get("model_catalog_json")
                 .and_then(|item| item.as_str())
                 .map(|path| {
@@ -2340,7 +2340,7 @@ fn set_codex_model_catalog_json_field(
                         == Some(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME)
                 })
                 .unwrap_or(true);
-            if is_cc_switch_owned {
+            if is_relaydesk_owned {
                 doc["model_catalog_json"] =
                     toml_edit::value(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME);
             }
@@ -2367,12 +2367,12 @@ fn set_codex_model_catalog_json_field(
 /// web-search tool off. When `disable` is true we write `web_search = "disabled"`
 /// (the catalog's `supports_search_tool` does NOT gate this — the request-time
 /// tool comes from the config, defaulting on). When false we *remove* the field,
-/// but only when it carries cc-switch's own `"disabled"` sentinel, so switching
+/// but only when it carries relaydesk's own `"disabled"` sentinel, so switching
 /// back to a web-search-capable provider re-enables it without clobbering a
 /// user's manual setting.
 ///
 /// The caller decides `disable` (see `codex_native_gateway_rejects_web_search`);
-/// lifecycle is bound to the cc-switch catalog pointer so the field is set/cleaned
+/// lifecycle is bound to the relaydesk catalog pointer so the field is set/cleaned
 /// up wherever the native catalog is written/removed.
 fn set_codex_native_web_search_field(config_text: &str, disable: bool) -> Result<String, AppError> {
     let mut doc = config_text
@@ -2432,12 +2432,12 @@ pub fn prepare_codex_config_text_with_model_catalog(
 }
 
 /// Reverse of `prepare_codex_config_text_with_model_catalog`: read the
-/// cc-switch–maintained catalog file referenced by `~/.codex/config.toml` and
+/// relaydesk–maintained catalog file referenced by `~/.codex/config.toml` and
 /// convert it back into the simplified shape the frontend table uses:
 /// `{ "models": [{ "model", "displayName"?, "contextWindow"?, hidden overrides... }, ...] }`.
 ///
 /// We only reverse-parse catalogs whose `model_catalog_json` path is the
-/// cc-switch–generated file (identified by filename
+/// relaydesk–generated file (identified by filename
 /// `relaydesk-model-catalog.json`). A user-managed external catalog file is
 /// left alone — surfacing its richer structure as the simplified table would
 /// be a downgrade we can't safely round-trip.
@@ -2461,7 +2461,7 @@ const MAX_CODEX_CATALOG_BYTES: u64 = 32 * 1024 * 1024;
 pub fn read_codex_model_catalog_simplified_from_live() -> Result<Option<Value>, AppError> {
     let config_text = read_codex_config_text()?;
     let config_dir = get_codex_config_dir();
-    let Some(catalog_path) = resolve_cc_switch_catalog_path(&config_text, &config_dir) else {
+    let Some(catalog_path) = resolve_relaydesk_catalog_path(&config_text, &config_dir) else {
         return Ok(None);
     };
     if !catalog_path.exists() {
@@ -2496,16 +2496,16 @@ pub(crate) fn read_limited_string(path: &Path, max_bytes: u64) -> Result<String,
     fs::read_to_string(path).map_err(|error| AppError::io(path, error))
 }
 
-/// Read the cc-switch Codex model catalog file with a size cap.
+/// Read the relaydesk Codex model catalog file with a size cap.
 pub(crate) fn read_codex_model_catalog_text(path: &Path) -> Result<String, AppError> {
     read_limited_string(path, MAX_CODEX_CATALOG_BYTES)
 }
 
-/// Given `config.toml` text, resolve the on-disk path of the cc-switch–owned
+/// Given `config.toml` text, resolve the on-disk path of the relaydesk–owned
 /// catalog file (returns `None` if `model_catalog_json` is absent or points at
 /// a file we don't own). Relative paths are resolved under `base_dir`;
 /// absolute paths must still be inside `base_dir`.
-pub(crate) fn resolve_cc_switch_catalog_path(
+pub(crate) fn resolve_relaydesk_catalog_path(
     config_text: &str,
     base_dir: &Path,
 ) -> Option<PathBuf> {
@@ -2520,9 +2520,9 @@ pub(crate) fn resolve_cc_switch_catalog_path(
         .filter(|s| !s.is_empty())?;
 
     let referenced_path = Path::new(catalog_path_str);
-    let is_cc_switch_owned = referenced_path.file_name().and_then(|name| name.to_str())
+    let is_relaydesk_owned = referenced_path.file_name().and_then(|name| name.to_str())
         == Some(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME);
-    if !is_cc_switch_owned {
+    if !is_relaydesk_owned {
         return None;
     }
 
@@ -2530,7 +2530,7 @@ pub(crate) fn resolve_cc_switch_catalog_path(
     // 被视为绝对路径，从而在下方的包含性校验中失败——此前这类路径会因无法匹配
     // 生成文件名而回退为按文件名解析、碰巧能工作。可接受：下一次切换供应商时
     // 写入侧会重新落一个裸文件名，配置自愈（见
-    // `set_catalog_json_none_removes_cc_switch_owned_by_filename` 的场景注释）。
+    // `set_catalog_json_none_removes_relaydesk_owned_by_filename` 的场景注释）。
     let is_unix_absolute = catalog_path_str.starts_with('/');
     let resolved = if referenced_path.is_absolute() || is_unix_absolute {
         referenced_path.to_path_buf()
@@ -2814,7 +2814,7 @@ fn codex_provider_table_declares_auth(table: &dyn toml_edit::TableLike) -> bool 
 /// switch the preserved `auth.json` credentials would be sent to the
 /// third-party endpoint. Configs without any routing directive are fine:
 /// they leave Codex on the official provider, and the top-level token is
-/// cc-switch's own record (extract/backfill), never read by Codex.
+/// relaydesk's own record (extract/backfill), never read by Codex.
 fn codex_config_routes_third_party_without_token_slot(config_text: &str) -> bool {
     let Ok(doc) = config_text.parse::<DocumentMut>() else {
         // Syntactically invalid TOML is rejected later by the write validators.
@@ -2873,13 +2873,13 @@ fn codex_config_falls_back_to_official_auth_for_third_party(config_text: &str) -
     }
 }
 
-/// cc-switch-owned provider id used by the legacy-shape normalization below.
+/// relaydesk-owned provider id used by the legacy-shape normalization below.
 /// Not a Codex reserved id, so an injected token lands inside the table.
 const CODEX_MIGRATED_PROVIDER_ID: &str = "relaydesk";
 
-/// Pick the first free cc-switch-owned provider id (`cc-switch`,
-/// `cc-switch-2`, …) so migrations never overwrite a user-authored table.
-fn first_free_cc_switch_provider_id(model_providers: Option<&dyn toml_edit::TableLike>) -> String {
+/// Pick the first free relaydesk-owned provider id (`relaydesk`,
+/// `relaydesk-2`, …) so migrations never overwrite a user-authored table.
+fn first_free_relaydesk_provider_id(model_providers: Option<&dyn toml_edit::TableLike>) -> String {
     let mut candidate = CODEX_MIGRATED_PROVIDER_ID.to_string();
     let mut suffix = 2usize;
     while model_providers.is_some_and(|table| table.get(&candidate).is_some()) {
@@ -2897,12 +2897,12 @@ const CODEX_STALE_RESERVED_TABLE_IDS: &[&str] = &["openai", "ollama", "lmstudio"
 /// Migrate stale reserved provider tables (`[model_providers.openai]`,
 /// `.ollama`, `.lmstudio`). Codex rejects the WHOLE config at load when one
 /// of these reserved built-in ids is overridden, so any surviving table
-/// means "switch reports success, Codex refuses to start" — older cc-switch
+/// means "switch reports success, Codex refuses to start" — older relaydesk
 /// takeover projections created exactly these shapes.
 ///
 /// The reserved-id match is EXACT, mirroring upstream: `OpenAI` and other
 /// case variants are legitimate custom ids and must not be touched. Each
-/// table is renamed losslessly to the first free cc-switch id (nothing
+/// table is renamed losslessly to the first free relaydesk id (nothing
 /// proves which of its keys the user cares about), with
 /// `wire_api = "responses"` defaulted in — all three built-ins speak
 /// Responses on 0.149.
@@ -2952,7 +2952,7 @@ fn migrate_stale_reserved_provider_tables(
     }
 
     for stale_id in stale_ids {
-        let migrated_id = first_free_cc_switch_provider_id(
+        let migrated_id = first_free_relaydesk_provider_id(
             doc.get("model_providers")
                 .and_then(|item| item.as_table_like()),
         );
@@ -3014,7 +3014,7 @@ fn migrate_stale_reserved_provider_tables(
 
 /// Codex 0.149 rejects the WHOLE config at deserialization when any
 /// non-Bedrock provider table has an empty/missing `name` — active or not
-/// ("provider name must not be empty"). Historic cc-switch updates and
+/// ("provider name must not be empty"). Historic relaydesk updates and
 /// hand-written configs created tables carrying only `base_url`, so every
 /// live write normalizes custom tables into a loadable shape; the name is
 /// cosmetic, so the table id is as good a value as any. Bedrock tables are
@@ -3137,7 +3137,7 @@ fn preflight_codex_provider_table_conflicts(config_text: &str) -> Result<(), App
 
 /// Rewrite the legacy "reroute the built-in openai provider" shape —
 /// `model_provider` unset/"openai" plus a top-level `openai_base_url` — into
-/// a custom provider table named `cc-switch`. Before Codex 0.149 this shape
+/// a custom provider table named `relaydesk`. Before Codex 0.149 this shape
 /// worked because the built-in provider read the third-party key from
 /// auth.json (ambient auth); auth.json no longer carries third-party keys,
 /// so the key needs a provider-scoped slot. The built-in `openai` provider
@@ -3186,7 +3186,7 @@ fn normalize_codex_legacy_openai_reroute(config_text: &str) -> Result<Option<Str
     // backfilled into the DB for good), so pick the first free suffixed id
     // instead. Idempotency is unaffected: a normalized config routes to the
     // migrated id, so this function early-returns before reaching here.
-    let migrated_id = first_free_cc_switch_provider_id(
+    let migrated_id = first_free_relaydesk_provider_id(
         doc.get("model_providers")
             .and_then(|item| item.as_table_like()),
     );
@@ -3829,7 +3829,7 @@ fn plan_codex_live_write(
         preflight_codex_provider_table_conflicts(text)?;
     }
     if category == Some("official") {
-        // Official configs seeded by older cc-switch versions can carry
+        // Official configs seeded by older relaydesk versions can carry
         // stale reserved tables too — Codex refuses those at load, so
         // migrate on every write path, not only third-party. Official
         // context: the route never follows the renamed table.
@@ -3841,7 +3841,7 @@ fn plan_codex_live_write(
         // Official writes never go through prepare_codex_provider_live_config,
         // so normalize name-less custom tables here too — 0.149 validates
         // EVERY provider table at load, and an official config can carry
-        // idle leftovers from older cc-switch versions.
+        // idle leftovers from older relaydesk versions.
         let named = match config_text {
             Some(text) => backfill_codex_custom_provider_names(text)?,
             None => None,
@@ -3891,7 +3891,7 @@ fn plan_codex_live_write(
 
     // The legacy reroute shape (built-in `openai` provider + top-level
     // `openai_base_url`) has no provider table to carry the key — rewrite it
-    // into a cc-switch-owned custom table before the safety gates run.
+    // into a relaydesk-owned custom table before the safety gates run.
     // prepare_codex_provider_live_config normalizes again internally
     // (idempotent); the gates need the normalized text here.
     let normalized = match config_text {
@@ -4333,8 +4333,8 @@ mod tests {
     impl CodexLiveTestHome {
         fn new() -> Self {
             let dir = tempfile::tempdir().expect("create isolated Codex live test home");
-            let original_test_home = std::env::var_os("CC_SWITCH_TEST_HOME");
-            std::env::set_var("CC_SWITCH_TEST_HOME", dir.path());
+            let original_test_home = std::env::var_os("RELAYDESK_TEST_HOME");
+            std::env::set_var("RELAYDESK_TEST_HOME", dir.path());
             crate::settings::reload_settings().expect("reload settings for isolated test home");
 
             Self {
@@ -4347,8 +4347,8 @@ mod tests {
     impl Drop for CodexLiveTestHome {
         fn drop(&mut self) {
             match &self.original_test_home {
-                Some(value) => std::env::set_var("CC_SWITCH_TEST_HOME", value),
-                None => std::env::remove_var("CC_SWITCH_TEST_HOME"),
+                Some(value) => std::env::set_var("RELAYDESK_TEST_HOME", value),
+                None => std::env::remove_var("RELAYDESK_TEST_HOME"),
             }
             let _ = crate::settings::reload_settings();
         }
@@ -5136,7 +5136,7 @@ http_headers = { x-api-version = "2026-01-01" }
 
         // Safe shapes: either the token has a landing spot, or nothing
         // reroutes requests away from the official provider (top-level token
-        // stays a cc-switch-only record).
+        // stays a relaydesk-only record).
         let custom_with_table = r#"model_provider = "aihubmix"
 
 [model_providers.aihubmix]
@@ -5314,7 +5314,7 @@ openai_base_url = "https://relay.example/v1"
                 .expect("prepare live config");
         assert!(
             injected.contains("experimental_bearer_token = \"sk-test\""),
-            "token must land inside the cc-switch table; got:\n{injected}"
+            "token must land inside the relaydesk table; got:\n{injected}"
         );
         assert_eq!(
             extract_codex_experimental_bearer_token(&injected).as_deref(),
@@ -5356,7 +5356,7 @@ openai_base_url = "https://relay.example/v1"
     }
 
     #[test]
-    fn legacy_reroute_normalization_never_overwrites_a_user_cc_switch_table() {
+    fn legacy_reroute_normalization_never_overwrites_a_user_relaydesk_table() {
         // A user-authored [model_providers.cc-switch] proves nothing about
         // ownership — overwriting it would drop their headers/query params
         // and backfill the loss into the DB. Migration continues under the
@@ -5393,7 +5393,7 @@ http_headers = { x-team = "42" }
 
     #[test]
     fn stale_reserved_tables_are_renamed_with_fallback_aware_routing() {
-        // Older cc-switch takeover projections created reserved
+        // Older relaydesk takeover projections created reserved
         // [model_providers.openai]/[.ollama]/[.lmstudio] tables; Codex 0.148+
         // rejects the whole config at load. Tables are renamed and made
         // loadable; the route follows unless the table would resolve
@@ -7628,7 +7628,7 @@ name = "xiaomi_mimo"
     #[test]
     fn native_web_search_field_removes_own_sentinel_when_not_disabled() {
         // Switching away from a native provider must re-enable web search by
-        // removing cc-switch's own "disabled" sentinel.
+        // removing relaydesk's own "disabled" sentinel.
         let input = r#"model = "gpt-5.5"
 web_search = "disabled"
 "#;
@@ -7636,14 +7636,14 @@ web_search = "disabled"
         let parsed: toml::Value = toml::from_str(&result).unwrap();
         assert!(
             parsed.get("web_search").is_none(),
-            "cc-switch's disabled sentinel should be removed when not native"
+            "relaydesk's disabled sentinel should be removed when not native"
         );
     }
 
     #[test]
     fn native_web_search_field_preserves_user_value() {
         // A user's own web_search value must never be clobbered by cleanup,
-        // only cc-switch's "disabled" sentinel is owned/removable.
+        // only relaydesk's "disabled" sentinel is owned/removable.
         let input = r#"web_search = "enabled"
 "#;
         let result = set_codex_native_web_search_field(input, false).unwrap();
@@ -7800,9 +7800,9 @@ web_search = "disabled"
     #[test]
     fn resolve_catalog_path_returns_none_when_config_missing_field() {
         let base = PathBuf::from("/tmp/.codex");
-        assert!(resolve_cc_switch_catalog_path("", &base).is_none());
+        assert!(resolve_relaydesk_catalog_path("", &base).is_none());
         assert!(
-            resolve_cc_switch_catalog_path("model = \"gpt-5\"", &base).is_none(),
+            resolve_relaydesk_catalog_path("model = \"gpt-5\"", &base).is_none(),
             "no model_catalog_json field should yield None"
         );
     }
@@ -7812,7 +7812,7 @@ web_search = "disabled"
         let base = PathBuf::from("/tmp/.codex");
         let config = r#"model_catalog_json = "/tmp/.codex/relaydesk-model-catalog.json"
 "#;
-        let resolved = resolve_cc_switch_catalog_path(config, &base).expect("path resolves");
+        let resolved = resolve_relaydesk_catalog_path(config, &base).expect("path resolves");
         assert_eq!(resolved, base.join(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME));
     }
 
@@ -7822,7 +7822,7 @@ web_search = "disabled"
         let config = r#"model_catalog_json = "/Users/me/.codex/my-handwritten-catalog.json"
 "#;
         assert!(
-            resolve_cc_switch_catalog_path(config, &base).is_none(),
+            resolve_relaydesk_catalog_path(config, &base).is_none(),
             "external catalog files should be left alone"
         );
 
@@ -7830,7 +7830,7 @@ web_search = "disabled"
         let foreign = r#"model_catalog_json = "/tmp/.codex/cc-switch-model-catalog.json"
 "#;
         assert!(
-            resolve_cc_switch_catalog_path(foreign, &base).is_none(),
+            resolve_relaydesk_catalog_path(foreign, &base).is_none(),
             "cc-switch-owned catalog files must not be claimed"
         );
     }
@@ -8112,7 +8112,7 @@ web_search = "disabled"
         let input = r#"model_provider = "custom"
 model = "glm-5"
 "#;
-        // Simulate a WSL UNC path as cc-switch would see it on Windows;
+        // Simulate a WSL UNC path as relaydesk would see it on Windows;
         // the function now writes just the relative filename.
         let unc_path =
             Path::new(r"\\wsl.localhost\Ubuntu\home\user\.codex\relaydesk-model-catalog.json");
@@ -8148,7 +8148,7 @@ model = "glm-5"
     }
 
     #[test]
-    fn set_catalog_json_none_removes_cc_switch_owned_by_filename() {
+    fn set_catalog_json_none_removes_relaydesk_owned_by_filename() {
         // After the WSL fix, TOML may contain a Linux-style path.
         // The None arm must still remove it (file_name match catches any format).
         let input = r#"model_catalog_json = "/home/user/.codex/relaydesk-model-catalog.json"
@@ -8157,7 +8157,7 @@ model = "glm-5"
         let parsed: toml::Value = toml::from_str(&result).unwrap();
         assert!(
             parsed.get("model_catalog_json").is_none(),
-            "None arm should remove cc-switch-owned field regardless of path format"
+            "None arm should remove relaydesk-owned field regardless of path format"
         );
     }
 
@@ -8178,7 +8178,7 @@ model = "glm-5"
     fn set_catalog_json_some_preserves_user_owned_catalog() {
         // When RelayDesk generates a catalog (Some arm), it must still respect a
         // user-managed external catalog file instead of clobbering it with the
-        // cc-switch-owned filename. Only an absent or cc-switch-owned pointer is
+        // relaydesk-owned filename. Only an absent or relaydesk-owned pointer is
         // claimed; this mirrors the None arm's ownership rule.
         let input = r#"model_provider = "custom"
 model = "glm-5"
@@ -8218,7 +8218,7 @@ model_catalog_json = "my-custom-catalog.json"
 model_catalog_json = "relaydesk-model-catalog.json"
 "#;
         let base_dir = PathBuf::from("/home/user/.codex");
-        let result = resolve_cc_switch_catalog_path(config_text, &base_dir);
+        let result = resolve_relaydesk_catalog_path(config_text, &base_dir);
         assert_eq!(
             result,
             Some(base_dir.join(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME)),
@@ -8231,7 +8231,7 @@ model_catalog_json = "relaydesk-model-catalog.json"
         let config_text = r#"model_catalog_json = "/tmp/secret/relaydesk-model-catalog.json"
 "#;
         let base_dir = PathBuf::from("/home/user/.codex");
-        let result = resolve_cc_switch_catalog_path(config_text, &base_dir);
+        let result = resolve_relaydesk_catalog_path(config_text, &base_dir);
         assert_eq!(
             result, None,
             "absolute path outside ~/.codex must not be accepted"
@@ -8243,7 +8243,7 @@ model_catalog_json = "relaydesk-model-catalog.json"
         let config_text = r#"model_catalog_json = "/home/user/.codex/relaydesk-model-catalog.json"
 "#;
         let base_dir = PathBuf::from("/home/user/.codex");
-        let result = resolve_cc_switch_catalog_path(config_text, &base_dir);
+        let result = resolve_relaydesk_catalog_path(config_text, &base_dir);
         assert_eq!(
             result,
             Some(base_dir.join(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME)),
@@ -8256,7 +8256,7 @@ model_catalog_json = "relaydesk-model-catalog.json"
         let config_text = r#"model_catalog_json = "../relaydesk-model-catalog.json"
 "#;
         let base_dir = PathBuf::from("/home/user/.codex");
-        let result = resolve_cc_switch_catalog_path(config_text, &base_dir);
+        let result = resolve_relaydesk_catalog_path(config_text, &base_dir);
         assert_eq!(
             result, None,
             "relative traversal outside ~/.codex must not be accepted"
@@ -8283,7 +8283,7 @@ model_catalog_json = "relaydesk-model-catalog.json"
 
         let config_text = r#"model_catalog_json = "link/relaydesk-model-catalog.json"
 "#;
-        let result = resolve_cc_switch_catalog_path(config_text, &base_dir);
+        let result = resolve_relaydesk_catalog_path(config_text, &base_dir);
         assert_eq!(
             result, None,
             "symlink escaping the config dir must be rejected after canonicalization"
@@ -8301,7 +8301,7 @@ model_catalog_json = "relaydesk-model-catalog.json"
 
         let config_text = r#"model_catalog_json = "relaydesk-model-catalog.json"
 "#;
-        let result = resolve_cc_switch_catalog_path(config_text, &base_dir);
+        let result = resolve_relaydesk_catalog_path(config_text, &base_dir);
         let resolved = result.expect("real file inside config dir should be accepted");
         assert_eq!(
             resolved.file_name().and_then(|n| n.to_str()),

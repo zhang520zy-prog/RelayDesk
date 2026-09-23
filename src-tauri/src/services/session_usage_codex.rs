@@ -3369,8 +3369,8 @@ mod tests {
         #[cfg(unix)]
         std::os::unix::fs::symlink(&real_sessions, temp.path().join(".codex").join("sessions"))
             .expect("symlink sessions");
-        let previous_home = std::env::var_os("CC_SWITCH_TEST_HOME");
-        std::env::set_var("CC_SWITCH_TEST_HOME", temp.path());
+        let previous_home = std::env::var_os("RELAYDESK_TEST_HOME");
+        std::env::set_var("RELAYDESK_TEST_HOME", temp.path());
 
         clear_codex_replay_caches();
         // CODEX_REPLAY_DISK=1 时用临时 HOME 下的磁盘库：逐行 autocommit 的
@@ -3446,8 +3446,8 @@ mod tests {
         }
 
         match previous_home {
-            Some(value) => std::env::set_var("CC_SWITCH_TEST_HOME", value),
-            None => std::env::remove_var("CC_SWITCH_TEST_HOME"),
+            Some(value) => std::env::set_var("RELAYDESK_TEST_HOME", value),
+            None => std::env::remove_var("RELAYDESK_TEST_HOME"),
         }
         Ok(())
     }

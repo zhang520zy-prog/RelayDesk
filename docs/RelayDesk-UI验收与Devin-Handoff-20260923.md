@@ -1,7 +1,7 @@
 # RelayDesk UI 验收与 Devin 交接简报
 
 日期：2026-09-23
-工作区：/Users/ilaohuyo/Documents/projects/RelayDesk/cc-switch
+工作区：/Users/ilaohuyo/Documents/projects/RelayDesk/relaydesk
 分支：codex/relaydesk-m1-ui
 HEAD：6acc87b1a0c3cd30fc2d36175310336e6d799e4a（本次实现包含未提交改动，HEAD 不是交付内容的完整快照）。
 状态：大量既有实现未提交；禁止 reset --hard、clean 或从 HEAD 覆盖现有代码。备份快照：09dd22ba。
@@ -93,7 +93,7 @@ HEAD：6acc87b1a0c3cd30fc2d36175310336e6d799e4a（本次实现包含未提交改
 
 ## 可直接转给 Devin 的摘要
 
-请在 /Users/ilaohuyo/Documents/projects/RelayDesk/cc-switch 当前工作区继续 RelayDesk UI 收尾。当前已完成并通过自动化验收：取消左侧 Dock 动画；记住登录在登出后保留账号、应用重启后可显式选择恢复；中英文、多主题、900×600/1000×650/1440×900、侧栏展开/折叠矩阵共 252 组通过；TypeScript、148 文件/1281 前端测试、renderer build、2957 Rust 测试、fmt 和 diff check 均通过。请先阅读 docs/qa-2026-09-23/subagent-acceptance-2026-09-23.md 与 docs/qa-2026-09-23/astra-review-2026-09-23.md。GPT-6 Astra 确认两项 Important：R1 钱包/用量 query 的 session_expired 未联动全局登录状态，可能停留在旧的已登录框架；R2 RestartToolsAction 在 not_running_started 成功后沿用旧 capabilities，返回列表可能仍显示“启动”并遗漏运行中风险。请补实现和回归测试，另外明确 remember=false 是否应删除已有保存账号；再补 macOS/Windows/Linux 原生和真实服务边界验收。禁止 reset/clean、真实账号并发登录、Keychain、明文凭据和把 synthetic 结果写成生产通过。完成后按文档命令重新验证并更新 Handoff。
+请在 /Users/ilaohuyo/Documents/projects/RelayDesk/relaydesk 当前工作区继续 RelayDesk UI 收尾。当前已完成并通过自动化验收：取消左侧 Dock 动画；记住登录在登出后保留账号、应用重启后可显式选择恢复；中英文、多主题、900×600/1000×650/1440×900、侧栏展开/折叠矩阵共 252 组通过；TypeScript、148 文件/1281 前端测试、renderer build、2957 Rust 测试、fmt 和 diff check 均通过。请先阅读 docs/qa-2026-09-23/subagent-acceptance-2026-09-23.md 与 docs/qa-2026-09-23/astra-review-2026-09-23.md。GPT-6 Astra 确认两项 Important：R1 钱包/用量 query 的 session_expired 未联动全局登录状态，可能停留在旧的已登录框架；R2 RestartToolsAction 在 not_running_started 成功后沿用旧 capabilities，返回列表可能仍显示“启动”并遗漏运行中风险。请补实现和回归测试，另外明确 remember=false 是否应删除已有保存账号；再补 macOS/Windows/Linux 原生和真实服务边界验收。禁止 reset/clean、真实账号并发登录、Keychain、明文凭据和把 synthetic 结果写成生产通过。完成后按文档命令重新验证并更新 Handoff。
 
 ## 文件范围提示
 

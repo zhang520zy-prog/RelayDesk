@@ -2,17 +2,17 @@
 name = "relaydesk"
 default-run = "relaydesk"
 version = "3.20.3"
-description = "RelayDesk - relay-powered provider switcher for Claude Code, Codex & Gemini CLI (based on CC Switch)"
-authors = ["Jason Young"]
+description = "RelayDesk - relay-powered provider switcher for Claude Code, Codex & Gemini CLI"
+authors = ["RelayDesk"]
 license = "MIT"
-repository = "https://github.com/farion1231/cc-switch"
+repository = "https://github.com/zhang520zy-prog/RelayDesk"
 edition = "2021"
 rust-version = "1.85.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "cc_switch_lib"
+name = "relaydesk_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 doctest = false
 

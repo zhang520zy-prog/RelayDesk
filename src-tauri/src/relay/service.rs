@@ -1963,8 +1963,8 @@ mod tests {
     #[serial]
     fn malformed_mcp_does_not_downgrade_successful_relay_live_write() {
         let temp = tempfile::tempdir().expect("isolated CLI home");
-        let previous_test_home = std::env::var_os("CC_SWITCH_TEST_HOME");
-        std::env::set_var("CC_SWITCH_TEST_HOME", temp.path());
+        let previous_test_home = std::env::var_os("RELAYDESK_TEST_HOME");
+        std::env::set_var("RELAYDESK_TEST_HOME", temp.path());
         crate::settings::reload_settings().unwrap();
 
         let db = Arc::new(Database::memory().unwrap());
@@ -2052,8 +2052,8 @@ mod tests {
         );
 
         match previous_test_home {
-            Some(value) => std::env::set_var("CC_SWITCH_TEST_HOME", value),
-            None => std::env::remove_var("CC_SWITCH_TEST_HOME"),
+            Some(value) => std::env::set_var("RELAYDESK_TEST_HOME", value),
+            None => std::env::remove_var("RELAYDESK_TEST_HOME"),
         }
     }
 }

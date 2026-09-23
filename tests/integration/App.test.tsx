@@ -606,7 +606,7 @@ describe("RelayDesk user flows", () => {
     expect(
       screen.queryByRole("button", { name: "MCP" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText("CC Switch")).not.toBeInTheDocument();
+    expect(screen.getAllByText("RelayDesk").length).toBeGreaterThan(0);
   });
   it("searches across groups and explains empty groups", async () => {
     const user = userEvent.setup();

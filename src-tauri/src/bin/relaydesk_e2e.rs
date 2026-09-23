@@ -1,11 +1,11 @@
 //! RelayDesk 受控端到端验证工具（非生产二进制，仅供测试环境使用）。
 //!
 //! 真实链路：登录 → 分组/模型 → 应用模型 → 检查三个 CLI live 文件。
-//! 所有文件写入均落在 `CC_SWITCH_TEST_HOME` 指定的临时根目录内；
+//! 所有文件写入均落在 `RELAYDESK_TEST_HOME` 指定的临时根目录内；
 //! 凭据从环境变量读取，不落盘、不硬编码。
 //!
 //! 用法：
-//!   CC_SWITCH_TEST_HOME=/tmp/relaydesk-e2e-xxx \
+//!   RELAYDESK_TEST_HOME=/tmp/relaydesk-e2e-xxx \
 //!   RELAYDESK_E2E_USER=<user> RELAYDESK_E2E_PASS=<pass> \
 //!   cargo run --bin relaydesk_e2e
 //!
@@ -18,8 +18,8 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use cc_switch_lib::relay::{RelayApplyApps, RelayService};
-use cc_switch_lib::{AppState, Database};
+use relaydesk_lib::relay::{RelayApplyApps, RelayService};
+use relaydesk_lib::{AppState, Database};
 
 const DEFAULT_BASE: &str = "https://www.shenlanqaq.com";
 
@@ -33,14 +33,14 @@ async fn main() {
 
 async fn run() -> Result<(), String> {
     // ── 安全防护：必须显式隔离 home，且不得等于真实 home ──────────
-    let test_home = std::env::var("CC_SWITCH_TEST_HOME")
-        .map_err(|_| "CC_SWITCH_TEST_HOME 未设置——拒绝在真实 home 下运行".to_string())?;
+    let test_home = std::env::var("RELAYDESK_TEST_HOME")
+        .map_err(|_| "RELAYDESK_TEST_HOME 未设置——拒绝在真实 home 下运行".to_string())?;
     let test_home = PathBuf::from(test_home);
     if test_home.as_os_str().is_empty() {
-        return Err("CC_SWITCH_TEST_HOME 为空".to_string());
+        return Err("RELAYDESK_TEST_HOME 为空".to_string());
     }
     if dirs::home_dir().as_deref() == Some(test_home.as_path()) {
-        return Err("CC_SWITCH_TEST_HOME 指向真实 home，拒绝运行".to_string());
+        return Err("RELAYDESK_TEST_HOME 指向真实 home，拒绝运行".to_string());
     }
     std::fs::create_dir_all(&test_home).map_err(|e| format!("创建测试根目录失败: {e}"))?;
     println!("[e2e] 隔离测试根: {}", test_home.display());

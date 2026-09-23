@@ -201,7 +201,7 @@ impl SkillApps {
     /// 从来源标签列表构建启用状态
     ///
     /// 标签与 AppType::as_str() 一致时启用对应应用，
-    /// 其他标签（如 "agents", "cc-switch"）忽略。
+    /// 其他标签（如 "agents", "relaydesk"）忽略。
     pub fn from_labels(labels: &[String]) -> Self {
         let mut apps = Self::default();
         for label in labels {
@@ -1054,11 +1054,11 @@ mod tests {
             let dir = TempDir::new().expect("failed to create temp home");
             let original_home = env::var("HOME").ok();
             let original_userprofile = env::var("USERPROFILE").ok();
-            let original_test_home = env::var("CC_SWITCH_TEST_HOME").ok();
+            let original_test_home = env::var("RELAYDESK_TEST_HOME").ok();
 
             env::set_var("HOME", dir.path());
             env::set_var("USERPROFILE", dir.path());
-            env::set_var("CC_SWITCH_TEST_HOME", dir.path());
+            env::set_var("RELAYDESK_TEST_HOME", dir.path());
 
             Self {
                 dir,
@@ -1082,8 +1082,8 @@ mod tests {
             }
 
             match &self.original_test_home {
-                Some(value) => env::set_var("CC_SWITCH_TEST_HOME", value),
-                None => env::remove_var("CC_SWITCH_TEST_HOME"),
+                Some(value) => env::set_var("RELAYDESK_TEST_HOME", value),
+                None => env::remove_var("RELAYDESK_TEST_HOME"),
             }
         }
     }
