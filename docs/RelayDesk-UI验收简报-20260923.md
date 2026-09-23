@@ -51,7 +51,7 @@
 - **重启能力**：非 macOS 下 `desktop_shell_capability` 直接返回 `platform_unsupported`，`run_restart` 同样拒绝——不伪造成功、不暴露 macOS 专属动作。`find_desktop_app` 在非 macOS 编译期即返回 `None`。
 - **桌面端检测**：Windows/Linux 上 `desktopApp`/`desktopName` 为空，UI 显示"暂不支持检测"（`envDesktopUnsupported`），不猜测安装状态；桌面下载按钮仅在 macOS `warn` 态出现，非 macOS 不渲染。
 - **CLI 检测/安装**：`locate_tool_executable` 与登录 shell 探测跨平台；`relay_get_tool_install_plan` 对不支持安装的工具返回 `relay.install_unsupported`。
-- **打包通道**：`.github/workflows/windows-test-build.yml`（手动触发、Windows 2022、未签名 NSIS artifact）已就绪。
+- **打包通道**：`.github/workflows/test-build.yml`（手动触发、Windows 2022、未签名 NSIS artifact）已就绪。
 
 ### 未执行（需平台环境/授权）
 

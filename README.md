@@ -21,9 +21,17 @@ pnpm test:unit    # 前端测试（vitest）
 cargo test --manifest-path src-tauri/Cargo.toml   # 后端测试
 ```
 
-## Windows 测试包
+## 测试安装包
 
-仓库内置 `.github/workflows/windows-test-build.yml`：在 Actions 中手动触发即可产出未签名的 NSIS 安装包 artifact（不发布 Release）。
+仓库内置 `.github/workflows/test-build.yml`：在 Actions 中手动触发一次即可同时产出三个平台的未签名安装包 artifact（不发布 Release）：
+
+| 平台 | artifact | 格式 |
+|---|---|---|
+| Windows | `relaydesk-windows-nsis` | NSIS `.exe` |
+| macOS（Apple Silicon） | `relaydesk-macos-dmg-arm64` | `.dmg` |
+| Linux | `relaydesk-linux-deb-appimage` | `.deb` + `.AppImage` |
+
+未签名包会有系统安全提示：Windows 点"仍要运行"；macOS 需 `xattr -dr com.apple.quarantine /Applications/RelayDesk.app` 或右键打开；Intel Mac 需将 workflow 的 `macos-latest` 改为 `macos-13`。
 
 ## 来源与声明
 
