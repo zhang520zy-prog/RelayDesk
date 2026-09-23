@@ -25,6 +25,12 @@ cargo test --manifest-path src-tauri/Cargo.toml   # 后端测试
 
 仓库内置 `.github/workflows/windows-test-build.yml`：在 Actions 中手动触发即可产出未签名的 NSIS 安装包 artifact（不发布 Release）。
 
+## 来源与声明
+
+RelayDesk is a modified and rebranded derivative of [cc-switch](https://github.com/farion1231/cc-switch). The upstream project is licensed under the MIT License; its copyright notice is retained in [LICENSE](./LICENSE).
+
+RelayDesk 是基于 cc-switch 修改并重新命名的衍生项目，与上游作者不存在官方关联。界面中提及的 Claude、OpenAI Codex、Gemini 等名称仅用于描述兼容的第三方工具，不代表与对应厂商存在合作或认证关系。
+
 ## 许可证
 
-MIT — 见 [LICENSE](./LICENSE)。
+MIT — 见 [LICENSE](./LICENSE)。第三方组件许可证见 [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md)；Inter 字体见 `src/relaydesk/assets/fonts/Inter-OFL.txt`（SIL OFL 1.1）。
