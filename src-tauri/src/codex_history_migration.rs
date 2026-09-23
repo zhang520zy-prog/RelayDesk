@@ -4,7 +4,7 @@
 //! 失败时不写标记，下一次启动自动重试。
 
 use crate::codex_config::{
-    get_codex_config_dir, read_codex_config_text, CC_SWITCH_CODEX_MODEL_PROVIDER_ID,
+    get_codex_config_dir, read_codex_config_text, RELAYDESK_CODEX_MODEL_PROVIDER_ID,
 };
 use crate::codex_state_db::codex_state_db_paths;
 use crate::config::{atomic_write, copy_file, get_app_config_dir};
@@ -127,7 +127,7 @@ pub fn maybe_migrate_codex_third_party_history_provider_bucket(
         crate::settings::mark_codex_third_party_history_provider_bucket_migrated(
             CodexThirdPartyHistoryProviderBucketMigration {
                 completed_at: Utc::now().to_rfc3339(),
-                target_provider_id: CC_SWITCH_CODEX_MODEL_PROVIDER_ID.to_string(),
+                target_provider_id: RELAYDESK_CODEX_MODEL_PROVIDER_ID.to_string(),
                 source_provider_ids: Vec::new(),
                 migrated_jsonl_files: 0,
                 migrated_state_rows: 0,
@@ -151,7 +151,7 @@ pub fn maybe_migrate_codex_third_party_history_provider_bucket(
     crate::settings::mark_codex_third_party_history_provider_bucket_migrated(
         CodexThirdPartyHistoryProviderBucketMigration {
             completed_at: Utc::now().to_rfc3339(),
-            target_provider_id: CC_SWITCH_CODEX_MODEL_PROVIDER_ID.to_string(),
+            target_provider_id: RELAYDESK_CODEX_MODEL_PROVIDER_ID.to_string(),
             source_provider_ids: source_provider_ids_vec.clone(),
             migrated_jsonl_files,
             migrated_state_rows,
@@ -256,7 +256,7 @@ pub fn maybe_migrate_codex_official_history_to_unified_bucket(
     let marker_written = crate::settings::mark_codex_official_history_unify_migrated_if_enabled(
         CodexOfficialHistoryUnifyMigration {
             completed_at: Utc::now().to_rfc3339(),
-            target_provider_id: CC_SWITCH_CODEX_MODEL_PROVIDER_ID.to_string(),
+            target_provider_id: RELAYDESK_CODEX_MODEL_PROVIDER_ID.to_string(),
             migrated_jsonl_files,
             migrated_state_rows,
             codex_config_dir: Some(codex_dir_key),
@@ -281,7 +281,7 @@ fn codex_config_text_routes_custom(config_text: &str) -> bool {
         .and_then(|doc| {
             doc.get("model_provider")
                 .and_then(|item| item.as_str())
-                .map(|id| id.trim() == CC_SWITCH_CODEX_MODEL_PROVIDER_ID)
+                .map(|id| id.trim() == RELAYDESK_CODEX_MODEL_PROVIDER_ID)
         })
         .unwrap_or(false)
 }
@@ -576,7 +576,7 @@ fn rewrite_codex_session_meta_line_for_restore(
         return None;
     }
     let payload = value.get_mut("payload")?.as_object_mut()?;
-    if payload.get("model_provider")?.as_str()? != CC_SWITCH_CODEX_MODEL_PROVIDER_ID {
+    if payload.get("model_provider")?.as_str()? != RELAYDESK_CODEX_MODEL_PROVIDER_ID {
         return None;
     }
     let session_id = payload.get("id")?.as_str()?;
@@ -619,7 +619,7 @@ fn restore_codex_state_db_official_threads(
             "SELECT COUNT(*) FROM threads WHERE model_provider = ? AND id IN ({placeholders})"
         );
         let mut values = Vec::with_capacity(chunk.len() + 1);
-        values.push(CC_SWITCH_CODEX_MODEL_PROVIDER_ID.to_string());
+        values.push(RELAYDESK_CODEX_MODEL_PROVIDER_ID.to_string());
         values.extend(chunk.iter().map(|id| (*id).clone()));
         let count: i64 = conn
             .query_row(&count_sql, params_from_iter(values.iter()), |row| {
@@ -645,7 +645,7 @@ fn restore_codex_state_db_official_threads(
         );
         let mut values = Vec::with_capacity(chunk.len() + 2);
         values.push(OFFICIAL_OPENAI_CODEX_MODEL_PROVIDER_ID.to_string());
-        values.push(CC_SWITCH_CODEX_MODEL_PROVIDER_ID.to_string());
+        values.push(RELAYDESK_CODEX_MODEL_PROVIDER_ID.to_string());
         values.extend(chunk.iter().map(|id| (*id).clone()));
         changed += tx
             .execute(&update_sql, params_from_iter(values.iter()))
@@ -765,7 +765,7 @@ fn legacy_codex_model_provider_id_from_normalized_config(config_text: &str) -> O
         .get("model_provider")
         .and_then(|item| item.as_str())
         .map(str::trim)?;
-    if provider_id != CC_SWITCH_CODEX_MODEL_PROVIDER_ID
+    if provider_id != RELAYDESK_CODEX_MODEL_PROVIDER_ID
         && provider_id != LEGACY_CC_SWITCH_CODEX_MODEL_PROVIDER_ID
     {
         return None;
@@ -874,7 +874,7 @@ fn migrate_provider_config_template_to_custom(
         .map(str::to_string);
 
     let custom_table_exists =
-        config_defines_model_provider(&doc, CC_SWITCH_CODEX_MODEL_PROVIDER_ID);
+        config_defines_model_provider(&doc, RELAYDESK_CODEX_MODEL_PROVIDER_ID);
     let source_provider_id_to_move = active_provider_id
         .as_deref()
         .filter(|provider_id| source_provider_ids.contains(*provider_id))
@@ -900,7 +900,7 @@ fn migrate_provider_config_template_to_custom(
         let Some(provider_table) = model_providers.remove(source_provider_id.as_str()) else {
             return Ok(None);
         };
-        model_providers[CC_SWITCH_CODEX_MODEL_PROVIDER_ID] = provider_table;
+        model_providers[RELAYDESK_CODEX_MODEL_PROVIDER_ID] = provider_table;
         changed = true;
     }
 
@@ -908,7 +908,7 @@ fn migrate_provider_config_template_to_custom(
         .as_deref()
         .is_some_and(|provider_id| source_provider_ids.contains(provider_id))
     {
-        doc["model_provider"] = toml_edit::value(CC_SWITCH_CODEX_MODEL_PROVIDER_ID);
+        doc["model_provider"] = toml_edit::value(RELAYDESK_CODEX_MODEL_PROVIDER_ID);
         changed = true;
     }
 
@@ -950,7 +950,7 @@ fn rewrite_legacy_provider_profile_refs(doc: &mut DocumentMut, source_provider_i
         if references_legacy {
             profile_table.insert(
                 "model_provider",
-                toml_edit::value(CC_SWITCH_CODEX_MODEL_PROVIDER_ID),
+                toml_edit::value(RELAYDESK_CODEX_MODEL_PROVIDER_ID),
             );
             changed = true;
         }
@@ -1093,7 +1093,7 @@ fn rewrite_codex_session_meta_line(
 
     payload.insert(
         "model_provider".to_string(),
-        Value::String(CC_SWITCH_CODEX_MODEL_PROVIDER_ID.to_string()),
+        Value::String(RELAYDESK_CODEX_MODEL_PROVIDER_ID.to_string()),
     );
     serde_json::to_string(&value).ok()
 }
@@ -1156,7 +1156,7 @@ fn migrate_codex_state_db_provider_bucket(
     let update_sql =
         format!("UPDATE threads SET model_provider = ? WHERE model_provider IN ({placeholders})");
     let mut values = Vec::with_capacity(source_provider_ids.len() + 1);
-    values.push(CC_SWITCH_CODEX_MODEL_PROVIDER_ID.to_string());
+    values.push(RELAYDESK_CODEX_MODEL_PROVIDER_ID.to_string());
     values.extend(source_provider_ids.iter().cloned());
     let tx = conn
         .transaction()
@@ -1317,17 +1317,26 @@ mod tests {
     fn detects_custom_routed_codex_config_for_unify_gate() {
         // 注入产物（官方 + 统一开关）
         assert!(codex_config_text_routes_custom(
-            r#"model_provider = "custom"
+            r#"model_provider = "relaydesk"
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = "OpenAI"
 requires_openai_auth = true
 supports_websockets = true
 wire_api = "responses"
 "#
         ));
-        // 第三方供应商的常规 custom 路由（带 base_url）同样算已统一
+        // RelayDesk 中继供应商的常规路由（带 base_url）同样算已统一
         assert!(codex_config_text_routes_custom(
+            r#"model_provider = "relaydesk"
+
+[model_providers.relaydesk]
+name = "AIHubMix"
+base_url = "https://aihubmix.example/v1"
+"#
+        ));
+        // cc-switch / 第三方写入的 custom 路由不是 RelayDesk 的命名空间
+        assert!(!codex_config_text_routes_custom(
             r#"model_provider = "custom"
 
 [model_providers.custom]
@@ -1400,9 +1409,9 @@ base_url = "https://aihubmix.example/v1"
                 "Already Normalized".to_string(),
                 serde_json::json!({
                     "auth": {},
-                    "config": r#"model_provider = "custom"
+                    "config": r#"model_provider = "relaydesk"
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = "AIHubMix"
 base_url = "https://aihubmix.example/v1"
 "#
@@ -1468,7 +1477,7 @@ base_url = "https://proxy.example/v1"
                 "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s3\",\"model_provider\":\"ccswitch\"}}\n",
                 "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s4\",\"model_provider\":\"my-private-relay\"}}\n",
                 "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s5\",\"model_provider\":\"openai\"}}\n",
-                "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s6\",\"model_provider\":\"custom\"}}\n",
+                "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s6\",\"model_provider\":\"relaydesk\"}}\n",
             ),
         )
         .expect("write session");
@@ -1480,7 +1489,7 @@ base_url = "https://proxy.example/v1"
         let session_text = fs::read_to_string(&session_path).expect("read session");
         assert_eq!(
             session_text
-                .matches("\"model_provider\":\"custom\"")
+                .matches("\"model_provider\":\"relaydesk\"")
                 .count(),
             4
         );
@@ -1503,7 +1512,7 @@ base_url = "https://proxy.example/v1"
                 ('ccswitch-thread', 'ccswitch'),
                 ('manual-thread', 'my-private-relay'),
                 ('openai-thread', 'openai'),
-                ('custom-thread', 'custom');",
+                ('relaydesk-thread', 'relaydesk');",
         )
         .expect("seed state db");
         drop(conn);
@@ -1526,7 +1535,7 @@ base_url = "https://proxy.example/v1"
             )
             .expect("count provider")
         };
-        assert_eq!(count_provider("custom"), 4);
+        assert_eq!(count_provider("relaydesk"), 4);
         assert_eq!(count_provider("my-private-relay"), 1);
         assert_eq!(count_provider("openai"), 1);
         assert!(backup_root
@@ -1569,7 +1578,7 @@ base_url = "https://proxy.example/v1"
             rightcode_config
                 .get("model_provider")
                 .and_then(|value| value.as_str()),
-            Some("custom")
+            Some("relaydesk")
         );
         assert!(rightcode_config
             .get("model_providers")
@@ -1582,7 +1591,7 @@ base_url = "https://proxy.example/v1"
             ccswitch_config
                 .get("model_provider")
                 .and_then(|value| value.as_str()),
-            Some("custom")
+            Some("relaydesk")
         );
         assert!(ccswitch_config
             .get("model_providers")
@@ -1614,7 +1623,7 @@ base_url = "https://proxy.example/v1"
             normalized_config
                 .get("model_provider")
                 .and_then(|value| value.as_str()),
-            Some("custom")
+            Some("relaydesk")
         );
     }
 
@@ -1634,7 +1643,7 @@ base_url = "https://proxy.example/v1"
             &session_path,
             concat!(
                 "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s1\",\"model_provider\":\"openai\"}}\n",
-                "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s2\",\"model_provider\":\"custom\"}}\n",
+                "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s2\",\"model_provider\":\"relaydesk\"}}\n",
                 "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s3\",\"model_provider\":\"my-private-relay\"}}\n",
                 "{\"type\":\"response_item\",\"payload\":{\"text\":\"openai\"}}\n",
             ),
@@ -1648,7 +1657,7 @@ base_url = "https://proxy.example/v1"
         let session_text = fs::read_to_string(&session_path).expect("read session");
         assert_eq!(
             session_text
-                .matches("\"model_provider\":\"custom\"")
+                .matches("\"model_provider\":\"relaydesk\"")
                 .count(),
             2
         );
@@ -1675,7 +1684,7 @@ base_url = "https://proxy.example/v1"
             );
             INSERT INTO threads (id, model_provider) VALUES
                 ('openai-thread', 'openai'),
-                ('custom-thread', 'custom'),
+                ('relaydesk-thread', 'relaydesk'),
                 ('manual-thread', 'my-private-relay');",
         )
         .expect("seed state db");
@@ -1699,7 +1708,7 @@ base_url = "https://proxy.example/v1"
             )
             .expect("count provider")
         };
-        assert_eq!(count_provider("custom"), 2);
+        assert_eq!(count_provider("relaydesk"), 2);
         assert_eq!(count_provider("openai"), 0);
         assert_eq!(count_provider("my-private-relay"), 1);
     }
@@ -1732,14 +1741,14 @@ base_url = "https://proxy.example/v1"
             .expect("seed backup db");
         drop(backup_db);
 
-        // 当前数据：s1（账本内，custom）应还原；s2（开启期间新会话，不在账本）
+        // 当前数据：s1（账本内，relaydesk）应还原；s2（开启期间新会话，不在账本）
         // 与 s3（手工 relay）必须原样保留
         let session_dir = codex_dir.join("sessions/2026/06/01");
         fs::create_dir_all(&session_dir).expect("create session dir");
         let official_path = session_dir.join("official.jsonl");
         fs::write(
             &official_path,
-            "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s1\",\"model_provider\":\"custom\"}}\n",
+            "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s1\",\"model_provider\":\"relaydesk\"}}\n",
         )
         .expect("write official session");
         let on_period_dir = codex_dir.join("sessions/2026/06/12");
@@ -1748,7 +1757,7 @@ base_url = "https://proxy.example/v1"
         fs::write(
             &on_period_path,
             concat!(
-                "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s2\",\"model_provider\":\"custom\"}}\n",
+                "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s2\",\"model_provider\":\"relaydesk\"}}\n",
                 "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s3\",\"model_provider\":\"my-private-relay\"}}\n",
             ),
         )
@@ -1759,8 +1768,8 @@ base_url = "https://proxy.example/v1"
         conn.execute_batch(
             "CREATE TABLE threads (id TEXT PRIMARY KEY, model_provider TEXT NOT NULL);
             INSERT INTO threads (id, model_provider) VALUES
-                ('t1', 'custom'),
-                ('t2', 'custom'),
+                ('t1', 'relaydesk'),
+                ('t2', 'relaydesk'),
                 ('t3', 'openai');",
         )
         .expect("seed state db");
@@ -1790,7 +1799,7 @@ base_url = "https://proxy.example/v1"
         let official_text = fs::read_to_string(&official_path).expect("read official");
         assert!(official_text.contains("\"model_provider\":\"openai\""));
         let on_period_text = fs::read_to_string(&on_period_path).expect("read on-period");
-        assert!(on_period_text.contains("\"id\":\"s2\",\"model_provider\":\"custom\""));
+        assert!(on_period_text.contains("\"id\":\"s2\",\"model_provider\":\"relaydesk\""));
         assert!(on_period_text.contains("\"model_provider\":\"my-private-relay\""));
 
         let conn = Connection::open(&state_db_path).expect("reopen state db");
@@ -1803,7 +1812,7 @@ base_url = "https://proxy.example/v1"
             .expect("thread provider")
         };
         assert_eq!(provider_of("t1"), "openai");
-        assert_eq!(provider_of("t2"), "custom");
+        assert_eq!(provider_of("t2"), "relaydesk");
         assert_eq!(provider_of("t3"), "openai");
         drop(conn);
 
@@ -1855,7 +1864,7 @@ base_url = "https://proxy.example/v1"
         let session_path = session_dir.join("official.jsonl");
         fs::write(
             &session_path,
-            "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s1\",\"model_provider\":\"custom\"}}\n",
+            "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s1\",\"model_provider\":\"relaydesk\"}}\n",
         )
         .expect("write session");
 
@@ -1868,7 +1877,7 @@ base_url = "https://proxy.example/v1"
         .expect("restore");
         assert_eq!(outcome.skipped_reason.as_deref(), Some("no_backup_ledger"));
         let text = fs::read_to_string(&session_path).expect("read session");
-        assert!(text.contains("\"model_provider\":\"custom\""));
+        assert!(text.contains("\"model_provider\":\"relaydesk\""));
     }
 
     #[test]
@@ -1972,7 +1981,7 @@ base_url = "https://proxy.example/v1"
 
         assert!(changed);
         let next = fs::read_to_string(&path).expect("read rewritten");
-        assert!(next.contains("\"model_provider\":\"custom\""));
+        assert!(next.contains("\"model_provider\":\"relaydesk\""));
         assert!(backup_root
             .join("jsonl/sessions/2026/05/20/rollout-test.jsonl")
             .exists());
@@ -2081,13 +2090,13 @@ base_url = "https://proxy.example/v1"
 
         assert_eq!(changed, 2);
         let conn = Connection::open(&db_path).expect("reopen db");
-        let custom_count: i64 = conn
+        let relaydesk_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM threads WHERE model_provider = 'custom'",
+                "SELECT COUNT(*) FROM threads WHERE model_provider = 'relaydesk'",
                 [],
                 |row| row.get(0),
             )
-            .expect("count custom");
+            .expect("count relaydesk");
         let openai_count: i64 = conn
             .query_row(
                 "SELECT COUNT(*) FROM threads WHERE model_provider = 'openai'",
@@ -2095,7 +2104,7 @@ base_url = "https://proxy.example/v1"
                 |row| row.get(0),
             )
             .expect("count openai");
-        assert_eq!(custom_count, 2);
+        assert_eq!(relaydesk_count, 2);
         assert_eq!(openai_count, 1);
 
         let backup_path = backup_root.join("state").join(CODEX_STATE_DB_FILENAME);
@@ -2258,7 +2267,7 @@ model_provider = "my-private-relay"
             "AIHubMix".to_string(),
             serde_json::json!({
                 "auth": {},
-                "config": "model_provider = \"custom\"\n\n[model_providers.custom]\nname = \"AIHubMix\"\nbase_url = \"https://aihubmix.example/v1\""
+                "config": "model_provider = \"relaydesk\"\n\n[model_providers.relaydesk]\nname = \"AIHubMix\"\nbase_url = \"https://aihubmix.example/v1\""
             }),
             None,
         );
@@ -2337,7 +2346,7 @@ model = "gpt-5.4"
             parsed
                 .get("model_provider")
                 .and_then(|value| value.as_str()),
-            Some("custom")
+            Some("relaydesk")
         );
         assert!(parsed
             .get("model_providers")
@@ -2346,7 +2355,7 @@ model = "gpt-5.4"
         assert_eq!(
             parsed
                 .get("model_providers")
-                .and_then(|value| value.get("custom"))
+                .and_then(|value| value.get("relaydesk"))
                 .and_then(|value| value.get("base_url"))
                 .and_then(|value| value.as_str()),
             Some("https://aihubmix.example/v1")
@@ -2357,7 +2366,7 @@ model = "gpt-5.4"
                 .and_then(|value| value.get("work"))
                 .and_then(|value| value.get("model_provider"))
                 .and_then(|value| value.as_str()),
-            Some("custom")
+            Some("relaydesk")
         );
 
         let backups: Vec<_> = fs::read_dir(backup_dir.path().join("providers"))
@@ -2413,7 +2422,7 @@ base_url = "https://aihubmix.example/v1"
             parsed
                 .get("model_provider")
                 .and_then(|value| value.as_str()),
-            Some("custom")
+            Some("relaydesk")
         );
         assert!(parsed
             .get("model_providers")
@@ -2422,7 +2431,7 @@ base_url = "https://aihubmix.example/v1"
         assert_eq!(
             parsed
                 .get("model_providers")
-                .and_then(|value| value.get("custom"))
+                .and_then(|value| value.get("relaydesk"))
                 .and_then(|value| value.get("base_url"))
                 .and_then(|value| value.as_str()),
             Some("https://aihubmix.example/v1")
@@ -2535,10 +2544,10 @@ base_url = "https://proxy.example/v1"
             "Profiled Relay".to_string(),
             serde_json::json!({
                 "auth": {},
-                "config": r#"model_provider = "custom"
+                "config": r#"model_provider = "relaydesk"
 profile = "work"
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = "Current"
 base_url = "https://current.example/v1"
 
@@ -2574,12 +2583,12 @@ model_provider = "aihubmix"
                 .and_then(|value| value.get("work"))
                 .and_then(|value| value.get("model_provider"))
                 .and_then(|value| value.as_str()),
-            Some("custom")
+            Some("relaydesk")
         );
         assert_eq!(
             parsed
                 .get("model_providers")
-                .and_then(|value| value.get("custom"))
+                .and_then(|value| value.get("relaydesk"))
                 .and_then(|value| value.get("base_url"))
                 .and_then(|value| value.as_str()),
             Some("https://current.example/v1")

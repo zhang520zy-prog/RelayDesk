@@ -28,7 +28,11 @@ fn read_relay_account(conn: &Connection) -> Result<Option<RelayAccount>, AppErro
 }
 
 fn write_relay_account(conn: &Connection, account: &RelayAccount) -> Result<(), AppError> {
-    let json = to_json_string(account)?;
+    // Defense in depth: even callers that accidentally pass an active session
+    // can only write a metadata snapshot to the ordinary settings table.
+    let mut snapshot = account.clone();
+    snapshot.access_token.clear();
+    let json = to_json_string(&snapshot)?;
     conn.execute(
         "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
         [RELAY_ACCOUNT_KEY, &json],
@@ -76,10 +80,12 @@ impl Database {
         if let Some(current) = read_relay_account(&conn)? {
             if same_user(&current, incoming) {
                 stored.apply_apps = current.apply_apps;
+                stored.group_targets = current.group_targets;
                 stored.group_tokens = current.group_tokens;
                 stored.last_applied = current.last_applied;
             }
         }
+        stored.access_token.clear();
         write_relay_account(&conn, &stored)?;
         Ok(stored)
     }
@@ -113,6 +119,31 @@ impl Database {
             .filter(|account| !account.access_token.is_empty())
             .ok_or_else(|| AppError::Message("relay.not_logged_in".to_string()))?;
         current.apply_apps = apps;
+        current.updated_at = chrono::Utc::now().timestamp_millis();
+        write_relay_account(&conn, &current)?;
+        Ok(current)
+    }
+
+    /// Atomically update one local group-to-target override.
+    pub fn set_relay_group_target(
+        &self,
+        group: &str,
+        target: Option<&str>,
+    ) -> Result<RelayAccount, AppError> {
+        let conn = lock_conn!(self.conn);
+        let mut current = read_relay_account(&conn)?
+            .filter(|account| !account.access_token.is_empty())
+            .ok_or_else(|| AppError::Message("relay.not_logged_in".to_string()))?;
+        match target {
+            Some(target) => {
+                current
+                    .group_targets
+                    .insert(group.to_string(), target.to_string());
+            }
+            None => {
+                current.group_targets.remove(group);
+            }
+        }
         current.updated_at = chrono::Utc::now().timestamp_millis();
         write_relay_account(&conn, &current)?;
         Ok(current)
@@ -155,12 +186,15 @@ mod tests {
         RelayAccount {
             base_url: "https://relay.invalid".to_string(),
             access_token: access_token.to_string(),
+            remembered: true,
             user_id: Some(42),
             username: "fixture-user".to_string(),
             quota: 10,
             used_quota: 2,
+            currency: Default::default(),
             group: "default".to_string(),
             apply_apps: RelayApplyApps::default(),
+            group_targets: HashMap::new(),
             group_tokens: HashMap::new(),
             last_applied: None,
             updated_at: 1,
@@ -168,7 +202,7 @@ mod tests {
     }
 
     #[test]
-    fn same_user_relogin_preserves_preferences_but_rejects_old_session_cas() {
+    fn persisted_snapshots_preserve_preferences_but_never_store_session_tokens() {
         let db = Database::memory().unwrap();
         let mut old = account("synthetic-old-session");
         old.apply_apps.codex = false;
@@ -184,7 +218,7 @@ mod tests {
         let fresh = db
             .save_relay_login_preserving_local(&account("synthetic-new-session"))
             .unwrap();
-        assert_eq!(fresh.access_token, "synthetic-new-session");
+        assert!(fresh.access_token.is_empty());
         assert!(!fresh.apply_apps.codex);
         assert!(fresh.group_tokens.contains_key("paid"));
 
@@ -193,13 +227,15 @@ mod tests {
             .unwrap();
         assert!(stale_write.is_none());
         let stored = db.get_relay_account().unwrap().unwrap();
-        assert_eq!(stored.access_token, "synthetic-new-session");
+        assert!(stored.access_token.is_empty());
         assert_eq!(stored.quota, 10);
         assert!(!db.clear_relay_account_if_session(&old).unwrap());
-        assert_eq!(
-            db.get_relay_account().unwrap().unwrap().access_token,
-            "synthetic-new-session"
-        );
+        assert!(db
+            .get_relay_account()
+            .unwrap()
+            .unwrap()
+            .access_token
+            .is_empty());
     }
 
     #[test]
@@ -223,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn atomic_apply_mutation_preserves_latest_preferences() {
+    fn login_snapshot_update_preserves_latest_preferences() {
         let db = Database::memory().unwrap();
         let old = account("synthetic-session");
         db.save_relay_account(&old).unwrap();
@@ -233,21 +269,19 @@ mod tests {
             codex: false,
             gemini: true,
         };
-        db.set_relay_apply_apps(latest_apps.clone()).unwrap();
-        let updated = db
-            .update_relay_account_if_session(&old, |current| {
-                current.group_tokens.insert(
-                    "paid".into(),
-                    RelayGroupToken {
-                        token_id: 8,
-                        key: "sk-synthetic-new".into(),
-                    },
-                );
-            })
-            .unwrap()
-            .unwrap();
+        let mut latest = account("synthetic-session");
+        latest.apply_apps = latest_apps.clone();
+        latest.group_tokens.insert(
+            "paid".into(),
+            RelayGroupToken {
+                token_id: 8,
+                key: "sk-synthetic-new".into(),
+            },
+        );
+        let updated = db.save_relay_login_preserving_local(&latest).unwrap();
 
-        assert_eq!(updated.apply_apps.codex, latest_apps.codex);
-        assert!(updated.group_tokens.contains_key("paid"));
+        assert_eq!(updated.apply_apps.codex, RelayApplyApps::default().codex);
+        assert!(!updated.group_tokens.contains_key("paid"));
+        assert!(updated.access_token.is_empty());
     }
 }

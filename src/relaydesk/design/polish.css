@@ -1,0 +1,1034 @@
+/* Approved A: tonal canvas / quiet surfaces / glass groups / solid actions.
+   C: focused login and install confirmation. Keep page and API state unchanged. */
+body {
+  font-family: var(--rd-font-ui);
+  font-size: var(--rd-font-body);
+  font-weight: var(--rd-weight-regular);
+  line-height: 1.5;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+.rd-app,
+.rd-login,
+.rd-boot {
+  background: var(--rd-canvas);
+}
+.rd-app,
+.rd-login,
+.rd-dialog,
+.rd-menu {
+  line-height: 1.5;
+}
+.rd-app .lucide,
+.rd-login .lucide,
+.rd-dialog .lucide {
+  stroke-width: 1.75;
+  flex-shrink: 0;
+}
+.rd-app h1,
+.rd-app h2,
+.rd-app h3,
+.rd-login h1,
+.rd-login h2,
+.rd-dialog h2,
+.rd-dialog h3 {
+  font-weight: var(--rd-weight-strong);
+  text-wrap: balance;
+}
+.rd-mono,
+code {
+  font-family: var(--rd-font-code);
+}
+.rd-model-id,
+.rd-rate {
+  font-family: var(--rd-font-ui);
+}
+
+/* Navigation and the scrollable working canvas. */
+.rd-titlebar {
+  background: var(--rd-sidebar);
+  height: 34px;
+  border-bottom-color: var(--rd-line);
+  font-size: var(--rd-font-caption);
+}
+.rd-sidebar {
+  width: 220px;
+  padding: var(--rd-space-6) var(--rd-space-3) var(--rd-space-3);
+  background: var(--rd-sidebar);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.rd-sidebar.is-collapsed {
+  width: 72px;
+  padding-inline: var(--rd-space-2);
+}
+.rd-sidebar .rd-brand {
+  margin: 0 var(--rd-space-2) var(--rd-space-6);
+}
+.rd-brand {
+  font-weight: var(--rd-weight-strong);
+  letter-spacing: 0;
+}
+.rd-nav-label {
+  font-size: var(--rd-font-caption);
+  letter-spacing: 0.03em;
+}
+.rd-sidebar nav {
+  display: grid;
+  gap: var(--rd-space-2);
+}
+.rd-nav-item {
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: var(--rd-font-control);
+  border-radius: 12px;
+  gap: 12px;
+}
+.rd-sidebar.is-collapsed .rd-nav-item {
+  justify-content: center;
+}
+.rd-nav-item.is-active {
+  background: var(--rd-gradient);
+  color: var(--rd-teal);
+  box-shadow: var(--rd-inset-highlight);
+  outline: 1px solid var(--rd-line);
+}
+.rd-sidebar-bottom {
+  padding-top: var(--rd-space-4);
+}
+.rd-sidebar .rd-account-card {
+  padding: var(--rd-space-4);
+  margin: var(--rd-space-4) 0 var(--rd-space-2);
+  background: var(--rd-surface);
+  box-shadow: var(--rd-shadow-sm);
+  border-radius: var(--rd-panel-radius);
+}
+.rd-sidebar .rd-account-card > div {
+  margin-bottom: var(--rd-space-3);
+}
+.rd-sidebar .rd-account-card strong {
+  font-size: 24px;
+  letter-spacing: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.rd-main .rd-page-header {
+  min-height: 96px;
+  padding: 20px clamp(20px, 2.3vw, 32px);
+  background: var(--rd-surface);
+  gap: 20px;
+}
+.rd-page-header h1 {
+  font-size: var(--rd-font-title);
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+.rd-page-header > div:first-child {
+  min-width: 0;
+}
+.rd-page-header p {
+  line-height: 1.6;
+  font-size: var(--rd-font-control);
+  max-width: 62ch;
+}
+.rd-header-actions {
+  gap: var(--rd-space-3);
+  align-items: center;
+}
+.rd-main .rd-content {
+  padding: 24px clamp(20px, 2.3vw, 32px) 32px;
+  scroll-padding-block: 20px;
+  overscroll-behavior-y: contain;
+}
+.rd-model-center,
+.rd-targets-page,
+.rd-settings,
+.rd-account-page,
+.rd-environment {
+  width: 100%;
+  max-width: var(--rd-page-max);
+  margin-inline: auto;
+  min-width: 0;
+}
+.rd-account-page,
+.rd-environment {
+  gap: var(--rd-space-5);
+}
+.rd-account-page {
+  /* The detailed table scrolls inside its own region, not the page grid. */
+  grid-template-columns: minmax(0, 1fr);
+}
+.rd-account-page > * {
+  min-width: 0;
+}
+
+/* Controls: stable hit areas, clear emphasis, no position shifting on press. */
+.rd-app .rd-button,
+.rd-login .rd-button,
+.rd-dialog .rd-button {
+  min-height: var(--rd-control-height);
+  border-radius: var(--rd-control-radius);
+  font-size: var(--rd-font-control);
+  font-weight: var(--rd-weight-medium);
+  padding: 8px 14px;
+  gap: var(--rd-space-2);
+  line-height: 1.4;
+  white-space: normal;
+  text-align: center;
+  transition:
+    background var(--rd-motion-fast),
+    border-color var(--rd-motion-fast),
+    color var(--rd-motion-fast),
+    box-shadow var(--rd-motion-fast);
+}
+.rd-button:not(:disabled):active {
+  box-shadow: var(--rd-pressed-shadow);
+}
+.rd-button:not(.rd-primary):not(:disabled):hover {
+  border-color: var(--rd-control-line);
+}
+.rd-app .rd-button.rd-primary,
+.rd-login .rd-button.rd-primary,
+.rd-dialog .rd-button.rd-primary {
+  min-height: var(--rd-action-height);
+  font-weight: var(--rd-weight-strong);
+  box-shadow: var(--rd-shadow-sm);
+}
+.rd-button:disabled {
+  opacity: 0.55;
+  box-shadow: none;
+}
+.rd-app :focus-visible,
+.rd-login :focus-visible,
+.rd-dialog :focus-visible,
+.rd-menu :focus-visible {
+  outline: 2px solid var(--rd-focus);
+  outline-offset: 3px;
+}
+.rd-input,
+.rd-select {
+  border-color: var(--rd-control-line);
+  background: var(--rd-surface);
+  min-height: var(--rd-control-height);
+  font-size: var(--rd-font-control);
+}
+.rd-input::placeholder {
+  color: var(--rd-muted);
+  opacity: 1;
+}
+.rd-input:focus {
+  border-color: var(--rd-focus);
+}
+.rd-theme-options {
+  gap: var(--rd-space-2);
+  padding: var(--rd-space-1);
+  flex-wrap: wrap;
+  background: var(--rd-raised);
+}
+.rd-theme-options button {
+  min-height: 36px;
+  padding: 8px 12px;
+  font-size: var(--rd-font-control);
+  font-weight: var(--rd-weight-medium);
+}
+.rd-theme-options button[aria-pressed="true"] {
+  background: var(--rd-surface);
+  box-shadow: var(--rd-shadow-sm);
+  color: var(--rd-teal);
+  outline: 1px solid var(--rd-line);
+}
+.rd-setting-actions,
+.rd-env-actions,
+.rd-env-row-actions,
+.rd-launch-actions,
+.rd-result-actions,
+.rd-header-actions,
+.rd-restart-entry {
+  gap: var(--rd-space-3);
+}
+.rd-copy {
+  opacity: 0.8;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: var(--rd-control-radius);
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.rd-copy:hover {
+  color: var(--rd-teal);
+  background: var(--rd-soft);
+}
+.rd-search > button {
+  top: 2px;
+  right: 4px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+}
+.rd-search > button:hover {
+  background: var(--rd-soft);
+  color: var(--rd-teal);
+}
+
+/* Surface and glass layers. Tables remain crisp on opaque surfaces. */
+.rd-current,
+.rd-setting-section,
+.rd-target-card,
+.rd-routing-panel,
+.rd-account-page > .rd-account-card,
+.rd-usage-charts,
+.rd-usage-filter-panel {
+  border-radius: var(--rd-panel-radius);
+  border-color: var(--rd-line);
+  background: var(--rd-surface);
+  box-shadow: var(--rd-shadow-sm), var(--rd-inset-highlight);
+}
+.rd-current {
+  background: var(--rd-gradient);
+  padding: var(--rd-space-5);
+}
+.rd-current:before {
+  display: none;
+}
+.rd-setting-section,
+.rd-target-card,
+.rd-account-page > .rd-account-card,
+.rd-usage-charts,
+.rd-usage-filter-panel {
+  padding: var(--rd-space-6);
+}
+.rd-model-center .rd-metrics {
+  background: transparent;
+  border: 0;
+  gap: var(--rd-space-3);
+  overflow: visible;
+  align-items: stretch;
+}
+.rd-model-center .rd-metric {
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-panel-radius);
+  background: var(--rd-surface);
+  padding: var(--rd-space-5);
+  box-shadow: var(--rd-shadow-sm);
+}
+.rd-model-center .rd-balance {
+  background: var(--rd-gradient);
+}
+.rd-metric strong {
+  font-size: 28px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.rd-metric > span,
+.rd-model-description,
+.rd-group,
+.rd-price-note {
+  font-size: var(--rd-font-caption);
+}
+.rd-metric button {
+  min-height: 36px;
+  font-size: var(--rd-font-caption);
+  color: var(--rd-teal);
+}
+.rd-metric-links {
+  gap: var(--rd-space-3);
+}
+.rd-section-heading {
+  gap: var(--rd-space-4);
+}
+.rd-model-table th {
+  font-size: var(--rd-font-caption);
+  font-weight: 500;
+}
+.rd-model-id {
+  font-size: var(--rd-font-control);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.rd-model-description {
+  line-height: 1.6;
+}
+.rd-target-card.is-enabled {
+  border-top: 3px solid var(--rd-teal);
+}
+.rd-target-card h2,
+.rd-setting-section h2 {
+  font-size: var(--rd-font-section);
+}
+.rd-target-path code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.rd-target-card-bottom {
+  flex-wrap: wrap;
+  gap: var(--rd-space-3);
+  line-height: 1.6;
+}
+.rd-target-toggle {
+  min-height: 40px;
+}
+.rd-routing-description strong,
+.rd-routing-description small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.rd-routing-source.is-local {
+  color: var(--rd-teal);
+}
+.rd-routing-heading p,
+.rd-routing-description small,
+.rd-env-item > span {
+  font-size: var(--rd-font-caption);
+  line-height: 1.65;
+}
+.rd-routing-row {
+  gap: var(--rd-space-5);
+  padding-block: var(--rd-space-4);
+}
+.rd-routing-control select {
+  min-height: var(--rd-control-height);
+}
+.rd-routing-control {
+  gap: var(--rd-space-2);
+}
+.rd-setting-row {
+  min-height: 60px;
+  font-size: var(--rd-font-control);
+  padding-block: 8px;
+}
+.rd-setting-row > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+.rd-setting-row code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+.rd-setting-actions,
+.rd-diagnostics {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.rd-setting-actions .rd-alert {
+  flex: 1 1 260px;
+  margin: 0;
+}
+.rd-settings .rd-setting-section:first-child {
+  background: var(--rd-gradient);
+}
+.rd-data-path code {
+  font-size: var(--rd-font-caption);
+}
+.rd-env-row {
+  gap: 12px;
+  padding-block: 16px;
+}
+.rd-env-item strong {
+  font-size: var(--rd-font-body);
+}
+.rd-env-status {
+  border-radius: 7px;
+  background: var(--rd-raised);
+  padding: 4px 8px;
+  font-size: var(--rd-font-caption);
+}
+.rd-alert.success {
+  color: var(--rd-success);
+  background: color-mix(in srgb, var(--rd-success) 7%, var(--rd-surface));
+}
+.rd-alert {
+  line-height: 1.6;
+}
+.rd-info-note {
+  line-height: 1.7;
+}
+
+/* Task-specific wallet and usage composition. */
+.rd-wallet-page .rd-account-summary {
+  gap: var(--rd-space-3);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+.rd-wallet-page .rd-account-summary-card {
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-panel-radius);
+  background: var(--rd-surface);
+  padding: var(--rd-space-5);
+  box-shadow: var(--rd-shadow-sm);
+}
+.rd-wallet-page .rd-account-summary-balance {
+  background: var(--rd-gradient);
+}
+.rd-account-summary-card strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.rd-account-summary-card span {
+  font-size: var(--rd-font-caption);
+}
+.rd-wallet-choice {
+  min-height: 56px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.rd-wallet-choice-list,
+.rd-wallet-method-list {
+  gap: var(--rd-space-3);
+}
+.rd-wallet-choice:focus-visible {
+  outline: 2px solid var(--rd-focus);
+  outline-offset: 3px;
+}
+.rd-wallet-method {
+  min-height: 56px;
+  padding: 14px;
+}
+.rd-wallet-method strong {
+  font-size: var(--rd-font-control);
+}
+.rd-wallet-method small {
+  font-size: var(--rd-font-caption);
+}
+.rd-wallet-composer {
+  gap: var(--rd-space-6);
+}
+.rd-wallet-form-grid {
+  gap: var(--rd-space-6);
+}
+.rd-wallet-checkout {
+  border-radius: 14px;
+  background: var(--rd-gradient);
+  box-shadow: var(--rd-inset-highlight);
+}
+.rd-wallet-checkout .rd-wallet-quote strong:nth-of-type(2) {
+  font-size: var(--rd-font-stat);
+  font-weight: 600;
+}
+.rd-wallet-payment-actions {
+  gap: var(--rd-space-3);
+}
+.rd-wallet-payment-actions > p,
+.rd-wallet-quote p {
+  font-size: var(--rd-font-caption);
+}
+.rd-wallet-topup .rd-account-section-heading {
+  margin-bottom: var(--rd-space-5);
+}
+.rd-account-section-heading h2,
+.rd-usage-charts h2 {
+  font-size: var(--rd-font-section);
+}
+.rd-usage-filter-panel {
+  gap: var(--rd-space-3);
+  padding: var(--rd-space-4) var(--rd-space-5);
+}
+.rd-usage-toolbar {
+  gap: var(--rd-space-3);
+  align-items: center;
+}
+.rd-usage-toolbar .rd-select {
+  height: var(--rd-control-height);
+}
+.rd-usage-window,
+.rd-usage-meta {
+  font-size: var(--rd-font-caption);
+}
+.rd-usage-metrics {
+  gap: var(--rd-space-3);
+}
+.rd-usage-metrics > div {
+  padding: var(--rd-space-5);
+  border-radius: var(--rd-panel-radius);
+}
+.rd-usage-metrics > div:nth-child(2) {
+  background: var(--rd-gradient);
+}
+.rd-usage-metrics strong {
+  font-size: clamp(24px, 2.2vw, 32px);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.rd-usage-metrics span {
+  font-size: var(--rd-font-caption);
+}
+.rd-chart-canvas {
+  height: 280px;
+}
+.rd-chart-card h3 {
+  font-size: var(--rd-font-body);
+  font-weight: 500;
+}
+.rd-chart-workspace {
+  gap: var(--rd-space-5);
+}
+.rd-chart-breakdown {
+  background: var(--rd-raised);
+  padding: var(--rd-space-4);
+  border: 1px solid var(--rd-line);
+}
+.rd-chart-breakdown .rd-chart-legend li {
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  padding: 8px 0;
+  border-left: 0;
+}
+.rd-chart-series-key {
+  grid-row: 1 / 3;
+  align-self: center;
+  flex-shrink: 0;
+}
+.rd-chart-breakdown .rd-chart-legend span {
+  grid-column: 2 / -1;
+}
+.rd-chart-breakdown .rd-chart-legend strong {
+  grid-column: 2;
+}
+.rd-chart-breakdown .rd-chart-legend small {
+  min-width: 0;
+  font-size: 12px;
+}
+.rd-account-table {
+  font-size: var(--rd-font-control);
+}
+.rd-account-table th,
+.rd-account-table td {
+  padding-block: 14px;
+}
+.rd-account-table th,
+.rd-account-table td small {
+  font-size: var(--rd-font-caption);
+}
+.rd-usage-table td,
+.rd-account-page .rd-account-table td strong {
+  font-size: var(--rd-font-control);
+}
+.rd-account-table-scroll {
+  border-radius: 10px;
+}
+.rd-usage-table th {
+  background: var(--rd-raised);
+}
+.rd-usage-table tr:hover td {
+  background: var(--rd-hover);
+}
+
+/* C: one focused form; secondary paths sit next to the primary path. */
+.rd-login {
+  min-height: 100dvh;
+}
+.rd-login-top {
+  padding: 20px 32px;
+  gap: var(--rd-space-4);
+}
+.rd-login-utilities {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-3);
+  color: var(--rd-muted);
+}
+.rd-login-utilities .rd-select {
+  height: 40px;
+  max-width: 150px;
+}
+.rd-login-main {
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 408px);
+  max-width: 1080px;
+  gap: clamp(32px, 5vw, 80px);
+  padding: 24px 40px 40px;
+  align-items: center;
+}
+.rd-login-story h2 {
+  font-size: clamp(30px, 3.2vw, 42px);
+  line-height: 1.28;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.rd-login-story > p {
+  font-size: var(--rd-font-body);
+  line-height: 1.8;
+  max-width: 390px;
+}
+.rd-login-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+.rd-login-tools span {
+  padding: 8px 12px;
+  border: 1px solid var(--rd-line);
+  border-radius: 10px;
+  background: var(--rd-surface);
+  font-size: var(--rd-font-caption);
+  color: var(--rd-text);
+}
+.rd-login-benefit {
+  font-size: var(--rd-font-caption);
+  line-height: 1.6;
+  margin-top: 20px;
+}
+.rd-login-form {
+  padding: 32px;
+  border: 1px solid var(--rd-line);
+  border-radius: 24px;
+  background: var(--rd-surface);
+  box-shadow: var(--rd-shadow-md), var(--rd-inset-highlight);
+}
+.rd-login-form h1 {
+  font-size: var(--rd-font-title);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.rd-login-form-hint {
+  color: var(--rd-muted);
+  font-size: var(--rd-font-control);
+  line-height: 1.6;
+}
+.rd-login-form label {
+  font-size: var(--rd-font-control);
+  font-weight: 500;
+  margin: 20px 0 8px;
+}
+.rd-login-form .rd-input {
+  height: 44px;
+  background: var(--rd-surface);
+}
+.rd-login .rd-eye {
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  top: 2px;
+  right: 2px;
+  padding: 0;
+  border-radius: 8px;
+}
+.rd-login .rd-login-submit {
+  min-height: 44px;
+  margin-top: 24px;
+  font-size: var(--rd-font-body);
+}
+.rd-login-options,
+.rd-login-links {
+  width: 100%;
+}
+.rd-login-options {
+  margin-top: 12px;
+}
+.rd-login-links {
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--rd-font-caption);
+}
+.rd-login-links a {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+}
+.rd-login-form .rd-advanced {
+  padding-top: 16px;
+  margin-top: 16px;
+}
+.rd-instance-label {
+  display: block;
+  color: var(--rd-muted);
+  font-size: var(--rd-font-caption);
+}
+.rd-login-form .rd-instance-fixed {
+  user-select: text;
+  overflow-wrap: anywhere;
+  margin-top: 4px;
+  font-size: 12px !important;
+  font-family: var(--rd-font-ui);
+}
+.rd-login-form .rd-privacy {
+  font-size: var(--rd-font-caption);
+  margin-top: 12px !important;
+}
+.rd-login-footer {
+  font-size: var(--rd-font-caption);
+  padding: 12px 32px;
+  background: transparent;
+}
+
+/* C: opaque confirmations, short hierarchy, actions held together. */
+.rd-dialog {
+  width: calc(100vw - 40px);
+  border-radius: 20px !important;
+  max-height: calc(100dvh - 48px);
+  padding: 24px;
+  line-height: 1.6;
+  box-shadow: var(--rd-shadow-lg);
+  background: var(--rd-surface);
+}
+.rd-dialog > h2 {
+  font-size: 20px;
+  padding-right: 28px;
+}
+.rd-dialog [data-slot="dialog-description"],
+.rd-result-note {
+  line-height: 1.7;
+  font-size: var(--rd-font-control);
+}
+.rd-dialog button.absolute {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+}
+.rd-dialog-top .rd-button {
+  min-width: 40px;
+  padding: 8px;
+}
+.rd-install-dialog {
+  gap: var(--rd-space-3);
+}
+.rd-install-summary {
+  grid-template-columns: 1fr;
+  background: var(--rd-raised);
+  border: 1px solid var(--rd-line);
+  border-radius: 12px;
+  padding: var(--rd-space-4);
+  gap: 4px;
+}
+.rd-install-summary dt {
+  font-size: var(--rd-font-caption);
+  color: var(--rd-muted);
+  margin-top: 0;
+}
+.rd-install-summary dd {
+  font-size: var(--rd-font-control);
+  margin: 0 0 12px;
+}
+.rd-install-summary dd:last-child {
+  margin-bottom: 0;
+}
+.rd-install-footer {
+  position: sticky;
+  bottom: -24px;
+  z-index: 1;
+  background: var(--rd-surface);
+  border-top: 1px solid var(--rd-line);
+  padding: 16px 0 0;
+  margin-top: 8px;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.rd-restart-footer {
+  border-top: 1px solid var(--rd-line);
+  padding-top: 16px;
+}
+.rd-menu {
+  padding: 8px;
+  box-shadow: var(--rd-shadow-lg);
+}
+.rd-menu [role="menuitem"] {
+  min-height: 40px;
+  font-size: var(--rd-font-control);
+}
+.rd-menu [role="menuitem"] + [role="menuitem"] {
+  margin-top: 8px;
+}
+
+/* Blur is localized to stationary chrome and grouped panels, never every row. */
+@supports (
+  (backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))
+) {
+  .rd-sidebar {
+    background: var(--rd-sidebar-glass);
+  }
+  .rd-main .rd-page-header,
+  .rd-login-form,
+  .rd-usage-filter-panel,
+  .rd-usage-charts,
+  .rd-wallet-page > .rd-wallet-topup {
+    background: var(--rd-glass);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+@media (min-width: 1250px) {
+  .rd-settings {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .rd-settings .rd-setting-section {
+    margin: 0;
+    height: 100%;
+  }
+  .rd-targets-page {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+  .rd-targets-page > .rd-page-kicker,
+  .rd-targets-page > .rd-routing-panel,
+  .rd-targets-page > .rd-info-note {
+    grid-column: 1 / -1;
+  }
+  .rd-targets-page .rd-target-card {
+    margin: 0;
+  }
+  .rd-target-card-top {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .rd-target-card-top .rd-target-toggle {
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+}
+@media (max-width: 1100px) {
+  .rd-model-center .rd-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rd-wallet-composer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rd-wallet-checkout {
+    grid-template-columns: minmax(0, 1fr) minmax(170px, 0.75fr);
+  }
+  .rd-main .rd-page-header {
+    padding-block: 16px;
+  }
+}
+@media (max-width: 1000px) {
+  .rd-page-header {
+    flex-wrap: wrap;
+  }
+  .rd-header-actions {
+    margin-left: auto;
+    gap: 8px;
+  }
+  .rd-main .rd-content {
+    padding: 20px;
+  }
+  .rd-setting-section,
+  .rd-target-card,
+  .rd-account-page > .rd-account-card,
+  .rd-usage-charts {
+    padding: 20px;
+  }
+  .rd-wallet-page .rd-account-summary {
+    grid-template-columns: 1.25fr 1fr 1fr;
+  }
+  .rd-wallet-page .rd-account-summary-card {
+    padding: 16px;
+  }
+  .rd-wallet-page .rd-account-summary-balance strong {
+    font-size: 28px;
+  }
+  .rd-usage-charts > .rd-usage-toolbar h2 {
+    width: 100%;
+  }
+}
+@media (max-width: 960px) {
+  .rd-login-main {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 480px;
+    padding: 16px 24px 24px;
+  }
+  .rd-login-story {
+    display: none;
+  }
+  .rd-login-form {
+    padding: 24px 28px;
+  }
+  .rd-login-top {
+    padding: 16px 24px;
+  }
+}
+@media (max-height: 700px) {
+  .rd-sidebar {
+    padding-top: 16px;
+  }
+  .rd-sidebar .rd-brand {
+    margin-bottom: 16px;
+  }
+  .rd-sidebar .rd-nav-label {
+    display: none;
+  }
+  .rd-sidebar .rd-account-card {
+    padding: 12px;
+    margin-top: 12px;
+  }
+  .rd-sidebar .rd-account-card > div {
+    margin-bottom: 8px;
+  }
+  .rd-sidebar .rd-account-status {
+    display: none;
+  }
+  .rd-login-top {
+    padding-block: 12px;
+  }
+  .rd-login-main {
+    padding-block: 8px 20px;
+  }
+  .rd-login-form {
+    padding: 24px;
+  }
+  .rd-login-form label {
+    margin-top: 12px;
+  }
+  .rd-login-form .rd-advanced {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+  .rd-login .rd-login-submit {
+    margin-top: 20px;
+  }
+}
+@media (max-width: 760px) {
+  .rd-setting-row {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-block: 12px;
+  }
+  .rd-wallet-page .rd-account-summary {
+    grid-template-columns: 1fr;
+  }
+  .rd-wallet-form-grid,
+  .rd-wallet-checkout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rd-page-header p {
+    display: none;
+  }
+  .rd-main .rd-page-header {
+    min-height: 76px;
+  }
+  .rd-login-top {
+    flex-wrap: wrap;
+  }
+  .rd-login-utilities {
+    margin-left: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-app *,
+  .rd-login *,
+  .rd-dialog * {
+    transition-duration: 0ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

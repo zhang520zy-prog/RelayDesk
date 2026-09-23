@@ -2027,7 +2027,7 @@ pub(crate) fn chat_usage_to_responses_usage(usage: Option<&Value>) -> Value {
 }
 
 pub(crate) fn response_id_from_chat_id(id: Option<&str>) -> String {
-    let id = id.unwrap_or("ccswitch");
+    let id = id.unwrap_or("relaydesk");
     if id.starts_with("resp_") {
         id.to_string()
     } else {

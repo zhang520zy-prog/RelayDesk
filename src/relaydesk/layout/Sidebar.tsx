@@ -5,12 +5,21 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ArrowUpRight,
+  Download,
+  WalletCards,
+  BarChart3,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { type RelayAccountInfo, quotaToUsd } from "@/lib/api/relay";
+import { formatRelayQuota, type RelayAccountInfo } from "@/lib/api/relay";
 import { Brand } from "./Brand";
 import { Action } from "../ui";
-export type Page = "models" | "targets" | "settings";
+export type Page =
+  | "models"
+  | "deployment"
+  | "targets"
+  | "wallet"
+  | "usage"
+  | "settings";
 export function Sidebar({
   page,
   navigate,
@@ -29,11 +38,14 @@ export function Sidebar({
     <aside className={`rd-sidebar ${collapsed ? "is-collapsed" : ""}`}>
       <Brand compact={collapsed} />
       {!collapsed && <p className="rd-nav-label">{t("workspace")}</p>}
-      <nav aria-label="RelayDesk">
+      <nav aria-label="RelayDesk" className="rd-sidebar-nav">
         {(
           [
             { id: "models", Icon: Boxes },
+            { id: "deployment", Icon: Download },
             { id: "targets", Icon: SlidersHorizontal },
+            { id: "wallet", Icon: WalletCards },
+            { id: "usage", Icon: BarChart3 },
           ] as const
         ).map(({ id, Icon }) => (
           <button
@@ -44,8 +56,10 @@ export function Sidebar({
             title={collapsed ? t(id) : undefined}
             onClick={() => navigate(id)}
           >
-            <Icon size={18} />
-            {!collapsed && <span>{t(id)}</span>}
+            <span className="rd-nav-content">
+              <Icon size={19} aria-hidden="true" />
+              {!collapsed && <span>{t(id)}</span>}
+            </span>
           </button>
         ))}
       </nav>
@@ -73,7 +87,7 @@ export function Sidebar({
               <ArrowUpRight size={14} />
             </div>
             <small>{t("balance")}</small>
-            <strong>${quotaToUsd(account.quota).toFixed(2)}</strong>
+            <strong>{formatRelayQuota(account.quota, account)}</strong>
             <span className="rd-muted rd-account-status">
               <i className="rd-dot" />
               {t("secureSession")}

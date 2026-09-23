@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Search, X, Boxes, Wallet, BarChart3, Layers } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   type RelayAccountInfo,
   type RelayGroup,
   type RelayGroupModels,
-  quotaToUsd,
+  formatRelayQuota,
 } from "@/lib/api/relay";
 import { Action, Field } from "../ui";
 import type { ApplyReport } from "../state/useRelayApply";
@@ -28,7 +28,12 @@ export function ModelCenterPage({
   details,
   targets,
   viewAccount,
+  viewWallet,
+  filters,
+  onFiltersChange,
 }: {
+  filters: { search: string; group: string };
+  onFiltersChange: (filters: { search: string; group: string }) => void;
   account: RelayAccountInfo;
   groups: RelayGroup[];
   models: RelayGroupModels[];
@@ -44,10 +49,12 @@ export function ModelCenterPage({
   details: () => void;
   targets: () => void;
   viewAccount: () => void;
+  viewWallet: () => void;
 }) {
   const { t } = useTranslation("relaydesk");
-  const [group, setGroup] = useState("");
-  const [search, setSearch] = useState("");
+  const { group, search } = filters;
+  const setGroup = (group: string) => onFiltersChange({ ...filters, group });
+  const setSearch = (search: string) => onFiltersChange({ ...filters, search });
   const groupNames = [
     ...new Set([...groups.map((g) => g.name), ...models.map((g) => g.group)]),
   ].sort();
@@ -58,12 +65,12 @@ export function ModelCenterPage({
   const metrics = [
     {
       key: "balance",
-      value: `$${quotaToUsd(account.quota).toFixed(2)}`,
+      value: formatRelayQuota(account.quota, account),
       Icon: Wallet,
     },
     {
       key: "used",
-      value: `$${quotaToUsd(account.usedQuota).toFixed(2)}`,
+      value: formatRelayQuota(account.usedQuota, account),
       Icon: BarChart3,
     },
     {
@@ -87,7 +94,10 @@ export function ModelCenterPage({
             </span>
             <strong>{value}</strong>
             {key === "balance" && (
-              <button onClick={viewAccount}>{t("viewAccount")} ↗</button>
+              <div className="rd-metric-links">
+                <button onClick={viewAccount}>{t("viewAccount")} ↗</button>
+                <button onClick={viewWallet}>{t("topup")} ↗</button>
+              </div>
             )}
           </div>
         ))}

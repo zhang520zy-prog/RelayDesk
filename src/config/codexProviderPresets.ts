@@ -71,12 +71,12 @@ export function generateThirdPartyConfig(
   const tomlString = (value: string) => JSON.stringify(value);
   const requiresOpenAiAuth = options?.requiresOpenAiAuth ?? true;
 
-  return `model_provider = "custom"
+  return `model_provider = "relaydesk"
 model = ${tomlString(modelName)}
 model_reasoning_effort = "high"
 disable_response_storage = true
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = ${tomlString(providerName)}
 base_url = ${tomlString(baseUrl)}
 wire_api = "responses"
@@ -313,13 +313,13 @@ export const codexProviderPresets: CodexProviderPreset[] = [
     apiKeyUrl: "https://apinebula.ai/VjM74M",
     category: "third_party",
     auth: generateThirdPartyAuth(""),
-    config: `model_provider = "custom"
+    config: `model_provider = "relaydesk"
 model = "gpt-5.6-sol"
 review_model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 disable_response_storage = true
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = "APINebula"
 base_url = "https://apinebula.ai/v1"
 wire_api = "responses"
@@ -488,13 +488,13 @@ requires_openai_auth = true`,
     apiKeyUrl: "https://apikey.fan/register?aff=CCSwitch",
     category: "third_party",
     auth: generateThirdPartyAuth(""),
-    config: `model_provider = "custom"
+    config: `model_provider = "relaydesk"
 model = "gpt-5.6-sol"
 review_model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 disable_response_storage = true
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = "APIKEY.FUN"
 base_url = "https://api.apikey.fan/v1"
 wire_api = "responses"
@@ -1042,13 +1042,13 @@ requires_openai_auth = true`,
       "https://sudocode.chat/sign-up?aff=CC-SWITCH&utm_source=cc-switch&utm_medium=sponsor&utm_campaign=ccswitch",
     category: "third_party",
     auth: generateThirdPartyAuth(""),
-    config: `model_provider = "custom"
+    config: `model_provider = "relaydesk"
 model = "gpt-5.6-sol"
 review_model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 disable_response_storage = true
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = "SudoCode"
 base_url = "https://api.sudocode.chat/v1"
 wire_api = "responses"
@@ -1065,14 +1065,14 @@ requires_openai_auth = true`,
     apiKeyUrl: "https://sudocode.us",
     category: "third_party",
     auth: generateThirdPartyAuth(""),
-    config: `model_provider = "custom"
+    config: `model_provider = "relaydesk"
 model = "gpt-5.6-sol"
 review_model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 disable_response_storage = true
 model_verbosity = "high"
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = "sudocode"
 base_url = "https://sudocode.us/v1"
 wire_api = "responses"
@@ -1122,11 +1122,11 @@ requires_openai_auth = true`,
     apiKeyUrl: "https://www.atlascloud.ai/console/coding-plan",
     category: "aggregator",
     auth: generateThirdPartyAuth(""),
-    config: `model_provider = "custom"
+    config: `model_provider = "relaydesk"
 model = "zai-org/glm-5.2"
 disable_response_storage = true
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = "AtlasCloud"
 base_url = "https://api.atlascloud.ai/v1"
 wire_api = "responses"
@@ -1162,12 +1162,12 @@ requires_openai_auth = true`,
     category: "third_party",
     isOfficial: true,
     auth: generateThirdPartyAuth(""),
-    config: `model_provider = "custom"
+    config: `model_provider = "relaydesk"
 model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 disable_response_storage = true
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = "Azure OpenAI"
 base_url = "https://YOUR_RESOURCE_NAME.openai.azure.com/openai"
 env_key = "OPENAI_API_KEY"
@@ -2797,13 +2797,13 @@ requires_openai_auth = true`,
     auth: {
       OPENAI_API_KEY: "",
     },
-    config: `model_provider = "custom"
+    config: `model_provider = "relaydesk"
 model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 disable_response_storage = true
 personality = "pragmatic"
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = "E-FlowCode"
 base_url = "https://e-flowcode.cc/v1"
 wire_api = "responses"
@@ -2822,12 +2822,12 @@ model_auto_compact_token_limit = 9000000`,
     auth: {
       OPENAI_API_KEY: "",
     },
-    config: `model_provider = "custom"
+    config: `model_provider = "relaydesk"
 model = "gpt-5.6-sol"
 model_reasoning_effort = "medium"
 disable_response_storage = true
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = "PIPELLM"
 wire_api = "responses"
 requires_openai_auth = true

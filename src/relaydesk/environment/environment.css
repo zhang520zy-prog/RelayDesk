@@ -1,0 +1,225 @@
+.rd-environment {
+  display: grid;
+  gap: 16px;
+  max-width: 880px;
+  margin: auto;
+}
+.rd-environment .rd-setting-section {
+  margin-bottom: 0;
+}
+.rd-env-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.rd-env-heading h2 {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 21px;
+  margin: 0 0 5px;
+}
+.rd-env-heading p,
+.rd-env-platform p,
+.rd-env-diagnostics p {
+  color: var(--rd-muted);
+  font-size: var(--rd-font-caption);
+  line-height: 1.65;
+}
+.rd-env-heading > .rd-button {
+  flex-shrink: 0;
+}
+.rd-environment .rd-env-scope {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 9px;
+  color: var(--rd-muted);
+  margin: 0;
+}
+.rd-env-scope svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.rd-environment h3 {
+  font-size: var(--rd-font-control);
+  font-weight: var(--rd-weight-strong);
+  margin-bottom: 8px;
+}
+.rd-env-platform .rd-select {
+  max-width: 100%;
+  margin: 8px 0 8px 12px;
+}
+.rd-env-platform label {
+  font-size: var(--rd-font-caption);
+}
+.rd-env-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.rd-env-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 0;
+  border-top: 1px solid var(--rd-line);
+  min-width: 0;
+}
+.rd-env-row > svg {
+  color: var(--rd-muted);
+  flex-shrink: 0;
+}
+.rd-env-row[data-status="ok"] > svg,
+.rd-env-status.ok {
+  color: var(--rd-success);
+}
+.rd-env-row[data-status="warn"] > svg,
+.rd-env-status.warn,
+.rd-env-status.fixable {
+  color: var(--rd-warning);
+}
+.rd-env-row[data-status="error"] > svg,
+.rd-env-status.error {
+  color: var(--rd-danger);
+}
+.rd-env-item {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 3px;
+}
+.rd-env-item strong {
+  font-size: var(--rd-font-caption);
+}
+.rd-env-item > span {
+  color: var(--rd-muted);
+  font-size: var(--rd-font-caption);
+  overflow-wrap: anywhere;
+}
+.rd-env-status {
+  color: var(--rd-muted);
+  font-size: var(--rd-font-caption);
+  flex-shrink: 0;
+}
+.rd-env-row-actions,
+.rd-env-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rd-env-row-actions .rd-button {
+  font-size: var(--rd-font-caption);
+  padding: 0 10px;
+}
+.rd-env-tool-guide {
+  background: var(--rd-raised);
+  padding: 14px;
+  border-radius: 8px;
+}
+.rd-env-tool-guide h4 {
+  font-size: var(--rd-font-control);
+}
+.rd-env-diagnostics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.rd-env-diagnostics > div {
+  flex: 1;
+  min-width: 200px;
+}
+.rd-env-diagnostics > p {
+  flex-basis: 100%;
+}
+.rd-env-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rd-install-dialog {
+  overflow-wrap: anywhere;
+}
+.rd-install-dialog > button.absolute {
+  display: none;
+}
+.rd-install-summary {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.rd-install-summary dt {
+  font-size: var(--rd-font-caption);
+  color: var(--rd-muted);
+  margin-top: 8px;
+}
+.rd-install-summary dd {
+  font-size: var(--rd-font-caption);
+  margin: 0;
+  line-height: 1.6;
+}
+.rd-install-summary code,
+.rd-install-guide code {
+  display: block;
+  background: var(--rd-raised);
+  border: 1px solid var(--rd-line);
+  border-radius: 6px;
+  padding: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--rd-font-caption);
+}
+.rd-install-guide {
+  display: grid;
+  gap: 10px;
+  font-size: var(--rd-font-caption);
+}
+.rd-install-guide p {
+  color: var(--rd-muted);
+  line-height: 1.6;
+}
+.rd-install-footer {
+  justify-content: flex-end;
+}
+.rd-deployment-tools .rd-env-row:first-child {
+  border-top: 0;
+}
+.rd-environment-health-title {
+  margin: 6px 0 0;
+  font-size: var(--rd-font-section);
+  font-weight: var(--rd-weight-strong);
+}
+.rd-environment-onboarding {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--rd-line);
+  background: var(--rd-soft);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: var(--rd-font-caption);
+}
+.rd-environment-onboarding > span {
+  flex: 1;
+  min-width: 180px;
+}
+@media (max-width: 1000px) {
+  .rd-env-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .rd-env-item {
+    flex-basis: 50%;
+  }
+  .rd-env-row-actions {
+    margin-left: 26px;
+  }
+  .rd-env-heading {
+    align-items: flex-start;
+  }
+}

@@ -1,4 +1,6 @@
 fn main() {
+    println!("cargo:rerun-if-env-changed=RELAYDESK_TOOL_REGISTRY_URL");
+    println!("cargo:rerun-if-env-changed=RELAYDESK_UPDATE_ENDPOINT");
     tauri_build::build();
 
     // Windows: Embed Common Controls v6 manifest for test binaries

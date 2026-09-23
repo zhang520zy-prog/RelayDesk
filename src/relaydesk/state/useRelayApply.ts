@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
+  inferRelayTargets,
   relayApi,
   type RelayAccountInfo,
   type RelayApplyProgress,
@@ -27,6 +28,9 @@ export interface ApplyReport extends RelayAppliedModel {
   targets: RelayTarget[];
   results: RelayApplyResult[];
   error?: string;
+  /** Only targets that succeeded in the latest request may be offered for launch. */
+  launchTargets?: RelayTarget[];
+  operationId?: string;
 }
 export function useRelayApply(
   account: RelayAccountInfo | null | undefined,
@@ -59,11 +63,17 @@ export function useRelayApply(
   }, [identity, epoch]);
   async function apply(group: string, model: string, targetApp?: RelayTarget) {
     if (active.current || !account) return;
-    const selected = targetIds.filter(
-      (id) => account.applyApps[id] && (!targetApp || id === targetApp),
-    );
+    // 重试只跑单目标；首次应用优先读取用户保存的分组映射。
+    const mapped = account.groupTargets?.[group];
+    const wanted: RelayTarget[] = targetApp
+      ? [targetApp]
+      : mapped
+        ? [mapped]
+        : inferRelayTargets(group);
+    const anyEnabled = targetIds.some((id) => account.applyApps[id]);
+    const selected = wanted.filter((id) => account.applyApps[id]);
     if (!selected.length) {
-      setNotice("noTargets");
+      setNotice(targetApp || !anyEnabled ? "noTargets" : "targetDisabled");
       return;
     }
     const operationEpoch = generation.current;
@@ -80,7 +90,15 @@ export function useRelayApply(
     setNotice(null);
     setPending(true);
     setOpen(true);
-    setReport({ group, model, targets, results: retained, phase: "preparing" });
+    setReport({
+      group,
+      model,
+      targets,
+      results: retained,
+      phase: "preparing",
+      launchTargets: [],
+      operationId: requestId,
+    });
     try {
       subscription.current = await listen<RelayApplyProgress>(
         "relay-apply-progress",
@@ -93,7 +111,7 @@ export function useRelayApply(
       if (!isCurrent()) return;
       const returned = await relayApi.applyModel(group, model, {
         requestId,
-        ...(targetApp ? { targetApp } : {}),
+        targetApps: selected,
       });
       if (!isCurrent()) return;
       // Missing results are failures, never infer success from an empty response.
@@ -110,10 +128,20 @@ export function useRelayApply(
           : successes
             ? "partial"
             : "failed";
-      setReport({ group, model, targets, results, phase });
+      const launchTargets = selected.filter((app) =>
+        returned.some((result) => result.app === app && result.ok),
+      );
+      setReport({
+        group,
+        model,
+        targets,
+        results,
+        phase,
+        launchTargets,
+        operationId: requestId,
+      });
       if (returned.some((r) => selected.includes(r.app as RelayTarget) && r.ok))
         await applied({ group, model });
-
     } catch (e) {
       if (!isCurrent()) return;
       const error = relayErrorKey(e);
@@ -125,6 +153,8 @@ export function useRelayApply(
         results: [...retained, ...selected.map((app) => ({ app, ok: false }))],
         phase: retained.some((r) => r.ok) ? "partial" : "failed",
         error,
+        launchTargets: [],
+        operationId: requestId,
       });
     } finally {
       subscription.current?.();

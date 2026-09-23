@@ -4367,6 +4367,7 @@ dependencies = [
  "once_cell",
  "regex",
  "reqwest 0.12.28",
+ "ring",
  "rquickjs",
  "rusqlite",
  "rust_decimal",
@@ -4687,7 +4688,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

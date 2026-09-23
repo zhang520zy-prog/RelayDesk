@@ -189,6 +189,52 @@ pub async fn restart_app(app: AppHandle) -> Result<bool, String> {
     Ok(true)
 }
 
+/// RelayDesk 更新端点：发布构建通过 `RELAYDESK_UPDATE_ENDPOINT` 注入；
+/// 未配置时构建出的应用诚实地报告"更新服务未配置"，而不是伪装检查失败。
+const UPDATE_ENDPOINT: Option<&str> = option_env!("RELAYDESK_UPDATE_ENDPOINT");
+
+fn build_updater(app: &AppHandle) -> Result<tauri_plugin_updater::Updater, String> {
+    let mut builder = app.updater_builder();
+    if let Some(endpoint) = UPDATE_ENDPOINT {
+        let url = endpoint
+            .parse()
+            .map_err(|_| "update.endpoint_invalid".to_string())?;
+        builder = builder
+            .endpoints(vec![url])
+            .map_err(|_| "update.endpoint_invalid".to_string())?;
+    }
+    builder
+        .build()
+        .map_err(|e| format!("初始化更新器失败: {e}"))
+}
+
+/// 查询 RelayDesk 应用更新：返回更新服务是否已配置，以及可用新版本号。
+#[tauri::command]
+pub async fn relay_check_update(app: AppHandle) -> Result<RelayUpdateCheck, String> {
+    if UPDATE_ENDPOINT.is_none() {
+        return Ok(RelayUpdateCheck {
+            configured: false,
+            version: None,
+        });
+    }
+    let updater = build_updater(&app)?;
+    let update = updater
+        .check()
+        .await
+        .map_err(|_| "update.check_failed".to_string())?;
+    Ok(RelayUpdateCheck {
+        configured: true,
+        version: update.map(|u| u.version),
+    })
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelayUpdateCheck {
+    pub configured: bool,
+    pub version: Option<String>,
+}
+
 /// 下载并安装应用更新，然后由后端直接重启应用。
 ///
 /// macOS 更新会原地替换 `.app` bundle。如果先返回前端、再让旧 WebView 调
@@ -196,10 +242,7 @@ pub async fn restart_app(app: AppHandle) -> Result<bool, String> {
 /// 这里把退出清理、安装和重启串在同一个后端流程中，避免依赖旧前端继续执行。
 #[tauri::command]
 pub async fn install_update_and_restart(app: AppHandle) -> Result<bool, String> {
-    let updater = app
-        .updater_builder()
-        .build()
-        .map_err(|e| format!("初始化更新器失败: {e}"))?;
+    let updater = build_updater(&app)?;
 
     let Some(update) = updater
         .check()
@@ -273,10 +316,7 @@ pub async fn install_update_and_restart(app: AppHandle) -> Result<bool, String> 
 /// 升级无法解决，而不是让其反复尝试。
 #[tauri::command]
 pub async fn check_app_update_available(app: AppHandle) -> Result<Option<String>, String> {
-    let updater = app
-        .updater_builder()
-        .build()
-        .map_err(|e| format!("初始化更新器失败: {e}"))?;
+    let updater = build_updater(&app)?;
     let update = updater
         .check()
         .await

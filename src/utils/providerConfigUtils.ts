@@ -570,15 +570,18 @@ const isCodexUnifiedSessionProjection = (configText: string): boolean => {
       string,
       any
     >;
-    const custom = parsed.model_providers?.custom;
+    const providerId = parsed.model_provider;
+    if (providerId !== "relaydesk" && providerId !== "custom") {
+      return false;
+    }
+    const table = parsed.model_providers?.[providerId];
     return (
-      parsed.model_provider === "custom" &&
-      isPlainObject(custom) &&
-      Object.keys(custom).length === 4 &&
-      custom.name === "OpenAI" &&
-      custom.requires_openai_auth === true &&
-      custom.supports_websockets === true &&
-      custom.wire_api === "responses"
+      isPlainObject(table) &&
+      Object.keys(table).length === 4 &&
+      table.name === "OpenAI" &&
+      table.requires_openai_auth === true &&
+      table.supports_websockets === true &&
+      table.wire_api === "responses"
     );
   } catch {
     return false;

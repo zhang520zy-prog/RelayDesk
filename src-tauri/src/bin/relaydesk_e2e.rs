@@ -10,7 +10,7 @@
 //!   cargo run --bin relaydesk_e2e
 //!
 //! 可选环境变量：
-//!   RELAYDESK_E2E_BASE   中转站地址（默认 https://yjapi.manqiaotechnology.com）
+//!   RELAYDESK_E2E_BASE   中转站地址（默认 https://www.shenlanqaq.com）
 //!   RELAYDESK_E2E_GROUP  指定应用的分组（默认取第一个含模型的分组）
 //!   RELAYDESK_E2E_MODEL  指定应用的模型（默认取该分组第一个模型）
 //!   RELAYDESK_E2E_KEEP_TOKEN=1  保留创建的分组令牌（默认结束后吊销）
@@ -21,7 +21,7 @@ use std::sync::Arc;
 use cc_switch_lib::relay::{RelayApplyApps, RelayService};
 use cc_switch_lib::{AppState, Database};
 
-const DEFAULT_BASE: &str = "https://yjapi.manqiaotechnology.com";
+const DEFAULT_BASE: &str = "https://www.shenlanqaq.com";
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() {
@@ -56,7 +56,7 @@ async fn run() -> Result<(), String> {
 
     // ── 2. 登录 ─────────────────────────────────────────────────
     println!("[e2e] 步骤 1/6 登录 {base} …");
-    let account = RelayService::login(&state, &base, &user, &pass)
+    let account = RelayService::login(&state, &base, &user, &pass, false)
         .await
         .map_err(|e| format!("登录失败: {e}"))?;
     println!(
@@ -122,11 +122,28 @@ async fn run() -> Result<(), String> {
     println!("[e2e] 选定: group={group} model={model}");
 
     // ── 5. 应用模型（真实写 live 文件 → 测试根下）────────────────
+    // RELAYDESK_E2E_TARGETS=codex,claude 模拟前端按分组推断的目标子集；
+    // 未设置时应用全部启用目标（旧行为）。
     println!("[e2e] 步骤 4/6 应用模型（写 live 配置）…");
-    let results = RelayService::apply_model(&state, &group, &model, None, |phase, app| match app {
-        Some(a) => println!("[e2e]   进度: {phase} → {a}"),
-        None => println!("[e2e]   进度: {phase}"),
-    })
+    let target_apps: Option<Vec<String>> = std::env::var("RELAYDESK_E2E_TARGETS").ok().map(|v| {
+        v.split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    });
+    if let Some(t) = &target_apps {
+        println!("[e2e]   目标子集: {t:?}");
+    }
+    let results = RelayService::apply_model(
+        &state,
+        &group,
+        &model,
+        target_apps.as_deref(),
+        |phase, app| match app {
+            Some(a) => println!("[e2e]   进度: {phase} → {a}"),
+            None => println!("[e2e]   进度: {phase}"),
+        },
+    )
     .await
     .map_err(|e| format!("apply_model: {e}"))?;
     for r in &results {
@@ -139,38 +156,46 @@ async fn run() -> Result<(), String> {
         return Err("存在失败的应用目标".to_string());
     }
 
-    // ── 6. 校验三个 CLI live 文件 ────────────────────────────────
+    // ── 6. 校验 live 文件：目标内必须写对，目标外必须未被创建 ─────
     println!("[e2e] 步骤 5/6 校验 live 文件 …");
     let mut failures = Vec::new();
-    check_live(
-        &test_home.join(".claude/settings.json"),
-        "claude",
-        &base,
-        &model,
-        &mut failures,
-    );
-    check_live(
-        &test_home.join(".codex/config.toml"),
-        "codex",
-        &base,
-        &model,
-        &mut failures,
-    );
-    // auth.json 仅 OAuth 型（requires_openai_auth=true）供应商需要；
-    // 中转站走 bearer token 内嵌 config.toml，auth.json 应不存在或不受本工具管理。
-    let auth = test_home.join(".codex/auth.json");
-    if auth.exists() {
-        check_live(&auth, "codex-auth", &base, &model, &mut failures);
+    let wanted = |app: &str| {
+        target_apps
+            .as_ref()
+            .map(|t| t.iter().any(|x| x == app))
+            .unwrap_or(true)
+    };
+    let claude_file = test_home.join(".claude/settings.json");
+    let codex_file = test_home.join(".codex/config.toml");
+    let gemini_file = test_home.join(".gemini/.env");
+    if wanted("claude") {
+        check_live(&claude_file, "claude", &base, &model, &mut failures);
+    } else if claude_file.exists() {
+        failures.push("claude 非目标但 settings.json 被创建".to_string());
     } else {
-        println!("[e2e]   codex-auth: auth.json 未生成（bearer-token 供应商，符合预期）");
+        println!("[e2e]   claude: 非目标，未写入（符合预期）");
     }
-    check_live(
-        &test_home.join(".gemini/.env"),
-        "gemini",
-        &base,
-        &model,
-        &mut failures,
-    );
+    if wanted("codex") {
+        check_live(&codex_file, "codex", &base, &model, &mut failures);
+        // auth.json 仅 OAuth 型供应商需要；中转站 bearer token 内嵌 config.toml
+        let auth = test_home.join(".codex/auth.json");
+        if auth.exists() {
+            check_live(&auth, "codex-auth", &base, &model, &mut failures);
+        } else {
+            println!("[e2e]   codex-auth: auth.json 未生成（bearer-token 供应商，符合预期）");
+        }
+    } else if codex_file.exists() {
+        failures.push("codex 非目标但 config.toml 被创建".to_string());
+    } else {
+        println!("[e2e]   codex: 非目标，未写入（符合预期）");
+    }
+    if wanted("gemini") {
+        check_live(&gemini_file, "gemini", &base, &model, &mut failures);
+    } else if gemini_file.exists() {
+        failures.push("gemini 非目标但 .env 被创建".to_string());
+    } else {
+        println!("[e2e]   gemini: 非目标，未写入（符合预期）");
+    }
     if !failures.is_empty() {
         return Err(format!("live 文件校验失败: {}", failures.join("; ")));
     }

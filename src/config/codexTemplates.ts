@@ -13,13 +13,13 @@ export interface CodexTemplate {
  * @returns Codex 模板配置
  */
 export function getCodexCustomTemplate(): CodexTemplate {
-  const config = `model_provider = "custom"
+  const config = `model_provider = "relaydesk"
 model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 disable_response_storage = true
 
-[model_providers.custom]
-name = "custom"
+[model_providers.relaydesk]
+name = "RelayDesk"
 wire_api = "responses"
 requires_openai_auth = true`;
 

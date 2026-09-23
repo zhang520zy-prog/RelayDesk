@@ -34,7 +34,11 @@ export function CurrentModelCard({
       ? "unverified"
       : "syncIdle";
   return (
-    <section className="rd-current">
+    <section
+      className={
+        "rd-current" + (!account.lastApplied && !report ? " is-empty" : "")
+      }
+    >
       <div className="rd-current-icon">
         <Layers3 size={23} />
       </div>

@@ -1033,12 +1033,12 @@ pub fn run() {
                 #[cfg(target_os = "linux")]
                 {
                     // Use Tauri's path API to get correct path (includes app identifier)
-                    // tauri-plugin-deep-link writes to: ~/.local/share/com.ccswitch.desktop/applications/cc-switch-handler.desktop
+                    // tauri-plugin-deep-link writes to: ~/.local/share/com.relaydesk.desktop/applications/relaydesk-handler.desktop
                     // Only register if .desktop file doesn't exist to avoid overwriting user customizations
                     let should_register = app
                         .path()
                         .data_dir()
-                        .map(|d| !d.join("applications/cc-switch-handler.desktop").exists())
+                        .map(|d| !d.join("applications/relaydesk-handler.desktop").exists())
                         .unwrap_or(true);
 
                     if should_register {
@@ -1423,6 +1423,8 @@ pub fn run() {
             commands::restart_app,
             commands::install_update_and_restart,
             commands::check_app_update_available,
+            commands::relay_check_update,
+            commands::relay_log_frontend_error,
             commands::check_for_updates,
             commands::is_portable_mode,
             commands::copy_text_to_clipboard,
@@ -1639,12 +1641,31 @@ pub fn run() {
             // Relay (new-api 中转站) integration
             commands::relay_login,
             commands::relay_get_account,
+            commands::relay_saved_login_name,
+            commands::relay_list_saved_logins,
+            commands::relay_login_saved,
+            commands::relay_forget_login,
             commands::relay_refresh_account,
+            commands::relay_get_topup_info,
+            commands::relay_open_official_topup,
+            commands::relay_calculate_topup_amount,
+            commands::relay_create_topup_payment,
+            commands::relay_list_topup_history,
+            commands::relay_get_usage_models,
+            commands::relay_get_usage_summary,
             commands::relay_logout,
             commands::relay_list_groups,
             commands::relay_list_models,
             commands::relay_apply_model,
+            commands::relay_detect_target_installations,
+            commands::relay_open_desktop_download,
+            commands::relay_env_check,
+            commands::relay_get_tool_install_plan,
+            commands::relay_launch_target,
+            commands::relay_get_restart_capabilities,
+            commands::relay_restart_target,
             commands::relay_set_apply_apps,
+            commands::relay_set_group_target,
             commands::relay_list_tokens,
             commands::relay_export_diagnostics,
             // OpenCode specific

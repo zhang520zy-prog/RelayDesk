@@ -15,13 +15,13 @@ use std::fs;
 use std::process::{Command, Stdio};
 use toml_edit::DocumentMut;
 
-pub const CC_SWITCH_CODEX_MODEL_PROVIDER_ID: &str = "custom";
+pub const RELAYDESK_CODEX_MODEL_PROVIDER_ID: &str = "relaydesk";
 /// Temporary model-provider id used while the built-in `codex-official`
 /// provider is routed through RelayDesk.  A dedicated id is an ownership
 /// marker: unlike a generic localhost `base_url`, it can be detected and
 /// cleaned up without mistaking a user's own local provider for takeover.
-pub const CC_SWITCH_CODEX_OFFICIAL_PROXY_PROVIDER_ID: &str = "cc-switch-official";
-pub const CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME: &str = "cc-switch-model-catalog.json";
+pub const RELAYDESK_CODEX_OFFICIAL_PROXY_PROVIDER_ID: &str = "relaydesk-official";
+pub const RELAYDESK_CODEX_MODEL_CATALOG_FILENAME: &str = "relaydesk-model-catalog.json";
 const CODEX_PROXY_AUTH_PLACEHOLDER: &str = "PROXY_MANAGED";
 
 #[cfg(target_os = "windows")]
@@ -976,7 +976,7 @@ pub fn get_codex_config_path() -> PathBuf {
 }
 
 pub fn get_codex_model_catalog_path() -> PathBuf {
-    get_codex_config_dir().join(CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME)
+    get_codex_config_dir().join(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME)
 }
 
 /// 获取 Codex 供应商配置文件路径
@@ -2337,12 +2337,12 @@ fn set_codex_model_catalog_json_field(
                 .and_then(|item| item.as_str())
                 .map(|path| {
                     Path::new(path).file_name().and_then(|name| name.to_str())
-                        == Some(CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME)
+                        == Some(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME)
                 })
                 .unwrap_or(true);
             if is_cc_switch_owned {
                 doc["model_catalog_json"] =
-                    toml_edit::value(CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME);
+                    toml_edit::value(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME);
             }
         }
         None => {
@@ -2351,7 +2351,7 @@ fn set_codex_model_catalog_json_field(
                 .and_then(|item| item.as_str())
                 .map(|path| {
                     Path::new(path).file_name().and_then(|name| name.to_str())
-                        == Some(CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME)
+                        == Some(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME)
                 })
                 .unwrap_or(false);
             if should_remove {
@@ -2438,7 +2438,7 @@ pub fn prepare_codex_config_text_with_model_catalog(
 ///
 /// We only reverse-parse catalogs whose `model_catalog_json` path is the
 /// cc-switch–generated file (identified by filename
-/// `cc-switch-model-catalog.json`). A user-managed external catalog file is
+/// `relaydesk-model-catalog.json`). A user-managed external catalog file is
 /// left alone — surfacing its richer structure as the simplified table would
 /// be a downgrade we can't safely round-trip.
 ///
@@ -2521,7 +2521,7 @@ pub(crate) fn resolve_cc_switch_catalog_path(
 
     let referenced_path = Path::new(catalog_path_str);
     let is_cc_switch_owned = referenced_path.file_name().and_then(|name| name.to_str())
-        == Some(CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME);
+        == Some(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME);
     if !is_cc_switch_owned {
         return None;
     }
@@ -2548,7 +2548,7 @@ pub(crate) fn resolve_cc_switch_catalog_path(
     }
 
     // 词法包含不等于运行时包含：配置目录内的符号链接（如 ~/.codex/link ->
-    // /etc）能让 `link/cc-switch-model-catalog.json` 通过上面的检查，读取却
+    // /etc）能让 `link/relaydesk-model-catalog.json` 通过上面的检查，读取却
     // 落到目录外。文件存在时把真实路径 canonicalize 出来再校验一次，并把
     // canonical 路径返回给调用方——后续读取不再经过 symlink 组件。
     if resolved.exists() {
@@ -2875,7 +2875,7 @@ fn codex_config_falls_back_to_official_auth_for_third_party(config_text: &str) -
 
 /// cc-switch-owned provider id used by the legacy-shape normalization below.
 /// Not a Codex reserved id, so an injected token lands inside the table.
-const CODEX_MIGRATED_PROVIDER_ID: &str = "cc-switch";
+const CODEX_MIGRATED_PROVIDER_ID: &str = "relaydesk";
 
 /// Pick the first free cc-switch-owned provider id (`cc-switch`,
 /// `cc-switch-2`, …) so migrations never overwrite a user-authored table.
@@ -3527,7 +3527,7 @@ pub fn apply_codex_official_proxy_route(
     // A third-party takeover may have left the proxy placeholder in config.toml.
     // The official route must use Codex's native OpenAI login instead.
     doc.as_table_mut().remove("experimental_bearer_token");
-    doc["model_provider"] = toml_edit::value(CC_SWITCH_CODEX_OFFICIAL_PROXY_PROVIDER_ID);
+    doc["model_provider"] = toml_edit::value(RELAYDESK_CODEX_OFFICIAL_PROXY_PROVIDER_ID);
 
     let mut providers = match doc.as_table_mut().remove("model_providers") {
         Some(item) => item.into_table().map_err(|_| {
@@ -3550,7 +3550,7 @@ pub fn apply_codex_official_proxy_route(
     let table = codex_official_provider_table(Some(proxy_base_url), false);
 
     providers.insert(
-        CC_SWITCH_CODEX_OFFICIAL_PROXY_PROVIDER_ID,
+        RELAYDESK_CODEX_OFFICIAL_PROXY_PROVIDER_ID,
         toml_edit::Item::Table(table),
     );
     doc["model_providers"] = toml_edit::Item::Table(providers);
@@ -3559,7 +3559,7 @@ pub fn apply_codex_official_proxy_route(
 
 /// Whether a live Codex config is the official route projected by RelayDesk.
 pub fn codex_config_has_official_proxy_route(config_text: &str) -> bool {
-    if !config_text.contains(CC_SWITCH_CODEX_OFFICIAL_PROXY_PROVIDER_ID) {
+    if !config_text.contains(RELAYDESK_CODEX_OFFICIAL_PROXY_PROVIDER_ID) {
         return false;
     }
     config_text
@@ -3571,7 +3571,7 @@ pub fn codex_config_has_official_proxy_route(config_text: &str) -> bool {
                 .map(str::to_string)
         })
         .as_deref()
-        == Some(CC_SWITCH_CODEX_OFFICIAL_PROXY_PROVIDER_ID)
+        == Some(RELAYDESK_CODEX_OFFICIAL_PROXY_PROVIDER_ID)
 }
 
 /// Remove only the official takeover route owned by RelayDesk. This is a
@@ -3581,7 +3581,7 @@ pub fn remove_codex_official_proxy_route(config_text: &str) -> Result<String, Ap
         .parse::<DocumentMut>()
         .map_err(|e| AppError::Message(format!("Invalid Codex config.toml: {e}")))?;
     if doc.get("model_provider").and_then(|item| item.as_str())
-        != Some(CC_SWITCH_CODEX_OFFICIAL_PROXY_PROVIDER_ID)
+        != Some(RELAYDESK_CODEX_OFFICIAL_PROXY_PROVIDER_ID)
     {
         return Ok(config_text.to_string());
     }
@@ -3593,7 +3593,7 @@ pub fn remove_codex_official_proxy_route(config_text: &str) -> Result<String, Ap
                 "Invalid Codex config.toml: model_providers must be a table".to_string(),
             )
         })?;
-        providers.remove(CC_SWITCH_CODEX_OFFICIAL_PROXY_PROVIDER_ID);
+        providers.remove(RELAYDESK_CODEX_OFFICIAL_PROXY_PROVIDER_ID);
         remove_codex_proxy_placeholders_from_providers(&mut providers);
         if !providers.is_empty() {
             doc["model_providers"] = toml_edit::Item::Table(providers);
@@ -3637,7 +3637,7 @@ pub fn inject_codex_unified_session_bucket(config_text: &str) -> Result<String, 
     let existing_custom_conflicts = doc
         .get("model_providers")
         .and_then(|item| item.as_table())
-        .and_then(|providers| providers.get(CC_SWITCH_CODEX_MODEL_PROVIDER_ID))
+        .and_then(|providers| providers.get(RELAYDESK_CODEX_MODEL_PROVIDER_ID))
         .and_then(|item| item.as_table())
         .is_some_and(|table| !table_matches_codex_unified_official_provider(table));
     if existing_custom_conflicts {
@@ -3647,7 +3647,7 @@ pub fn inject_codex_unified_session_bucket(config_text: &str) -> Result<String, 
         return Ok(config_text.to_string());
     }
 
-    doc["model_provider"] = toml_edit::value(CC_SWITCH_CODEX_MODEL_PROVIDER_ID);
+    doc["model_provider"] = toml_edit::value(RELAYDESK_CODEX_MODEL_PROVIDER_ID);
 
     if doc.get("model_providers").is_none() {
         let mut parent = toml_edit::Table::new();
@@ -3655,9 +3655,9 @@ pub fn inject_codex_unified_session_bucket(config_text: &str) -> Result<String, 
         doc["model_providers"] = toml_edit::Item::Table(parent);
     }
     if let Some(providers) = doc["model_providers"].as_table_mut() {
-        if !providers.contains_key(CC_SWITCH_CODEX_MODEL_PROVIDER_ID) {
+        if !providers.contains_key(RELAYDESK_CODEX_MODEL_PROVIDER_ID) {
             providers.insert(
-                CC_SWITCH_CODEX_MODEL_PROVIDER_ID,
+                RELAYDESK_CODEX_MODEL_PROVIDER_ID,
                 toml_edit::Item::Table(codex_unified_official_provider_table()),
             );
         }
@@ -3678,14 +3678,14 @@ pub fn strip_codex_unified_session_bucket(config_text: &str) -> Result<String, A
         .map_err(|e| AppError::Message(format!("Invalid Codex config.toml: {e}")))?;
 
     if doc.get("model_provider").and_then(|item| item.as_str())
-        != Some(CC_SWITCH_CODEX_MODEL_PROVIDER_ID)
+        != Some(RELAYDESK_CODEX_MODEL_PROVIDER_ID)
     {
         return Ok(config_text.to_string());
     }
     let matches_injected = doc
         .get("model_providers")
         .and_then(|item| item.as_table())
-        .and_then(|providers| providers.get(CC_SWITCH_CODEX_MODEL_PROVIDER_ID))
+        .and_then(|providers| providers.get(RELAYDESK_CODEX_MODEL_PROVIDER_ID))
         .and_then(|item| item.as_table())
         .is_some_and(table_matches_codex_unified_official_provider);
     if !matches_injected {
@@ -3696,7 +3696,7 @@ pub fn strip_codex_unified_session_bucket(config_text: &str) -> Result<String, A
     let providers_empty = doc["model_providers"]
         .as_table_mut()
         .map(|providers| {
-            providers.remove(CC_SWITCH_CODEX_MODEL_PROVIDER_ID);
+            providers.remove(RELAYDESK_CODEX_MODEL_PROVIDER_ID);
             providers.is_empty()
         })
         .unwrap_or(false);
@@ -4401,7 +4401,7 @@ mod tests {
         crate::config::write_json_file(&get_codex_auth_path(), &auth).expect("seed live auth R1");
         crate::config::write_text_file(
             &get_codex_config_path(),
-            "# cas-guard-sentinel\nmodel = \"gpt-5.5\"\nmodel_catalog_json = \"cc-switch-model-catalog.json\"\n",
+            "# cas-guard-sentinel\nmodel = \"gpt-5.5\"\nmodel_catalog_json = \"relaydesk-model-catalog.json\"\n",
         )
         .expect("seed live config");
         crate::config::write_json_file(
@@ -4467,9 +4467,9 @@ mod tests {
 
         assert_eq!(
             doc.get("model_provider").and_then(|v| v.as_str()),
-            Some(CC_SWITCH_CODEX_MODEL_PROVIDER_ID)
+            Some(RELAYDESK_CODEX_MODEL_PROVIDER_ID)
         );
-        let custom = doc["model_providers"][CC_SWITCH_CODEX_MODEL_PROVIDER_ID]
+        let custom = doc["model_providers"][RELAYDESK_CODEX_MODEL_PROVIDER_ID]
             .as_table()
             .expect("custom provider table");
         assert_eq!(custom.get("name").and_then(|v| v.as_str()), Some("OpenAI"));
@@ -4501,7 +4501,7 @@ command = "example"
 
         assert_eq!(
             doc.get("model_provider").and_then(toml::Value::as_str),
-            Some(CC_SWITCH_CODEX_OFFICIAL_PROXY_PROVIDER_ID)
+            Some(RELAYDESK_CODEX_OFFICIAL_PROXY_PROVIDER_ID)
         );
         assert!(doc.get("experimental_bearer_token").is_none());
         assert!(
@@ -4509,7 +4509,7 @@ command = "example"
             "unrelated config survives"
         );
 
-        let provider = &doc["model_providers"][CC_SWITCH_CODEX_OFFICIAL_PROXY_PROVIDER_ID];
+        let provider = &doc["model_providers"][RELAYDESK_CODEX_OFFICIAL_PROXY_PROVIDER_ID];
         assert_eq!(
             provider.get("base_url").and_then(toml::Value::as_str),
             Some("http://127.0.0.1:15721/v1")
@@ -4567,7 +4567,7 @@ model_providers = { rightcode = { name = "RightCode", experimental_bearer_token 
             .get("experimental_bearer_token")
             .is_none());
         assert!(projected_doc["model_providers"]
-            .get(CC_SWITCH_CODEX_OFFICIAL_PROXY_PROVIDER_ID)
+            .get(RELAYDESK_CODEX_OFFICIAL_PROXY_PROVIDER_ID)
             .is_some());
 
         let cleaned = remove_codex_official_proxy_route(&projected).expect("clean projected");
@@ -4575,16 +4575,16 @@ model_providers = { rightcode = { name = "RightCode", experimental_bearer_token 
         assert!(cleaned_doc.get("model_provider").is_none());
         assert!(cleaned_doc["model_providers"].get("rightcode").is_some());
         assert!(cleaned_doc["model_providers"]
-            .get(CC_SWITCH_CODEX_OFFICIAL_PROXY_PROVIDER_ID)
+            .get(RELAYDESK_CODEX_OFFICIAL_PROXY_PROVIDER_ID)
             .is_none());
     }
 
     #[test]
     fn unified_session_bucket_preserves_other_keys_and_explicit_routing() {
-        let with_catalog = "model_catalog_json = \"cc-switch-model-catalog.json\"\n";
+        let with_catalog = "model_catalog_json = \"relaydesk-model-catalog.json\"\n";
         let injected = inject_codex_unified_session_bucket(with_catalog).expect("inject");
         assert!(injected.contains("model_catalog_json"));
-        assert!(injected.contains("model_provider = \"custom\""));
+        assert!(injected.contains("model_provider = \"relaydesk\""));
 
         // 用户显式指定过 model_provider 的官方配置不被覆盖
         let explicit = "model_provider = \"openai_https\"\n";
@@ -4594,9 +4594,9 @@ model_providers = { rightcode = { name = "RightCode", experimental_bearer_token 
 
     #[test]
     fn unified_session_bucket_skips_conflicting_custom_table() {
-        // 残留的非注入形态 custom 表：设置 model_provider 会把官方流量
+        // 残留的非注入形态 relaydesk 表：设置 model_provider 会把官方流量
         // 路由到表里的第三方端点，必须整体拒绝注入。
-        let stale = r#"[model_providers.custom]
+        let stale = r#"[model_providers.relaydesk]
 name = "Relay"
 base_url = "https://relay.example/v1"
 "#;
@@ -4615,7 +4615,7 @@ base_url = "https://relay.example/v1"
         let stripped = strip_codex_unified_session_bucket(&injected).expect("strip");
         assert_eq!(stripped.trim(), "");
 
-        let with_catalog = "model_catalog_json = \"cc-switch-model-catalog.json\"\n";
+        let with_catalog = "model_catalog_json = \"relaydesk-model-catalog.json\"\n";
         let injected = inject_codex_unified_session_bucket(with_catalog).expect("inject");
         let stripped = strip_codex_unified_session_bucket(&injected).expect("strip");
         assert_eq!(stripped, with_catalog);
@@ -5280,11 +5280,11 @@ openai_base_url = "https://relay.example/v1"
             "the top-level reroute must be removed; got:\n{normalized}"
         );
         assert!(
-            normalized.contains("model_provider = \"cc-switch\""),
-            "routing must move to the cc-switch table; got:\n{normalized}"
+            normalized.contains("model_provider = \"relaydesk\""),
+            "routing must move to the relaydesk table; got:\n{normalized}"
         );
         assert!(
-            normalized.contains("[model_providers.cc-switch]"),
+            normalized.contains("[model_providers.relaydesk]"),
             "a custom provider table must be created; got:\n{normalized}"
         );
         assert!(
@@ -5375,9 +5375,9 @@ http_headers = { x-team = "42" }
             .expect("normalize")
             .expect("conflicted shape must still migrate");
         assert!(
-            normalized.contains("model_provider = \"cc-switch-2\"")
-                && normalized.contains("[model_providers.cc-switch-2]"),
-            "migration must pick the first free suffixed id; got:\n{normalized}"
+            normalized.contains("model_provider = \"relaydesk\"")
+                && normalized.contains("[model_providers.relaydesk]"),
+            "migration must pick the first free relaydesk id; got:\n{normalized}"
         );
         assert!(
             normalized.contains("name = \"Mine\"")
@@ -5415,13 +5415,13 @@ http_headers = { x-team = "42" }
                 .expect("prepare live config");
         assert!(
             !prepared.contains("[model_providers.openai]")
-                && prepared.contains("[model_providers.cc-switch]")
+                && prepared.contains("[model_providers.relaydesk]")
                 && prepared.contains("x-team")
                 && prepared.contains("wire_api = \"responses\""),
             "the table must be renamed losslessly (wire_api defaulted); got:\n{prepared}"
         );
         assert!(
-            prepared.contains("model_provider = \"cc-switch\""),
+            prepared.contains("model_provider = \"relaydesk\""),
             "with a key the route must follow the renamed table; got:\n{prepared}"
         );
         assert_eq!(
@@ -5443,7 +5443,7 @@ http_headers = { Authorization = "Bearer own-key" }
         let keyless = prepare_codex_provider_live_config(&json!({}), header_auth_stale)
             .expect("prepare live config without token");
         assert!(
-            keyless.contains("model_provider = \"cc-switch\"") && keyless.contains("own-key"),
+            keyless.contains("model_provider = \"relaydesk\"") && keyless.contains("own-key"),
             "self-authenticating tables must keep their route; got:\n{keyless}"
         );
         assert!(
@@ -5467,7 +5467,7 @@ wire_api = "chat"
         let local = prepare_codex_provider_live_config(&json!({}), unauthenticated_stale)
             .expect("prepare live config without token");
         assert!(
-            local.contains("model_provider = \"cc-switch\"")
+            local.contains("model_provider = \"relaydesk\"")
                 && local.contains("wire_api = \"responses\"")
                 && !local.contains("wire_api = \"chat\""),
             "unauthenticated tables keep their route and chat wire_api is normalized; got:\n{local}"
@@ -5486,7 +5486,7 @@ experimental_bearer_token = "own-scoped-token"
         let scoped = prepare_codex_provider_live_config(&json!({}), scoped_token_stale)
             .expect("prepare live config without token");
         assert!(
-            scoped.contains("model_provider = \"cc-switch\"")
+            scoped.contains("model_provider = \"relaydesk\"")
                 && scoped.contains("own-scoped-token"),
             "tables with a scoped token must keep their route; got:\n{scoped}"
         );
@@ -5506,7 +5506,7 @@ requires_openai_auth = true
         assert!(
             snapped.contains("model_provider = \"openai\"")
                 && !snapped.contains("[model_providers.openai]")
-                && snapped.contains("[model_providers.cc-switch]"),
+                && snapped.contains("[model_providers.relaydesk]"),
             "credential-less tables are renamed but the route snaps back; got:\n{snapped}"
         );
 
@@ -5516,7 +5516,7 @@ requires_openai_auth = true
             .expect("stale table must still be renamed");
         assert!(
             official.contains("model_provider = \"openai\"")
-                && official.contains("[model_providers.cc-switch]"),
+                && official.contains("[model_providers.relaydesk]"),
             "official routes never follow a renamed table; got:\n{official}"
         );
 
@@ -5539,8 +5539,8 @@ base_url = "http://127.0.0.1:1234/v1"
         assert!(
             !cleaned.contains("[model_providers.ollama]")
                 && !cleaned.contains("[model_providers.lmstudio]")
-                && cleaned.contains("[model_providers.cc-switch]")
-                && cleaned.contains("[model_providers.cc-switch-2]")
+                && cleaned.contains("[model_providers.relaydesk]")
+                && cleaned.contains("[model_providers.relaydesk-2]")
                 && cleaned.contains("model_provider = \"third\""),
             "every reserved table is renamed, the active route stays; got:\n{cleaned}"
         );
@@ -5656,8 +5656,8 @@ model_providers = { mine = { name = "Mine", base_url = "https://mine.example/v1"
             "the reroute must be rewritten away; got:\n{prepared}"
         );
         assert!(
-            prepared.contains("model_provider = \"cc-switch\"")
-                && prepared.contains("cc-switch = {"),
+            prepared.contains("model_provider = \"relaydesk\"")
+                && prepared.contains("relaydesk = {"),
             "migration must add an inline member matching the container style; got:\n{prepared}"
         );
         assert!(
@@ -5789,7 +5789,7 @@ openai_base_url = "https://relay.example/v1"
                 .expect("prepare live config");
         assert!(
             !prepared.contains("openai_base_url")
-                && prepared.contains("[model_providers.cc-switch]"),
+                && prepared.contains("[model_providers.relaydesk]"),
             "prepare must rewrite the legacy reroute shape; got:\n{prepared}"
         );
         assert_eq!(
@@ -7579,7 +7579,7 @@ wire_api = "responses"
 [model_providers.any]
 name = "any"
 "#;
-        let catalog_path = Path::new("/tmp/cc-switch-model-catalog.json");
+        let catalog_path = Path::new("/tmp/relaydesk-model-catalog.json");
 
         let result = set_codex_model_catalog_json_field(input, Some(catalog_path)).unwrap();
         let parsed: toml::Value = toml::from_str(&result).unwrap();
@@ -7587,7 +7587,7 @@ name = "any"
             parsed
                 .get("model_catalog_json")
                 .and_then(|value| value.as_str()),
-            Some(CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME)
+            Some(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME)
         );
         assert!(
             parsed
@@ -7808,12 +7808,12 @@ web_search = "disabled"
     }
 
     #[test]
-    fn resolve_catalog_path_accepts_cc_switch_owned_file() {
+    fn resolve_catalog_path_accepts_relaydesk_owned_file() {
         let base = PathBuf::from("/tmp/.codex");
-        let config = r#"model_catalog_json = "/tmp/.codex/cc-switch-model-catalog.json"
+        let config = r#"model_catalog_json = "/tmp/.codex/relaydesk-model-catalog.json"
 "#;
         let resolved = resolve_cc_switch_catalog_path(config, &base).expect("path resolves");
-        assert_eq!(resolved, base.join(CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME));
+        assert_eq!(resolved, base.join(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME));
     }
 
     #[test]
@@ -7824,6 +7824,14 @@ web_search = "disabled"
         assert!(
             resolve_cc_switch_catalog_path(config, &base).is_none(),
             "external catalog files should be left alone"
+        );
+
+        // cc-switch-owned files are foreign to RelayDesk too
+        let foreign = r#"model_catalog_json = "/tmp/.codex/cc-switch-model-catalog.json"
+"#;
+        assert!(
+            resolve_cc_switch_catalog_path(foreign, &base).is_none(),
+            "cc-switch-owned catalog files must not be claimed"
         );
     }
 
@@ -8107,7 +8115,7 @@ model = "glm-5"
         // Simulate a WSL UNC path as cc-switch would see it on Windows;
         // the function now writes just the relative filename.
         let unc_path =
-            Path::new(r"\\wsl.localhost\Ubuntu\home\user\.codex\cc-switch-model-catalog.json");
+            Path::new(r"\\wsl.localhost\Ubuntu\home\user\.codex\relaydesk-model-catalog.json");
 
         let result = set_codex_model_catalog_json_field(input, Some(unc_path)).unwrap();
         let parsed: toml::Value = toml::from_str(&result).unwrap();
@@ -8117,7 +8125,7 @@ model = "glm-5"
             .and_then(|v| v.as_str())
             .expect("model_catalog_json should be set");
         assert_eq!(
-            written_path, CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME,
+            written_path, RELAYDESK_CODEX_MODEL_CATALOG_FILENAME,
             "should write only the relative filename, not the UNC path"
         );
     }
@@ -8127,14 +8135,14 @@ model = "glm-5"
         let input = r#"model_provider = "custom"
 model = "glm-5"
 "#;
-        let regular_path = Path::new("/home/user/.codex/cc-switch-model-catalog.json");
+        let regular_path = Path::new("/home/user/.codex/relaydesk-model-catalog.json");
 
         let result = set_codex_model_catalog_json_field(input, Some(regular_path)).unwrap();
         let parsed: toml::Value = toml::from_str(&result).unwrap();
 
         assert_eq!(
             parsed.get("model_catalog_json").and_then(|v| v.as_str()),
-            Some(CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME),
+            Some(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME),
             "should write only the relative filename, not the full path"
         );
     }
@@ -8143,7 +8151,7 @@ model = "glm-5"
     fn set_catalog_json_none_removes_cc_switch_owned_by_filename() {
         // After the WSL fix, TOML may contain a Linux-style path.
         // The None arm must still remove it (file_name match catches any format).
-        let input = r#"model_catalog_json = "/home/user/.codex/cc-switch-model-catalog.json"
+        let input = r#"model_catalog_json = "/home/user/.codex/relaydesk-model-catalog.json"
 "#;
         let result = set_codex_model_catalog_json_field(input, None).unwrap();
         let parsed: toml::Value = toml::from_str(&result).unwrap();
@@ -8176,7 +8184,7 @@ model = "glm-5"
 model = "glm-5"
 model_catalog_json = "/Users/me/.codex/my-custom-catalog.json"
 "#;
-        let catalog_path = Path::new("/tmp/cc-switch-model-catalog.json");
+        let catalog_path = Path::new("/tmp/relaydesk-model-catalog.json");
         let result = set_codex_model_catalog_json_field(input, Some(catalog_path)).unwrap();
         let parsed: toml::Value = toml::from_str(&result).unwrap();
         assert_eq!(
@@ -8194,7 +8202,7 @@ model_catalog_json = "/Users/me/.codex/my-custom-catalog.json"
 model = "glm-5"
 model_catalog_json = "my-custom-catalog.json"
 "#;
-        let catalog_path = Path::new("/tmp/cc-switch-model-catalog.json");
+        let catalog_path = Path::new("/tmp/relaydesk-model-catalog.json");
         let result = set_codex_model_catalog_json_field(input, Some(catalog_path)).unwrap();
         let parsed: toml::Value = toml::from_str(&result).unwrap();
         assert_eq!(
@@ -8207,20 +8215,20 @@ model_catalog_json = "my-custom-catalog.json"
     #[test]
     fn resolve_catalog_finds_relative_filename() {
         let config_text = r#"model_provider = "custom"
-model_catalog_json = "cc-switch-model-catalog.json"
+model_catalog_json = "relaydesk-model-catalog.json"
 "#;
         let base_dir = PathBuf::from("/home/user/.codex");
         let result = resolve_cc_switch_catalog_path(config_text, &base_dir);
         assert_eq!(
             result,
-            Some(base_dir.join(CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME)),
+            Some(base_dir.join(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME)),
             "relative filename should resolve under base_dir for file I/O"
         );
     }
 
     #[test]
     fn resolve_catalog_rejects_absolute_path_outside_config_dir() {
-        let config_text = r#"model_catalog_json = "/tmp/secret/cc-switch-model-catalog.json"
+        let config_text = r#"model_catalog_json = "/tmp/secret/relaydesk-model-catalog.json"
 "#;
         let base_dir = PathBuf::from("/home/user/.codex");
         let result = resolve_cc_switch_catalog_path(config_text, &base_dir);
@@ -8232,20 +8240,20 @@ model_catalog_json = "cc-switch-model-catalog.json"
 
     #[test]
     fn resolve_catalog_accepts_absolute_path_inside_config_dir() {
-        let config_text = r#"model_catalog_json = "/home/user/.codex/cc-switch-model-catalog.json"
+        let config_text = r#"model_catalog_json = "/home/user/.codex/relaydesk-model-catalog.json"
 "#;
         let base_dir = PathBuf::from("/home/user/.codex");
         let result = resolve_cc_switch_catalog_path(config_text, &base_dir);
         assert_eq!(
             result,
-            Some(base_dir.join(CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME)),
+            Some(base_dir.join(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME)),
             "absolute path inside ~/.codex should be accepted"
         );
     }
 
     #[test]
     fn resolve_catalog_rejects_traversal_to_parent_directory() {
-        let config_text = r#"model_catalog_json = "../cc-switch-model-catalog.json"
+        let config_text = r#"model_catalog_json = "../relaydesk-model-catalog.json"
 "#;
         let base_dir = PathBuf::from("/home/user/.codex");
         let result = resolve_cc_switch_catalog_path(config_text, &base_dir);
@@ -8258,14 +8266,14 @@ model_catalog_json = "cc-switch-model-catalog.json"
     #[test]
     fn resolve_catalog_rejects_symlink_escaping_config_dir() {
         // 词法包含可被符号链接绕过：~/.codex/link -> 外部目录，
-        // "link/cc-switch-model-catalog.json" 词法上在 base 内，真实读取却落到
+        // "link/relaydesk-model-catalog.json" 词法上在 base 内，真实读取却落到
         // base 外。canonicalize 之后的二次校验必须拒绝。
         let temp = tempfile::tempdir().expect("tempdir");
         let base_dir = temp.path().join("codex");
         let outside_dir = temp.path().join("outside");
         fs::create_dir_all(&base_dir).expect("create base");
         fs::create_dir_all(&outside_dir).expect("create outside");
-        let escaped_file = outside_dir.join(CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME);
+        let escaped_file = outside_dir.join(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME);
         fs::write(&escaped_file, r#"{"models":[]}"#).expect("write escaped catalog");
 
         #[cfg(unix)]
@@ -8273,7 +8281,7 @@ model_catalog_json = "cc-switch-model-catalog.json"
         #[cfg(windows)]
         std::os::windows::fs::symlink_dir(&outside_dir, base_dir.join("link")).expect("symlink");
 
-        let config_text = r#"model_catalog_json = "link/cc-switch-model-catalog.json"
+        let config_text = r#"model_catalog_json = "link/relaydesk-model-catalog.json"
 "#;
         let result = resolve_cc_switch_catalog_path(config_text, &base_dir);
         assert_eq!(
@@ -8288,16 +8296,16 @@ model_catalog_json = "cc-switch-model-catalog.json"
         let temp = tempfile::tempdir().expect("tempdir");
         let base_dir = temp.path().join("codex");
         fs::create_dir_all(&base_dir).expect("create base");
-        let catalog_file = base_dir.join(CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME);
+        let catalog_file = base_dir.join(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME);
         fs::write(&catalog_file, r#"{"models":[]}"#).expect("write catalog");
 
-        let config_text = r#"model_catalog_json = "cc-switch-model-catalog.json"
+        let config_text = r#"model_catalog_json = "relaydesk-model-catalog.json"
 "#;
         let result = resolve_cc_switch_catalog_path(config_text, &base_dir);
         let resolved = result.expect("real file inside config dir should be accepted");
         assert_eq!(
             resolved.file_name().and_then(|n| n.to_str()),
-            Some(CC_SWITCH_CODEX_MODEL_CATALOG_FILENAME)
+            Some(RELAYDESK_CODEX_MODEL_CATALOG_FILENAME)
         );
     }
 

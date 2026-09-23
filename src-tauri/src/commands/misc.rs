@@ -1000,7 +1000,7 @@ async fn fetch_github_latest_version(client: &reqwest::Client, repo: &str) -> Op
     let url = format!("https://api.github.com/repos/{repo}/releases/latest");
     let resp = client
         .get(&url)
-        .header("User-Agent", "cc-switch")
+        .header("User-Agent", "relaydesk")
         .header("Accept", "application/vnd.github+json")
         .timeout(LATEST_PROBE_TIMEOUT)
         .send()
@@ -3063,6 +3063,13 @@ fn default_install(installs: &[ToolInstallation]) -> Option<&ToolInstallation> {
     })
 }
 
+/// Locate the executable the CLI command resolves to (PATH default or sole
+/// installation). Shared with RelayDesk's post-apply launch flow; keeps
+/// `CommandDeadline` private to this module.
+pub(crate) fn locate_tool_executable(tool: &str) -> Option<std::path::PathBuf> {
+    locate_default_tool(tool, None).ok()
+}
+
 fn locate_default_tool(
     tool: &str,
     deadline: Option<CommandDeadline>,
@@ -3621,6 +3628,14 @@ fn posix_install_command_for(tool: &str) -> String {
 #[cfg(not(target_os = "windows"))]
 fn install_command_for(tool: &str) -> String {
     posix_install_command_for(tool)
+}
+
+pub(crate) fn tool_install_command_preview(tool: &str) -> Option<String> {
+    #[cfg(target_os = "windows")]
+    let command = static_fallback_command_for(tool, ToolLifecycleAction::Install);
+    #[cfg(not(target_os = "windows"))]
+    let command = install_command_for(tool);
+    (!command.is_empty()).then_some(command)
 }
 
 /// 计算某工具的升级命令与"是否需确认"。全平台共用一份:

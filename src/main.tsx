@@ -4,6 +4,8 @@ import RelayDeskApp from "./relaydesk/RelayDeskApp";
 import { RecoveryPage } from "./relaydesk/RecoveryPage";
 import "./index.css";
 import "./relaydesk/design/brand.css";
+import "./relaydesk/design/polish.css";
+import "./relaydesk/design/workspace.css";
 // 导入国际化配置
 import i18n from "./i18n";
 import { QueryClientProvider } from "@tanstack/react-query";

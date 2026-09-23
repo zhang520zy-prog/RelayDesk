@@ -3,12 +3,17 @@ import { useTranslation } from "react-i18next";
 import { ArrowUpRight, Check, Terminal, Info } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { settingsApi } from "@/lib/api/settings";
-import type { RelayApplyApps, RelayTarget } from "@/lib/api/relay";
+import {
+  type RelayApplyApps,
+  type RelayGroup,
+  type RelayTarget,
+} from "@/lib/api/relay";
 import {
   type ApplyReport,
   targetIds,
   targetLabels,
 } from "../state/useRelayApply";
+import { GroupRouting } from "./GroupRouting";
 function TargetCard({
   app,
   apps,
@@ -80,14 +85,31 @@ function TargetCard({
 }
 export function TargetsPage({
   apps,
+  groups,
+  groupTargets,
+  groupsLoading,
+  groupsError,
+  refreshGroups,
   busy,
+  routingBusy,
   report,
   change,
+  changeGroupTarget,
 }: {
   apps: RelayApplyApps;
+  groups: RelayGroup[];
+  groupTargets: Record<string, RelayTarget>;
+  groupsLoading: boolean;
+  groupsError: boolean;
+  refreshGroups: () => void;
   busy: boolean;
+  routingBusy?: boolean;
   report: ApplyReport | null;
   change: (apps: RelayApplyApps) => void;
+  changeGroupTarget: (
+    group: string,
+    target: RelayTarget | null,
+  ) => Promise<boolean>;
 }) {
   const { t } = useTranslation("relaydesk");
   return (
@@ -104,6 +126,13 @@ export function TargetsPage({
       {targetIds.map((app) => (
         <TargetCard key={app} {...{ app, apps, busy, report, change }} />
       ))}
+      <GroupRouting
+        {...{ apps, groups, groupTargets, changeGroupTarget }}
+        busy={routingBusy ?? busy}
+        loading={groupsLoading}
+        loadingError={groupsError}
+        refresh={refreshGroups}
+      />
       <p className="rd-info-note">
         <Info size={17} />
         {t("targetNotice")}

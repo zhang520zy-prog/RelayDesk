@@ -10,15 +10,37 @@ pub struct RelayDiagnosticsExport {
     pub file_path: String,
 }
 
+/// 前端未捕获错误 → 写入应用日志，使诊断导出能覆盖 UI 层异常。
+/// 输入经过脱敏：剥离控制字符/换行、限长，防止日志注入或泄露大块数据。
 #[tauri::command]
-pub fn relay_export_diagnostics(file_path: String) -> Result<RelayDiagnosticsExport, String> {
+pub fn relay_log_frontend_error(message: String) -> Result<(), String> {
+    let sanitized: String = message
+        .chars()
+        .filter(|c| !c.is_control() || *c == ' ')
+        .take(800)
+        .collect();
+    let sanitized = sanitized.trim();
+    if sanitized.is_empty() {
+        return Ok(());
+    }
+    log::error!("[frontend] {sanitized}");
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn relay_export_diagnostics(
+    state: tauri::State<'_, crate::store::AppState>,
+    file_path: String,
+) -> Result<RelayDiagnosticsExport, String> {
+    let checks = crate::commands::env_doctor::collect_env_checks(state.inner()).await;
     let source = crate::panic_hook::get_log_dir().join("relaydesk.log");
-    export_diagnostics_from(&source, Path::new(&file_path))
+    export_diagnostics_from(&source, Path::new(&file_path), Some(&checks))
 }
 
 fn export_diagnostics_from(
     source: &Path,
     destination: &Path,
+    checks: Option<&[crate::commands::env_doctor::RelayEnvCheck]>,
 ) -> Result<RelayDiagnosticsExport, String> {
     let raw = match std::fs::read_to_string(source) {
         Ok(content) if !content.trim().is_empty() => content,
@@ -31,7 +53,27 @@ fn export_diagnostics_from(
             return Err("relay.diagnostics_export_failed".to_string());
         }
     };
-    let sanitized = redact_diagnostics(&raw);
+    let mut sections = String::new();
+    if let Some(checks) = checks.filter(|checks| !checks.is_empty()) {
+        let section = checks
+            .iter()
+            .map(|check| check.summary_line())
+            .collect::<Vec<_>>()
+            .join("\n");
+        sections.push_str(&format!("=== RelayDesk Environment Check ===\n{section}\n"));
+    }
+    // 崩溃记录（若存在）一并导出：panic hook 写 <log_dir>/crash.log。
+    if let Some(crash) = source
+        .parent()
+        .map(|dir| dir.join("crash.log"))
+        .filter(|path| path.exists())
+        .and_then(|path| std::fs::read_to_string(path).ok())
+        .filter(|content| !content.trim().is_empty())
+    {
+        sections.push_str(&format!("=== Crash Log ===\n{crash}\n"));
+    }
+    let content = format!("{sections}=== Application Log ===\n{raw}");
+    let sanitized = redact_diagnostics(&content);
     if let Err(error) = std::fs::write(destination, sanitized) {
         log::warn!("写入 RelayDesk 诊断导出失败: {error}");
         return Err("relay.diagnostics_export_failed".to_string());
@@ -118,7 +160,7 @@ mod tests {
         )
         .unwrap();
 
-        let exported = export_diagnostics_from(&source, &destination).unwrap();
+        let exported = export_diagnostics_from(&source, &destination, None).unwrap();
         let content = std::fs::read_to_string(&destination).unwrap();
 
         assert_eq!(exported.file_path, destination.display().to_string());
@@ -149,7 +191,8 @@ mod tests {
         let destination = temp.path().join("export.log");
 
         assert_eq!(
-            export_diagnostics_from(&temp.path().join("missing.log"), &destination).unwrap_err(),
+            export_diagnostics_from(&temp.path().join("missing.log"), &destination, None)
+                .unwrap_err(),
             "relay.diagnostics_no_logs"
         );
         assert!(!destination.exists());
@@ -157,9 +200,28 @@ mod tests {
         let empty = temp.path().join("empty.log");
         std::fs::write(&empty, "").unwrap();
         assert_eq!(
-            export_diagnostics_from(&empty, &destination).unwrap_err(),
+            export_diagnostics_from(&empty, &destination, None).unwrap_err(),
             "relay.diagnostics_no_logs"
         );
         assert!(!destination.exists());
+    }
+
+    #[test]
+    fn export_prepends_environment_check_section() {
+        let temp = tempfile::tempdir().expect("isolated tempdir");
+        let source = temp.path().join("relaydesk.log");
+        let destination = temp.path().join("export.log");
+        std::fs::write(&source, "[2026-09-19][10:00:00][INFO][relaydesk] started\n").unwrap();
+        let checks = [crate::commands::env_doctor::RelayEnvCheck::for_test(
+            "git",
+            "ok",
+            Some("2.54.0".to_string()),
+            None,
+        )];
+        export_diagnostics_from(&source, &destination, Some(&checks)).unwrap();
+        let content = std::fs::read_to_string(&destination).unwrap();
+        assert!(content.starts_with(
+            "=== RelayDesk Environment Check ===\n[ok] git: 2.54.0\n=== Application Log ===\n"
+        ));
     }
 }

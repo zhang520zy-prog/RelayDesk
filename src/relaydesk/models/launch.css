@@ -1,0 +1,118 @@
+.rd-launch-choices {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--rd-line);
+  border-radius: 12px;
+  background: var(--rd-raised);
+  min-width: 0;
+}
+.rd-launch-overline {
+  color: var(--rd-teal);
+  font-size: var(--rd-font-caption);
+  letter-spacing: 0.08em;
+  margin: 0 0 6px;
+}
+.rd-launch-choices h3 {
+  color: var(--rd-text);
+  font-size: var(--rd-font-body);
+  font-weight: var(--rd-weight-strong);
+  margin: 0;
+}
+.rd-launch-hint {
+  color: var(--rd-muted);
+  font-size: var(--rd-font-caption);
+  line-height: 1.6;
+  margin: 6px 0 14px;
+}
+.rd-launch-choice + .rd-launch-choice {
+  border-top: 1px solid var(--rd-line);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+.rd-launch-choice > strong {
+  display: block;
+  font-size: var(--rd-font-caption);
+  font-weight: var(--rd-weight-medium);
+  margin-bottom: 9px;
+}
+.rd-launch-choice-actions,
+.rd-launch-unknown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.rd-launch-choice-actions .rd-button,
+.rd-launch-unknown .rd-button {
+  gap: 6px;
+  min-width: 0;
+  white-space: normal;
+  height: auto;
+}
+.rd-launch-state {
+  color: var(--rd-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--rd-font-caption);
+  line-height: 1.6;
+  margin: 8px 0;
+}
+.rd-launch-state svg {
+  flex-shrink: 0;
+}
+.rd-launch-state.rd-success-text {
+  color: var(--rd-teal);
+}
+.rd-launch-unknown .rd-launch-state {
+  color: var(--rd-warning);
+}
+.rd-launch-missing {
+  color: var(--rd-muted);
+  font-size: var(--rd-font-caption);
+}
+.rd-launch-choices .rd-text-button {
+  text-align: left;
+}
+.rd-launch-choice-footer {
+  border-top: 1px solid var(--rd-line);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+}
+.rd-launch-choice-footer > .rd-button {
+  margin-left: auto;
+}
+.rd-launch-feedback {
+  margin: 10px 0 0;
+  font-size: var(--rd-font-caption);
+  line-height: 1.6;
+}
+.rd-dialog:has(.rd-launch-choices) {
+  width: calc(100vw - 40px);
+}
+.rd-dialog-description .rd-chip {
+  max-width: 45%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-height: 700px) {
+  .rd-dialog:has(.rd-launch-choices) .rd-dialog-description {
+    padding: 10px 0;
+  }
+  .rd-dialog:has(.rd-launch-choices) .rd-apply-heading {
+    padding: 8px 0 14px;
+  }
+  .rd-dialog:has(.rd-launch-choices) .rd-steps {
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+  .rd-dialog:has(.rd-launch-choices) .rd-launch-choices {
+    margin-top: 12px;
+  }
+}

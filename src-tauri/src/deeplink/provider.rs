@@ -430,12 +430,12 @@ fn build_codex_settings(request: &DeepLinkImportRequest) -> serde_json::Value {
 
     // Build config.toml content
     let config_toml = format!(
-        r#"model_provider = "custom"
+        r#"model_provider = "relaydesk"
 model = {model_name}
 model_reasoning_effort = "high"
 disable_response_storage = true
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = {provider_display_name}
 base_url = {endpoint}
 wire_api = "responses"
@@ -1132,7 +1132,7 @@ mod tests {
     }
 
     #[test]
-    fn build_codex_settings_uses_custom_key_and_preserves_display_name() {
+    fn build_codex_settings_uses_relaydesk_key_and_preserves_display_name() {
         let request = DeepLinkImportRequest {
             resource: "provider".to_string(),
             app: Some("codex".to_string()),
@@ -1154,12 +1154,12 @@ mod tests {
             parsed
                 .get("model_provider")
                 .and_then(|value| value.as_str()),
-            Some("custom")
+            Some("relaydesk")
         );
         let custom_provider = parsed
             .get("model_providers")
-            .and_then(|value| value.get("custom"))
-            .expect("custom model provider");
+            .and_then(|value| value.get("relaydesk"))
+            .expect("relaydesk model provider");
         assert_eq!(
             custom_provider.get("name").and_then(|value| value.as_str()),
             Some("My \"Relay\"")

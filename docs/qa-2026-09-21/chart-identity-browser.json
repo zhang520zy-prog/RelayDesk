@@ -1,0 +1,108 @@
+{
+  "before": [
+    {
+      "name": "Synthetic Model 12",
+      "color": "rgb(102, 204, 233)"
+    },
+    {
+      "name": "Synthetic Model 11",
+      "color": "rgb(204, 218, 112)"
+    },
+    {
+      "name": "Synthetic Model 10",
+      "color": "rgb(100, 210, 175)"
+    },
+    {
+      "name": "Synthetic Model 9",
+      "color": "rgb(201, 221, 126)"
+    },
+    {
+      "name": "Synthetic Model 8",
+      "color": "rgb(213, 126, 221)"
+    },
+    {
+      "name": "Synthetic Model 7",
+      "color": "rgb(126, 221, 185)"
+    },
+    {
+      "name": "Synthetic Model 6",
+      "color": "rgb(221, 158, 126)"
+    },
+    {
+      "name": "Synthetic Model 5",
+      "color": "rgb(249, 139, 134)"
+    },
+    {
+      "name": "GPT6 Astra",
+      "color": "rgb(244, 143, 189)"
+    },
+    {
+      "name": "GPT5.6 Terra",
+      "color": "rgb(244, 175, 98)"
+    },
+    {
+      "name": "GPT5.6 Luna",
+      "color": "rgb(196, 160, 242)"
+    },
+    {
+      "name": "GPT5.6 Sol",
+      "color": "rgb(128, 173, 255)"
+    }
+  ],
+  "filtered": [
+    {
+      "name": "GPT5.6 Luna",
+      "color": "rgb(196, 160, 242)"
+    }
+  ],
+  "refreshed": [
+    {
+      "name": "Synthetic Model 12",
+      "color": "rgb(102, 204, 233)"
+    },
+    {
+      "name": "Synthetic Model 11",
+      "color": "rgb(204, 218, 112)"
+    },
+    {
+      "name": "Synthetic Model 10",
+      "color": "rgb(100, 210, 175)"
+    },
+    {
+      "name": "Synthetic Model 9",
+      "color": "rgb(201, 221, 126)"
+    },
+    {
+      "name": "Synthetic Model 8",
+      "color": "rgb(213, 126, 221)"
+    },
+    {
+      "name": "Synthetic Model 7",
+      "color": "rgb(126, 221, 185)"
+    },
+    {
+      "name": "Synthetic Model 6",
+      "color": "rgb(221, 158, 126)"
+    },
+    {
+      "name": "Synthetic Model 5",
+      "color": "rgb(249, 139, 134)"
+    },
+    {
+      "name": "GPT6 Astra",
+      "color": "rgb(244, 143, 189)"
+    },
+    {
+      "name": "GPT5.6 Terra",
+      "color": "rgb(244, 175, 98)"
+    },
+    {
+      "name": "GPT5.6 Luna",
+      "color": "rgb(196, 160, 242)"
+    },
+    {
+      "name": "GPT5.6 Sol",
+      "color": "rgb(128, 173, 255)"
+    }
+  ]
+}

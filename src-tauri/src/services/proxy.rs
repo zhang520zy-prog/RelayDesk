@@ -365,7 +365,7 @@ impl CodexAuthFileTransaction {
             .and_then(|name| name.to_str())
             .unwrap_or("auth.json");
         Ok(parent.join(format!(
-            ".{file_name}.cc-switch-{label}-{}",
+            ".{file_name}.relaydesk-{label}-{}",
             uuid::Uuid::new_v4()
         )))
     }
@@ -7273,7 +7273,7 @@ wire_api = "chat"
         )
         .expect("apply official proxy config");
         let parsed: toml::Value = toml::from_str(&output).expect("valid official route");
-        let route_id = crate::codex_config::CC_SWITCH_CODEX_OFFICIAL_PROXY_PROVIDER_ID;
+        let route_id = crate::codex_config::RELAYDESK_CODEX_OFFICIAL_PROXY_PROVIDER_ID;
         let route = &parsed["model_providers"][route_id];
 
         assert_eq!(parsed["model_provider"].as_str(), Some(route_id));
@@ -9271,7 +9271,7 @@ requires_openai_auth = true
             message.contains("写入 Codex 配置失败")
                 || message.contains("原子替换失败")
                 || (message.contains("捕获 Codex 热切换前状态失败")
-                    && message.contains("cc-switch-model-catalog.json")),
+                    && message.contains("relaydesk-model-catalog.json")),
             "switch should surface catalog write failure, got: {message}"
         );
     }

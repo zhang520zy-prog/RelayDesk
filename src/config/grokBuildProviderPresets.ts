@@ -68,10 +68,10 @@ function grokPresetConfig(
 ): string {
   const tomlString = (value: string) => JSON.stringify(value);
 
-  return `model_provider = "custom"
+  return `model_provider = "relaydesk"
 model = ${tomlString(model)}
 
-[model_providers.custom]
+[model_providers.relaydesk]
 name = ${tomlString(providerName)}
 base_url = ${tomlString(baseUrl)}
 wire_api = "responses"

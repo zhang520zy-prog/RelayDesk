@@ -64,7 +64,7 @@ const DEVICE_CODE_DEFAULT_EXPIRES_IN: u64 = 900;
 const POLLING_SAFETY_MARGIN_SECS: u64 = 3;
 
 /// User-Agent
-const CODEX_USER_AGENT: &str = "cc-switch-codex-oauth";
+const CODEX_USER_AGENT: &str = "relaydesk-codex-oauth";
 
 // Shared by model discovery and generation: ChatGPT gates models by this
 // client identity. gpt-6-astra requires >= 0.153.0 in the rust-v0.153.4 catalog.

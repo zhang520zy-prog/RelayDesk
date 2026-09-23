@@ -8,9 +8,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { settingsApi } from "@/lib/api/settings";
-import type { RelayApplyApps, RelayTarget } from "@/lib/api/relay";
+import { type RelayApplyApps, type RelayTarget } from "@/lib/api/relay";
 import { Action } from "../ui";
 import { type ApplyReport, targetLabels } from "../state/useRelayApply";
+import { LaunchChoices } from "./LaunchChoices";
 export function ApplyProgressDialog({
   report,
   open,
@@ -19,6 +20,7 @@ export function ApplyProgressDialog({
   busy,
   apps,
   retry,
+  openEnvironment,
 }: {
   report: ApplyReport | null;
   open: boolean;
@@ -27,10 +29,18 @@ export function ApplyProgressDialog({
   busy: boolean;
   apps: RelayApplyApps;
   retry: (app: RelayTarget) => void;
+  openEnvironment?: () => void;
 }) {
   const { t } = useTranslation("relaydesk");
   const [help, setHelp] = useState<RelayTarget | null>(null);
   const [folderError, setFolderError] = useState(false);
+  const succeeded =
+    report && !pending
+      ? (report.launchTargets ?? report.targets).filter((app) =>
+          report.results.some((result) => result.app === app && result.ok),
+        )
+      : [];
+
   if (!report) return null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -45,8 +55,12 @@ export function ApplyProgressDialog({
           </Action>
         </div>
         <DialogDescription className="rd-dialog-description">
-          <span className="rd-mono">{report.model}</span>
-          <span className="rd-chip">{report.group}</span>
+          <span className="rd-mono" title={report.model}>
+            {report.model}
+          </span>
+          <span className="rd-chip" title={report.group}>
+            {report.group}
+          </span>
         </DialogDescription>
         <div className={`rd-apply-heading ${report.phase}`} role="status">
           {pending ? (
@@ -126,6 +140,18 @@ export function ApplyProgressDialog({
             );
           })}
         </div>
+        {open && succeeded.length > 0 && (
+          <LaunchChoices
+            key={
+              report.operationId ??
+              `${report.group}:${report.model}:${succeeded.join(",")}`
+            }
+            targets={succeeded}
+            busy={busy}
+            onDismiss={() => onOpenChange(false)}
+            openEnvironment={openEnvironment}
+          />
+        )}
         {report.error && (
           <p className="rd-alert error" role="alert">
             {t(report.error)}
@@ -154,12 +180,14 @@ export function ApplyProgressDialog({
             {folderError && <p role="alert">{t("genericError")}</p>}
           </section>
         )}
-        <footer className="rd-dialog-footer">
-          {pending && <small>{t("backgroundSync")}</small>}
-          <Action primary onClick={() => onOpenChange(false)}>
-            {t(pending ? "hideProgress" : "close")}
-          </Action>
-        </footer>
+        {(pending || succeeded.length === 0) && (
+          <footer className="rd-dialog-footer">
+            {pending && <small>{t("backgroundSync")}</small>}
+            <Action primary onClick={() => onOpenChange(false)}>
+              {t(pending ? "hideProgress" : "close")}
+            </Action>
+          </footer>
+        )}
       </DialogContent>
     </Dialog>
   );

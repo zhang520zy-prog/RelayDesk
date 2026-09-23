@@ -154,13 +154,13 @@ export function UniversalProviderFormModal({
     const codexBaseUrl = baseUrl.endsWith("/v1")
       ? baseUrl
       : `${baseUrl.replace(/\/+$/, "")}/v1`;
-    const configToml = `model_provider = "custom"
+    const configToml = `model_provider = "relaydesk"
 model = "${model}"
 model_reasoning_effort = "${reasoningEffort}"
 disable_response_storage = true
 
-[model_providers.custom]
-name = "NewAPI"
+[model_providers.relaydesk]
+name = "RelayDesk"
 base_url = "${codexBaseUrl}"
 wire_api = "responses"
 requires_openai_auth = true`;

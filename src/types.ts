@@ -386,7 +386,7 @@ export interface Settings {
   showProfileSwitcher?: boolean;
   // Preserve Codex ChatGPT login in auth.json when switching third-party providers
   preserveCodexOfficialAuthOnSwitch?: boolean;
-  // Run official Codex under the shared "custom" provider id so future
+  // Run official Codex under the shared "relaydesk" provider id so future
   // sessions share one resume-history bucket with third-party providers
   unifyCodexSessionHistory?: boolean;
   // User opted in (enable dialog checkbox) to migrate existing official sessions

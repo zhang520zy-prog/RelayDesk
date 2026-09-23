@@ -7,6 +7,7 @@ import {
   Folder,
   LogOut,
   Moon,
+  RefreshCw,
   Sun,
   Monitor,
 } from "lucide-react";
@@ -31,6 +32,13 @@ export function RelayDeskSettingsPage({
   const { theme, setTheme } = useTheme();
   const [exporting, setExporting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [installingUpdate, setInstallingUpdate] = useState(false);
+  const [updateResult, setUpdateResult] = useState<
+    | { kind: "not_configured" | "latest" | "check_failed" | "install_failed" }
+    | { kind: "available"; version: string }
+    | null
+  >(null);
   const path = useQuery({
     queryKey: ["relaydesk", "dataPath"],
     queryFn: settingsApi.getAppConfigPath,
@@ -53,6 +61,34 @@ export function RelayDeskSettingsPage({
       setStatus(relayErrorKey(e));
     } finally {
       setExporting(false);
+    }
+  }
+  async function checkUpdate() {
+    if (checkingUpdate) return;
+    setCheckingUpdate(true);
+    try {
+      const result = await relayApi.checkUpdate();
+      setUpdateResult(
+        !result.configured
+          ? { kind: "not_configured" }
+          : result.version
+            ? { kind: "available", version: result.version }
+            : { kind: "latest" },
+      );
+    } catch {
+      setUpdateResult({ kind: "check_failed" });
+    } finally {
+      setCheckingUpdate(false);
+    }
+  }
+  async function installUpdate() {
+    if (installingUpdate) return;
+    setInstallingUpdate(true);
+    try {
+      await settingsApi.installUpdateAndRestart();
+    } catch {
+      setUpdateResult({ kind: "install_failed" });
+      setInstallingUpdate(false);
     }
   }
   return (
@@ -98,7 +134,7 @@ export function RelayDeskSettingsPage({
                 aria-pressed={theme === value}
                 onClick={() => setTheme(value)}
               >
-                <Icon size={15} />
+                <Icon size={15} aria-hidden="true" />
                 {t(value)}
               </button>
             ))}
@@ -111,7 +147,11 @@ export function RelayDeskSettingsPage({
             className="rd-select"
             value={i18n.resolvedLanguage?.startsWith("zh") ? "zh" : "en"}
             onChange={(e) => {
-              localStorage.setItem("language", e.target.value);
+              try {
+                localStorage.setItem("language", e.target.value);
+              } catch {
+                /* Language still changes for this session. */
+              }
               void i18n.changeLanguage(e.target.value);
             }}
           >
@@ -164,6 +204,48 @@ export function RelayDeskSettingsPage({
             {t("version")} {version}
           </span>
         </div>
+      </section>
+      <section className="rd-setting-section">
+        <h2>{t("appUpdate")}</h2>
+        <p className="rd-muted rd-small">{t("appUpdateHint")}</p>
+        {updateResult?.kind === "available" ? (
+          <div className="rd-setting-actions">
+            <p role="status" className="rd-alert success">
+              {t("updateAvailable", { version: updateResult.version })}
+            </p>
+            <Action
+              primary
+              disabled={installingUpdate || busy}
+              onClick={() => void installUpdate()}
+            >
+              <Download size={15} />
+              {t(installingUpdate ? "updating" : "updateAndRestart")}
+            </Action>
+          </div>
+        ) : (
+          <div className="rd-setting-actions">
+            {updateResult && (
+              <p
+                role="status"
+                className={`rd-alert ${
+                  updateResult.kind === "latest" ? "success" : "error"
+                }`}
+              >
+                {t(`update_${updateResult.kind}`)}
+              </p>
+            )}
+            <Action
+              disabled={checkingUpdate || installingUpdate || busy}
+              onClick={() => void checkUpdate()}
+            >
+              <RefreshCw
+                size={15}
+                className={checkingUpdate ? "rd-spin" : ""}
+              />
+              {t(checkingUpdate ? "checkingUpdate" : "checkUpdate")}
+            </Action>
+          </div>
+        )}
       </section>
     </div>
   );
