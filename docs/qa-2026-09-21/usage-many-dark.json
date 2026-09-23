@@ -1,0 +1,127 @@
+{
+  "qa": true,
+  "page": "Usage",
+  "languageChoice": "en",
+  "themeChoice": "dark",
+  "width": 1440,
+  "height": 900,
+  "theme": "dark",
+  "collapsed": false,
+  "fontLoaded": true,
+  "overflow": false,
+  "main": {
+    "class": "rd-content",
+    "width": 1220,
+    "height": 769,
+    "x": 220,
+    "y": 131,
+    "client": 1220,
+    "scroll": 1220,
+    "font": "14px",
+    "fontFamily": "\"RelayDesk Inter\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "overflow": false
+  },
+  "sidebar": {
+    "class": "rd-sidebar ",
+    "width": 220,
+    "height": 866,
+    "x": 0,
+    "y": 34,
+    "client": 219,
+    "scroll": 219,
+    "font": "14px",
+    "fontFamily": "\"RelayDesk Inter\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "overflow": false,
+    "verticalOverflow": false
+  },
+  "dialogs": [],
+  "layout": [
+    {
+      "class": "rd-account-page rd-usage-page",
+      "width": 1156,
+      "height": 1586,
+      "x": 252,
+      "y": 155,
+      "client": 1156,
+      "scroll": 1156,
+      "font": "14px",
+      "fontFamily": "\"RelayDesk Inter\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "overflow": false
+    },
+    {
+      "class": "rd-chart-workspace",
+      "width": 1106,
+      "height": 390,
+      "x": 277,
+      "y": 528,
+      "client": 1106,
+      "scroll": 1106,
+      "font": "14px",
+      "fontFamily": "\"RelayDesk Inter\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "overflow": false
+    },
+    {
+      "class": "rd-chart-breakdown",
+      "width": 250,
+      "height": 390,
+      "x": 1133,
+      "y": 528,
+      "client": 248,
+      "scroll": 248,
+      "font": "14px",
+      "fontFamily": "\"RelayDesk Inter\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "overflow": false
+    }
+  ],
+  "colors": [
+    {
+      "name": "Synthetic Model 12",
+      "color": "rgb(102, 204, 233)"
+    },
+    {
+      "name": "Synthetic Model 11",
+      "color": "rgb(204, 218, 112)"
+    },
+    {
+      "name": "Synthetic Model 10",
+      "color": "rgb(100, 210, 175)"
+    },
+    {
+      "name": "Synthetic Model 9",
+      "color": "rgb(201, 221, 126)"
+    },
+    {
+      "name": "Synthetic Model 8",
+      "color": "rgb(213, 126, 221)"
+    },
+    {
+      "name": "Synthetic Model 7",
+      "color": "rgb(126, 221, 185)"
+    },
+    {
+      "name": "Synthetic Model 6",
+      "color": "rgb(221, 158, 126)"
+    },
+    {
+      "name": "Synthetic Model 5",
+      "color": "rgb(249, 139, 134)"
+    },
+    {
+      "name": "GPT6 Astra",
+      "color": "rgb(244, 143, 189)"
+    },
+    {
+      "name": "GPT5.6 Terra",
+      "color": "rgb(244, 175, 98)"
+    },
+    {
+      "name": "GPT5.6 Luna",
+      "color": "rgb(196, 160, 242)"
+    },
+    {
+      "name": "GPT5.6 Sol",
+      "color": "rgb(128, 173, 255)"
+    }
+  ],
+  "calls": []
+}
