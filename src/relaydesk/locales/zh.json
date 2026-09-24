@@ -519,5 +519,7 @@
   "envCheck_webview2_probe_failed": "WebView2 检测失败",
   "envCheck_claude_missing": "未安装 Claude Code CLI",
   "envCheck_codex_missing": "未安装 Codex CLI",
-  "envCheck_gemini_missing": "未安装 Gemini CLI"
+  "envCheck_gemini_missing": "未安装 Gemini CLI",
+  "updateNotice": "发现新版本 {{version}}",
+  "updateNow": "立即更新"
 }

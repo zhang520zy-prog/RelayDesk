@@ -63,6 +63,27 @@ export default function RelayDeskApp() {
   });
   const [showEnvironmentIntro, setShowEnvironmentIntro] = useState(false);
   const [guestEnvironment, setGuestEnvironment] = useState(false);
+  // 启动后自动检查一次应用更新；有可更新版本时显示横幅，引导到设置页安装。
+  const [updateNotice, setUpdateNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!session.account) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void relayApi
+        .checkUpdate()
+        .then((result) => {
+          if (!cancelled && result.configured && result.version)
+            setUpdateNotice(result.version);
+        })
+        .catch(() => {});
+    }, 2000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // 每个登录会话只检查一次，避免页面切换重复打更新端点。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.account]);
   const installing =
     useIsMutating({ mutationKey: ["relaydesk", "tool-install"] }) > 0;
   const busy =
@@ -187,6 +208,20 @@ export default function RelayDeskApp() {
             <button
               className="rd-text-button"
               onClick={() => setShowEnvironmentIntro(false)}
+            >
+              {t("dismissEnvironment")}
+            </button>
+          </div>
+        )}
+        {updateNotice && (
+          <div className="rd-environment-onboarding">
+            <span>{t("updateNotice", { version: updateNotice })}</span>
+            <Action onClick={() => setPage("settings")}>
+              {t("updateNow")}
+            </Action>
+            <button
+              className="rd-text-button"
+              onClick={() => setUpdateNotice(null)}
             >
               {t("dismissEnvironment")}
             </button>

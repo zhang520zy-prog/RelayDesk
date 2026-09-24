@@ -36,7 +36,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "resources": [
       "../THIRD_PARTY_LICENSES.md"
     ],
@@ -50,6 +50,9 @@
     "windows": {
       "wix": {
         "template": "wix/per-user-main.wxs"
+      },
+      "nsis": {
+        "installerHooks": "installer-hooks.nsh"
       }
     },
     "macOS": {
@@ -63,8 +66,10 @@
       }
     },
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM4MDI4QzlBNTczOTI4RTMKUldUaktEbFhtb3dDeUM5US9kT0FmdGR5Ti9vQzcwa2dTMlpibDVDUmQ2M0VGTzVOWnd0SGpFVlEK",
-      "endpoints": []
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI3NjA0OENEM0M1Q0JFQTQKUldTa3Zsdzh6VWhnSjMxWDB2WkRzN1hmQkpUSzBGQ0xQS1VoZ2JWMkZlRVpEN3cvWGJ2ZHBSWjQK",
+      "endpoints": [
+        "https://github.com/zhang520zy-prog/RelayDesk/releases/download/test-build/latest.json"
+      ]
     }
   }
 }

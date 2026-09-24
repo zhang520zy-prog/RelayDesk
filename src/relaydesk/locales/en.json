@@ -519,5 +519,7 @@
   "envCheck_webview2_probe_failed": "WebView2 check failed",
   "envCheck_claude_missing": "Claude Code CLI is not installed",
   "envCheck_codex_missing": "Codex CLI is not installed",
-  "envCheck_gemini_missing": "Gemini CLI is not installed"
+  "envCheck_gemini_missing": "Gemini CLI is not installed",
+  "updateNotice": "Version {{version}} is available",
+  "updateNow": "Update now"
 }
