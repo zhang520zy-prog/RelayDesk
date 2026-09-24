@@ -5,10 +5,13 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
-/// 获取 Gemini 配置目录路径（支持设置覆盖）
+/// 获取 Gemini 配置目录路径（支持设置覆盖与 GEMINI_CLI_HOME 环境变量）
 pub fn get_gemini_dir() -> PathBuf {
     if let Some(custom) = crate::settings::get_gemini_override_dir() {
         return custom;
+    }
+    if let Some(env_dir) = crate::config::env_override_dir("GEMINI_CLI_HOME") {
+        return env_dir;
     }
 
     get_home_dir().join(".gemini")

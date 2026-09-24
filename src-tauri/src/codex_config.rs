@@ -449,6 +449,9 @@ pub fn get_codex_config_dir() -> PathBuf {
     if let Some(custom) = crate::settings::get_codex_override_dir() {
         return custom;
     }
+    if let Some(env_dir) = crate::config::env_override_dir("CODEX_HOME") {
+        return env_dir;
+    }
 
     get_home_dir().join(".codex")
 }

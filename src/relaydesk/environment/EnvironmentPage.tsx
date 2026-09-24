@@ -9,6 +9,7 @@ import {
   Loader2,
   RefreshCw,
   Download,
+  MonitorX,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { relayApi, type RelayTarget } from "@/lib/api/relay";
@@ -17,6 +18,7 @@ import { Action } from "../ui";
 import { targetIds, targetLabels } from "../state/useRelayApply";
 import { relayErrorKey } from "../state/relayErrors";
 import { InstallToolDialog } from "./InstallToolDialog";
+import { EnvFixDialog } from "./EnvFixDialog";
 import { ToolInstallGuide } from "./ToolInstallGuide";
 import { getRuntimePlatform, type EnvironmentPlatform } from "./platform";
 import type { EnvironmentCheck } from "./environmentTypes";
@@ -29,6 +31,7 @@ const statusIcons = {
   fixable: Download,
   loading: Loader2,
   unavailable: CircleHelp,
+  unsupported: MonitorX,
 };
 
 export function EnvironmentCheckRow({
@@ -70,6 +73,9 @@ export function EnvironmentPage({
 }) {
   const { t } = useTranslation("relaydesk");
   const [install, setInstall] = useState<RelayTarget | null>(null);
+  const [envFix, setEnvFix] = useState<{ id: string; label: string } | null>(
+    null,
+  );
   const [guide, setGuide] = useState<RelayTarget | null>(null);
   const [guidePlatform, setGuidePlatform] =
     useState<EnvironmentPlatform>(platform);
@@ -77,6 +83,7 @@ export function EnvironmentPage({
   const [status, setStatus] = useState<string | null>(null);
   const installing =
     useIsMutating({ mutationKey: ["relaydesk", "tool-install"] }) > 0;
+  const fixing = useIsMutating({ mutationKey: ["relaydesk", "env-fix"] }) > 0;
   const queryOptions = {
     retry: false as const,
     staleTime: Infinity,
@@ -173,7 +180,7 @@ export function EnvironmentPage({
     if (platform !== "macos")
       return {
         ...base,
-        status: "unavailable",
+        status: "unsupported",
         detail: t("envDesktopUnsupported"),
       };
     return {
@@ -183,6 +190,8 @@ export function EnvironmentPage({
     };
   }
   const systemCheckIds = ["git", "python", "node", "writable"];
+  // 这几项缺失时后端可以给出自动安装方案；其余检查只提供指引。
+  const envFixableIds = new Set(["git", "python", "node"]);
   const connectionCheckIds = ["relay", "proxy"];
   const checkLabels: Record<string, string> = {
     git: "Git",
@@ -250,17 +259,20 @@ export function EnvironmentPage({
               ...(desktop
                 ? [
                     <EnvironmentCheckRow key={desktop.id} check={desktop}>
-                      {desktop.status === "warn" && found?.desktopUrl && (
-                        <Action
-                          onClick={() =>
-                            void relayApi
-                              .openDesktopDownload(app)
-                              .catch((e) => setStatus(relayErrorKey(e)))
-                          }
-                        >
-                          {t("downloadDesktop")}
-                        </Action>
-                      )}
+                      {found?.desktopUrl &&
+                        (desktop.status === "warn" ||
+                          (desktop.status === "unsupported" &&
+                            platform === "windows")) && (
+                          <Action
+                            onClick={() =>
+                              void relayApi
+                                .openDesktopDownload(app)
+                                .catch((e) => setStatus(relayErrorKey(e)))
+                            }
+                          >
+                            {t("downloadDesktop")}
+                          </Action>
+                        )}
                     </EnvironmentCheckRow>,
                   ]
                 : []),
@@ -314,9 +326,27 @@ export function EnvironmentPage({
       <section className="rd-setting-section">
         <h3>{t("envSystemBase")}</h3>
         <ul className="rd-env-list">
-          {systemCheckIds.map((id) => (
-            <EnvironmentCheckRow key={id} check={envRow(id)} />
-          ))}
+          {systemCheckIds.map((id) => {
+            const check = envRow(id);
+            const fixable =
+              envFixableIds.has(id) &&
+              (check.status === "warn" || check.status === "error");
+            return (
+              <EnvironmentCheckRow key={id} check={check}>
+                {fixable && (
+                  <Action
+                    disabled={fixing || busy}
+                    onClick={() => {
+                      if (!busy && !fixing)
+                        setEnvFix({ id, label: check.label });
+                    }}
+                  >
+                    {t("envFixInstall")}
+                  </Action>
+                )}
+              </EnvironmentCheckRow>
+            );
+          })}
         </ul>
       </section>
       <section className="rd-setting-section">
@@ -355,6 +385,11 @@ export function EnvironmentPage({
         app={install}
         onClose={() => setInstall(null)}
         onInstalled={recheck}
+      />
+      <EnvFixDialog
+        check={envFix}
+        onClose={() => setEnvFix(null)}
+        onDone={recheck}
       />
     </div>
   );

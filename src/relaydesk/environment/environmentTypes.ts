@@ -4,7 +4,8 @@ export type EnvironmentStatus =
   | "error"
   | "fixable"
   | "loading"
-  | "unavailable";
+  | "unavailable"
+  | "unsupported";
 export interface EnvironmentCheck {
   id: string;
   label: string;

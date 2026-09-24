@@ -636,7 +636,7 @@ describe("RelayDesk user flows", () => {
     mount();
     await screen.findByLabelText("邮箱或用户名");
     expect(
-      screen.getByRole("checkbox", { name: /记住登录/ }),
+      screen.getByRole("checkbox", { name: /记住密码/ }),
     ).not.toBeChecked();
     expect(
       screen.queryByRole("button", { name: "使用已保存信息登录" }),

@@ -161,6 +161,22 @@ pub async fn get_claude_code_config_path() -> Result<String, String> {
     Ok(get_claude_settings_path().to_string_lossy().to_string())
 }
 
+/// 就地覆盖/清除某个工具的配置目录（应用目标页直接调用）。
+/// path 为 null/空串时恢复自动检测（环境变量 > 默认目录）。
+#[tauri::command]
+pub async fn set_target_config_dir(app: String, path: Option<String>) -> Result<(), String> {
+    let app = AppType::from_str(&app).map_err(|e| e.to_string())?;
+    let value = path.map(|p| p.trim().to_string()).filter(|p| !p.is_empty());
+    let mut settings = settings::get_settings();
+    match app {
+        AppType::Claude => settings.claude_config_dir = value,
+        AppType::Codex => settings.codex_config_dir = value,
+        AppType::Gemini => settings.gemini_config_dir = value,
+        _ => return Err("该工具不支持自定义配置目录".to_string()),
+    }
+    settings::update_settings(settings).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub async fn get_config_dir(app: String) -> Result<String, String> {
     let dir = match AppType::from_str(&app).map_err(|e| e.to_string())? {

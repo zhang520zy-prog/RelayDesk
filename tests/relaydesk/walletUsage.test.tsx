@@ -525,9 +525,9 @@ describe("login entry points", () => {
       "https://www.shenlanqaq.com/forgot-password",
     );
     expect(
-      screen.getByRole("checkbox", { name: /记住登录信息/ }),
+      screen.getByRole("checkbox", { name: /记住密码/ }),
     ).not.toBeChecked();
-    await user.click(screen.getByRole("checkbox", { name: /记住登录信息/ }));
+    await user.click(screen.getByRole("checkbox", { name: /记住密码/ }));
     expect(
       screen.queryByText("仅本次登录，不保存密码，不访问钥匙串。"),
     ).not.toBeInTheDocument();

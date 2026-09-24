@@ -85,6 +85,134 @@ async fn timed_probe(id: &'static str, probe: fn() -> RelayEnvCheck) -> RelayEnv
     }
 }
 
+/// 环境项一键安装方案。supported 为 true 时 command 是会实际执行的命令；
+/// 为 false 时 renderer 只能引导用户打开 docs_url 手动安装。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelayEnvFixPlan {
+    id: String,
+    supported: bool,
+    command: Option<String>,
+    source: Option<String>,
+    docs_url: Option<String>,
+}
+
+impl RelayEnvFixPlan {
+    fn manual(id: &str) -> Self {
+        Self {
+            id: id.to_string(),
+            supported: false,
+            command: None,
+            source: None,
+            docs_url: Some(env_docs_url(id).to_string()),
+        }
+    }
+}
+
+/// 只允许系统基础里可自动安装的项；其余检查项一律拒绝，防止 renderer 任意指定。
+fn normalize_fix_id(check_id: &str) -> Result<&'static str, String> {
+    match check_id {
+        "git" => Ok("git"),
+        "python" => Ok("python"),
+        "node" => Ok("node"),
+        _ => Err("relay.env_fix_unsupported".to_string()),
+    }
+}
+
+fn env_docs_url(id: &str) -> &'static str {
+    match id {
+        "git" => "https://git-scm.com/downloads",
+        "python" => "https://www.python.org/downloads/",
+        _ => "https://nodejs.org/en/download",
+    }
+}
+
+/// 返回某环境项的自动安装方案；命令预览与实际执行必须一致。
+#[tauri::command]
+pub async fn relay_env_fix_plan(check_id: String) -> Result<RelayEnvFixPlan, String> {
+    let id = normalize_fix_id(&check_id)?;
+    tauri::async_runtime::spawn_blocking(move || env_fix_plan(id))
+        .await
+        .map_err(|e| format!("relay.env_fix_failed: {e}"))
+}
+
+/// 执行一键安装：复用工具生命周期静默执行器（真实登录 PATH、无窗口）。
+/// 安装命令完全由后端按平台生成，renderer 不提供命令文本。
+#[tauri::command]
+pub async fn relay_env_fix(check_id: String) -> Result<(), String> {
+    let id = normalize_fix_id(&check_id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let plan = env_fix_plan(id);
+        if !plan.supported {
+            return Err("relay.env_fix_unsupported".to_string());
+        }
+        let command = plan.command.ok_or("relay.env_fix_unsupported")?;
+        run_env_fix(&command)
+    })
+    .await
+    .map_err(|e| format!("relay.env_fix_failed: {e}"))?
+}
+
+#[cfg(target_os = "windows")]
+fn env_fix_plan(id: &'static str) -> RelayEnvFixPlan {
+    // winget 是 Win10 1709+ / Win11 的官方包管理器；缺失时只能给出手动安装页。
+    let package = match id {
+        "git" => "Git.Git",
+        "python" => "Python.Python.3.13",
+        _ => "OpenJS.NodeJS.LTS",
+    };
+    if !matches!(probe_version("winget", "--version"), Probe::Found(_)) {
+        return RelayEnvFixPlan::manual(id);
+    }
+    RelayEnvFixPlan {
+        id: id.to_string(),
+        supported: true,
+        command: Some(format!(
+            "winget install -e --id {package} --accept-source-agreements --accept-package-agreements --silent --disable-interactivity"
+        )),
+        source: Some(format!("winget · {package}")),
+        docs_url: Some(env_docs_url(id).to_string()),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn env_fix_plan(id: &'static str) -> RelayEnvFixPlan {
+    // Homebrew 是 macOS 上唯一可无人值守的常见途径；缺 brew 时回退到官方下载页。
+    let formula = match id {
+        "git" => "git",
+        "python" => "python3",
+        _ => "node",
+    };
+    if !matches!(probe_version("brew", "--version"), Probe::Found(_)) {
+        return RelayEnvFixPlan::manual(id);
+    }
+    RelayEnvFixPlan {
+        id: id.to_string(),
+        supported: true,
+        command: Some(format!("brew install {formula}")),
+        source: Some(format!("Homebrew · {formula}")),
+        docs_url: Some(env_docs_url(id).to_string()),
+    }
+}
+
+/// Linux 发行版包管理需要 sudo 交互；静默执行无法输入密码，统一走手动指引。
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+fn env_fix_plan(id: &'static str) -> RelayEnvFixPlan {
+    RelayEnvFixPlan::manual(id)
+}
+
+#[cfg(target_os = "windows")]
+fn run_env_fix(command: &str) -> Result<(), String> {
+    let script = format!("@echo off\r\n{command}\r\nif errorlevel 1 exit /b %errorlevel%");
+    super::run_tool_lifecycle_silently(&script, "env_fix")
+}
+
+#[cfg(not(target_os = "windows"))]
+fn run_env_fix(command: &str) -> Result<(), String> {
+    let script = format!("set -e\nset -o pipefail\n{command}");
+    super::run_tool_lifecycle_silently(&script, "env_fix")
+}
+
 enum Probe {
     Found(String),
     Missing,

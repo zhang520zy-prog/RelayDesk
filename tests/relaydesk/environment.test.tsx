@@ -29,7 +29,8 @@ beforeEach(async () => {
   await i18n.changeLanguage("en");
   vi.spyOn(relayApi, "getToolInstallPlan").mockImplementation(async (app) => ({
     app,
-    source: app === "claude" ? "Anthropic official installer · npm fallback" : "npm",
+    source:
+      app === "claude" ? "Anthropic official installer · npm fallback" : "npm",
     command:
       app === "claude"
         ? "official-installer || npm i -g @anthropic-ai/claude-code@latest"
@@ -44,7 +45,12 @@ beforeEach(async () => {
     { id: "node", status: "ok", detail: "node 22.11.0 / npm 10.9.0" },
     { id: "writable", status: "ok" },
     { id: "relay", status: "error", reason: "unreachable" },
-    { id: "proxy", status: "ok", detail: "http://127.0.0.1:7890", reason: "detected" },
+    {
+      id: "proxy",
+      status: "ok",
+      detail: "http://127.0.0.1:7890",
+      reason: "detected",
+    },
   ]);
   vi.spyOn(relayApi, "detectTargetInstallations").mockResolvedValue([
     {
@@ -63,6 +69,14 @@ beforeEach(async () => {
     },
     { app: "gemini" },
   ]);
+  vi.spyOn(relayApi, "envFixPlan").mockImplementation(async (checkId) => ({
+    id: checkId,
+    supported: true,
+    command: `brew install ${checkId}`,
+    source: `Homebrew · ${checkId}`,
+    docsUrl: "https://example.test/env",
+  }));
+  vi.spyOn(relayApi, "envFix").mockResolvedValue();
   vi.spyOn(settingsApi, "getToolVersions").mockResolvedValue([
     {
       name: "claude",
@@ -109,10 +123,14 @@ describe("environment health", () => {
     expect(await within(git).findByText("2.45.0")).toBeInTheDocument();
     expect(within(git).getByText("Healthy")).toBeInTheDocument();
     expect(
-      await screen.findByText("Python not detected (optional for some workflows)"),
+      await screen.findByText(
+        "Python not detected (optional for some workflows)",
+      ),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText("Cannot reach the relay station; check network or proxy"),
+      await screen.findByText(
+        "Cannot reach the relay station; check network or proxy",
+      ),
     ).toBeInTheDocument();
     expect(
       await screen.findByText("http://127.0.0.1:7890"),
@@ -185,9 +203,7 @@ describe("environment health", () => {
     );
   });
   it("opens the registry-provided desktop download page for a missing desktop app", async () => {
-    const open = vi
-      .spyOn(relayApi, "openDesktopDownload")
-      .mockResolvedValue();
+    const open = vi.spyOn(relayApi, "openDesktopDownload").mockResolvedValue();
     mount(<EnvironmentPage onBack={() => {}} platform="macos" />);
     const desktop = (
       await screen.findByText("ChatGPT (Codex) desktop")
@@ -197,19 +213,20 @@ describe("environment health", () => {
     );
     await waitFor(() => expect(open).toHaveBeenCalledWith("codex"));
   });
-  it("marks desktop detection as unsupported off macOS instead of guessing", async () => {
+  it("marks desktop detection as unsupported off macOS but still offers the download", async () => {
     mount(<EnvironmentPage onBack={() => {}} platform="windows" />);
     const desktop = (
       await screen.findByText("ChatGPT (Codex) desktop")
     ).closest("li")!;
     expect(
       within(desktop).getByText(
-        "Desktop detection is not supported on this platform",
+        "Automatic detection isn't available on this platform; download the desktop app to install it manually",
       ),
     ).toBeInTheDocument();
+    expect(within(desktop).getByText("Not supported")).toBeInTheDocument();
     expect(
-      within(desktop).queryByRole("button", { name: "Download desktop app" }),
-    ).not.toBeInTheDocument();
+      within(desktop).getByRole("button", { name: "Download desktop app" }),
+    ).toBeEnabled();
   });
   it.each([
     "ok",
@@ -218,6 +235,7 @@ describe("environment health", () => {
     "fixable",
     "loading",
     "unavailable",
+    "unsupported",
   ] as const)("renders %s with accessible status", (status) => {
     mount(
       <EnvironmentCheckRow
@@ -241,6 +259,44 @@ describe("environment health", () => {
     ).not.toBeInTheDocument();
     expect(canLaunchDesktop("linux-server")).toBe(false);
     expect(getRuntimePlatform("Linux x86_64")).toBe("linux-unknown");
+  });
+  it("offers one-click install for a missing system dependency", async () => {
+    mount(<EnvironmentPage onBack={() => {}} />);
+    const python = screen.getByText("Python").closest("li")!;
+    await userEvent.click(
+      await within(python).findByRole("button", { name: "Install" }),
+    );
+    expect(await screen.findByText("brew install python")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Confirm install" }),
+    );
+    await waitFor(() => expect(relayApi.envFix).toHaveBeenCalledWith("python"));
+  });
+  it("shows manual guidance instead of running anything when auto-install is unsupported", async () => {
+    vi.mocked(relayApi.envFixPlan).mockResolvedValue({
+      id: "python",
+      supported: false,
+      docsUrl: "https://example.test/env",
+    });
+    const open = vi.spyOn(settingsApi, "openExternal").mockResolvedValue();
+    mount(<EnvironmentPage onBack={() => {}} />);
+    const python = screen.getByText("Python").closest("li")!;
+    await userEvent.click(
+      await within(python).findByRole("button", { name: "Install" }),
+    );
+    await screen.findByText(
+      "Automatic install isn't supported on this system. Open the official page to install it manually.",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Confirm install" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Official installation guide" }),
+    );
+    await waitFor(() =>
+      expect(open).toHaveBeenCalledWith("https://example.test/env"),
+    );
+    expect(relayApi.envFix).not.toHaveBeenCalled();
   });
   it("exports existing redacted diagnostics and does not export on cancel", async () => {
     const save = vi
@@ -316,7 +372,11 @@ describe("explicit installation confirmation", () => {
   });
   it("shows the backend-selected Claude installer instead of an npm-only preview", async () => {
     mount(
-      <InstallToolDialog app="claude" onClose={() => {}} onInstalled={() => {}} />,
+      <InstallToolDialog
+        app="claude"
+        onClose={() => {}}
+        onInstalled={() => {}}
+      />,
     );
     expect(
       await screen.findByText(

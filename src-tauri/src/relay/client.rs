@@ -268,47 +268,76 @@ impl RelayClient {
         Err(AppError::Message("relay.usage_details_incomplete".into()))
     }
 
-    /// 用户可选分组：优先 `/api/pricing` 的 usable_group + group_ratio
-    ///（token 只能绑定 usable_group 内的分组）；回退 `/api/user/self/groups`
+    /// 用户可选分组：合并 `/api/user/self/groups`（网页端建 key 分组下拉的
+    /// 同源数据，token 绑定的权威范围）与 `/api/pricing` usable_group，
+    /// 任一端独有的分组都保留，避免应用端分组少于网页端。
     pub async fn groups(&self) -> Result<Vec<RelayGroup>, AppError> {
-        if let Ok(bundle) = self.pricing_bundle().await {
-            if !bundle.usable_group.is_empty() {
-                let mut groups: Vec<RelayGroup> = bundle
-                    .usable_group
-                    .iter()
-                    .map(|(name, desc)| RelayGroup {
-                        name: name.clone(),
-                        ratio: bundle.group_ratio.get(name).copied(),
-                        desc: if desc.is_empty() {
-                            None
-                        } else {
-                            Some(desc.clone())
+        let mut merged: HashMap<String, RelayGroup> = HashMap::new();
+
+        if let Ok(data) = self.get("/api/user/self/groups").await {
+            if let Some(map) = data.as_object() {
+                for (name, value) in map {
+                    // 兼容 {name: {ratio, desc}} 与 {name: 0.85} 两种形态
+                    let ratio = value
+                        .as_f64()
+                        .or_else(|| extract_f64(value, &["ratio", "group_ratio", "rate"]))
+                        .or_else(|| {
+                            value
+                                .get("ratio")
+                                .and_then(|v| v.as_str())
+                                .and_then(|s| s.parse::<f64>().ok())
+                        });
+                    let desc = extract_str(value, &["desc", "description"]);
+                    merged.insert(
+                        name.clone(),
+                        RelayGroup {
+                            name: name.clone(),
+                            ratio,
+                            desc,
                         },
-                    })
-                    .collect();
-                groups.sort_by(|a, b| a.name.cmp(&b.name));
-                return Ok(groups);
+                    );
+                }
             }
         }
 
-        let data = self.get("/api/user/self/groups").await?;
-        let mut groups = Vec::new();
-        if let Some(map) = data.as_object() {
-            for (name, value) in map {
-                // 兼容 {name: {ratio, desc}} 与 {name: 0.85} 两种形态
-                let ratio = value
-                    .as_f64()
-                    .or_else(|| extract_f64(value, &["ratio", "group_ratio", "rate"]));
-                let desc = extract_str(value, &["desc", "description", "name"]);
-                groups.push(RelayGroup {
+        if let Ok(bundle) = self.pricing_bundle().await {
+            for (name, desc) in &bundle.usable_group {
+                let entry = merged.entry(name.clone()).or_insert_with(|| RelayGroup {
                     name: name.clone(),
-                    ratio,
-                    desc,
+                    ratio: None,
+                    desc: None,
                 });
+                if entry.ratio.is_none() {
+                    entry.ratio = bundle.group_ratio.get(name).copied();
+                }
+                if entry.desc.is_none() && !desc.is_empty() {
+                    entry.desc = Some(desc.clone());
+                }
             }
         }
+
+        if merged.is_empty() {
+            return Err(AppError::Message("relay.sync_failed".to_string()));
+        }
+        let mut groups: Vec<RelayGroup> = merged.into_values().collect();
         groups.sort_by(|a, b| a.name.cmp(&b.name));
         Ok(groups)
+    }
+
+    /// 用户可选分组名集合：self/groups ∪ pricing usable_group。
+    /// self/groups 失败时退回 usable_group（匿名/异常场景仍有过滤基准）。
+    async fn usable_group_names(
+        &self,
+        bundle: &PricingBundle,
+    ) -> std::collections::HashSet<String> {
+        let mut names: std::collections::HashSet<String> =
+            bundle.usable_group.keys().cloned().collect();
+        if let Ok(data) = self.get("/api/user/self/groups").await {
+            if let Some(map) = data.as_object() {
+                names.extend(map.keys().cloned());
+            }
+        }
+        names
     }
 
     /// 分组 → 模型。模型→分组的绑定以 `/api/pricing` 每项的
@@ -316,10 +345,11 @@ impl RelayClient {
     /// 只保留用户可选分组（usable_group 为空时不过滤）。
     pub async fn models_by_group(&self) -> Result<HashMap<String, Vec<RelayModelInfo>>, AppError> {
         let bundle = self.pricing_bundle().await?;
+        let usable = self.usable_group_names(&bundle).await;
         let mut out: HashMap<String, Vec<RelayModelInfo>> = HashMap::new();
         for (info, enable_groups) in &bundle.items {
             for g in enable_groups {
-                if !bundle.usable_group.is_empty() && !bundle.usable_group.contains_key(g) {
+                if !usable.is_empty() && !usable.contains(g) {
                     continue;
                 }
                 let mut m = info.clone();
@@ -328,7 +358,7 @@ impl RelayClient {
             }
         }
         // 可用分组无模型时也保留条目，便于前端展示空分组
-        for g in bundle.usable_group.keys() {
+        for g in &usable {
             out.entry(g.clone()).or_default();
         }
         for models in out.values_mut() {

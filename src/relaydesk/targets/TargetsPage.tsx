@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ArrowUpRight, Check, Terminal, Info } from "lucide-react";
+import { ArrowUpRight, Check, FolderSearch, Terminal, Info, Undo2 } from "lucide-react";
+import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { settingsApi } from "@/lib/api/settings";
 import {
@@ -28,12 +29,37 @@ function TargetCard({
   change: (apps: RelayApplyApps) => void;
 }) {
   const { t } = useTranslation("relaydesk");
+  const queryClient = useQueryClient();
   const path = useQuery({
     queryKey: ["relaydesk", "targetPath", app],
     queryFn: () => settingsApi.getConfigDir(app),
     staleTime: Infinity,
     retry: false,
   });
+  const refreshPath = () =>
+    queryClient.invalidateQueries({
+      queryKey: ["relaydesk", "targetPath", app],
+    });
+  const browsePath = async () => {
+    try {
+      const picked = await settingsApi.selectConfigDirectory(path.data);
+      if (!picked) return;
+      await settingsApi.setTargetConfigDir(app, picked);
+      await refreshPath();
+      toast.success(t("pathUpdated"));
+    } catch {
+      toast.error(t("pathUpdateFailed"));
+    }
+  };
+  const resetPath = async () => {
+    try {
+      await settingsApi.setTargetConfigDir(app, undefined);
+      await refreshPath();
+      toast.success(t("pathUpdated"));
+    } catch {
+      toast.error(t("pathUpdateFailed"));
+    }
+  };
   const result = report?.results.find((r) => r.app === app);
   return (
     <section className={`rd-target-card ${apps[app] ? "is-enabled" : ""}`}>
@@ -62,6 +88,24 @@ function TargetCard({
         <code title={path.data}>
           {path.data ?? (path.isPending ? "…" : t("pathUnavailable"))}
         </code>
+        <button
+          type="button"
+          className="rd-path-action"
+          title={t("browsePath")}
+          aria-label={t("browsePath")}
+          onClick={browsePath}
+        >
+          <FolderSearch size={14} />
+        </button>
+        <button
+          type="button"
+          className="rd-path-action"
+          title={t("resetPath")}
+          aria-label={t("resetPath")}
+          onClick={resetPath}
+        >
+          <Undo2 size={14} />
+        </button>
       </div>
       <div className="rd-target-card-bottom">
         <span className={result?.ok ? "rd-success-text" : "rd-muted"}>

@@ -274,7 +274,6 @@ export function LoginPage({
                     onChange={(event) => setRemember(event.target.checked)}
                   />
                   <span>{t("rememberLogin")}</span>
-                  <small>{t("rememberLoginHint")}</small>
                 </label>
                 <div className="rd-login-options">
                   <div className="rd-login-links">

@@ -210,7 +210,7 @@ pub async fn run_tool_lifecycle_action(
 /// 后者仍保留给 provider 切换等需要交互式终端的场景）。
 /// 失败时回传 stderr/stdout 末尾若干行，供前端 toast 提示。
 #[cfg(not(target_os = "windows"))]
-fn run_tool_lifecycle_silently(command_line: &str, _label: &str) -> Result<(), String> {
+pub(crate) fn run_tool_lifecycle_silently(command_line: &str, _label: &str) -> Result<(), String> {
     use std::process::Command;
     // command_line 是 bash 风格脚本（含 `set -e` 与多行命令）；强制用 bash 执行，
     // 避免用户默认 shell 为 fish/zsh 时 `set -e` 等语义不一致。
@@ -230,7 +230,7 @@ fn run_tool_lifecycle_silently(command_line: &str, _label: &str) -> Result<(), S
 /// Windows 静默执行：command_line 是 .bat 内容（@echo off + call/wsl 行，CRLF 分隔），
 /// 写临时 .bat 后用 `cmd /C` 执行，`CREATE_NO_WINDOW` 抑制 console 窗口。
 #[cfg(target_os = "windows")]
-fn run_tool_lifecycle_silently(command_line: &str, label: &str) -> Result<(), String> {
+pub(crate) fn run_tool_lifecycle_silently(command_line: &str, label: &str) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     use std::process::Command;
 

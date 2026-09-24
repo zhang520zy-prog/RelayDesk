@@ -123,6 +123,14 @@ export interface RelayEnvCheck {
   reason?: string;
 }
 
+export interface RelayEnvFixPlan {
+  id: string;
+  supported: boolean;
+  command?: string;
+  source?: string;
+  docsUrl?: string;
+}
+
 export interface RelayToken {
   id: number;
   name: string;
@@ -477,6 +485,14 @@ export const relayApi = {
 
   async envCheck(): Promise<RelayEnvCheck[]> {
     return await invoke("relay_env_check");
+  },
+
+  async envFixPlan(checkId: string): Promise<RelayEnvFixPlan> {
+    return await invoke("relay_env_fix_plan", { checkId });
+  },
+
+  async envFix(checkId: string): Promise<void> {
+    await invoke("relay_env_fix", { checkId });
   },
 
   async checkUpdate(): Promise<RelayUpdateCheck> {

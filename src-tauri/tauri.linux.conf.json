@@ -5,8 +5,6 @@
       {
         "label": "main",
         "title": "RelayDesk",
-        "titleBarStyle": "Visible",
-        "scrollBarStyle": "fluentOverlay",
         "width": 1120,
         "height": 740,
         "minWidth": 900,

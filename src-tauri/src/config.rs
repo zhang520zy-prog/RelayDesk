@@ -33,10 +33,26 @@ pub fn get_home_dir() -> PathBuf {
     })
 }
 
+/// 工具官方支持的环境变量配置目录（如 `CODEX_HOME`）。
+/// `RELAYDESK_TEST_HOME` 标记测试隔离环境时忽略真实环境变量。
+pub(crate) fn env_override_dir(var: &str) -> Option<PathBuf> {
+    if std::env::var_os("RELAYDESK_TEST_HOME").is_some() {
+        return None;
+    }
+    std::env::var(var)
+        .ok()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from)
+}
+
 /// 获取 Claude Code 配置目录路径
 pub fn get_claude_config_dir() -> PathBuf {
     if let Some(custom) = crate::settings::get_claude_override_dir() {
         return custom;
+    }
+    if let Some(env_dir) = env_override_dir("CLAUDE_CONFIG_DIR") {
+        return env_dir;
     }
 
     get_home_dir().join(".claude")
@@ -501,6 +517,38 @@ fn atomic_write_with_unix_mode(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[serial_test::serial]
+    fn env_override_dir_honors_var_and_skips_under_test_home() {
+        std::env::set_var("CODEX_HOME", "/tmp/codex-env-home");
+        std::env::remove_var("RELAYDESK_TEST_HOME");
+        assert_eq!(
+            env_override_dir("CODEX_HOME"),
+            Some(PathBuf::from("/tmp/codex-env-home"))
+        );
+
+        // 测试隔离环境下必须忽略真实环境变量
+        std::env::set_var("RELAYDESK_TEST_HOME", "/tmp/test-home");
+        assert!(env_override_dir("CODEX_HOME").is_none());
+
+        std::env::remove_var("RELAYDESK_TEST_HOME");
+        std::env::remove_var("CODEX_HOME");
+        assert!(env_override_dir("CODEX_HOME").is_none());
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn codex_dir_uses_codex_home_env_when_no_override() {
+        std::env::set_var("CODEX_HOME", "/tmp/codex-env-home");
+        std::env::remove_var("RELAYDESK_TEST_HOME");
+        // 若本机 settings 里恰好配置了覆盖，此断言改为接受覆盖优先
+        let dir = crate::codex_config::get_codex_config_dir();
+        if crate::settings::get_codex_override_dir().is_none() {
+            assert_eq!(dir, PathBuf::from("/tmp/codex-env-home"));
+        }
+        std::env::remove_var("CODEX_HOME");
+    }
 
     fn assert_atomic_write_replaces_existing_file(dir: &Path) {
         let path = dir.join("atomic-write-contract.json");
