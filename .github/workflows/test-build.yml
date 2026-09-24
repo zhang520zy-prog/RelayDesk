@@ -1,11 +1,11 @@
 name: Desktop Test Build
 
-# 临时体验包构建：手动触发，一次产出三个平台的未签名安装包 artifact。
-# - Windows: NSIS .exe
-# - macOS: .dmg（Apple Silicon；Intel Mac 需改用 macos-13 runner）
-# - Linux: .deb + .AppImage
-# 不发布 GitHub Release、不要求签名密钥；更新端点未配置时应用会
-# 在设置页诚实显示"更新服务未配置"。
+# 体验包构建 + 滚动 Release：手动触发，产出三平台安装包与签名更新器产物，
+# 发布到 test-build release 并生成 latest.json 供应用内热更新。
+# - Windows: NSIS .exe + .nsis.zip/.sig
+# - macOS: .dmg（Apple Silicon）+ .app.tar.gz/.sig
+# - Linux: .deb + .AppImage + .AppImage.tar.gz/.sig
+# 需要 Secret: TAURI_SIGNING_PRIVATE_KEY（密钥为空密码加密格式）。
 
 on:
   workflow_dispatch:
@@ -14,7 +14,17 @@ permissions:
   contents: read
 
 jobs:
+  # 30 秒内 fail-fast：配置 schema / npm↔crate 版本对齐 / 版本号一致性 /
+  # toolchain 钉版 / 更新器配置 / NSIS 钩子 —— 历次炸点全在这里先拦一遍。
+  preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Pre-flight checks
+        run: bash scripts/pre-flight.sh --ci
+
   build:
+    needs: preflight
     strategy:
       fail-fast: false
       matrix:
