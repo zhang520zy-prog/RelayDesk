@@ -66,7 +66,10 @@ pub enum SyncMethod {
 #[serde(rename_all = "snake_case")]
 pub enum SkillStorageLocation {
     /// RelayDesk 管理目录 (~/.relaydesk/skills/)
+    /// `cc_switch` 为上游旧版写入的取值，作为别名保留向后兼容，
+    /// 否则旧 settings.json 会整体反序列化失败被丢弃。
     #[default]
+    #[serde(alias = "cc_switch")]
     RelayDesk,
     /// Agent Skills 统一标准目录 (~/.agents/skills/)
     Unified,
