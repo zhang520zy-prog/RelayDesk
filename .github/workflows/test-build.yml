@@ -1,0 +1,195 @@
+name: Desktop Test Build
+
+# 体验包构建 + 滚动 Release：手动触发，产出三平台安装包与签名更新器产物，
+# 发布到 test-build release 并生成 latest.json 供应用内热更新。
+# - Windows: NSIS .exe + .nsis.zip/.sig
+# - macOS: .dmg（Apple Silicon）+ .app.tar.gz/.sig
+# - Linux: .deb + .AppImage + .AppImage.tar.gz/.sig
+# 需要 Secret: TAURI_SIGNING_PRIVATE_KEY（密钥为空密码加密格式）。
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # 30 秒内 fail-fast：配置 schema / npm↔crate 版本对齐 / 版本号一致性 /
+  # toolchain 钉版 / 更新器配置 / NSIS 钩子 —— 历次炸点全在这里先拦一遍。
+  preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Pre-flight checks
+        run: bash scripts/pre-flight.sh --ci
+
+  build:
+    needs: preflight
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            bundles: nsis
+            artifact: relaydesk-windows-nsis
+            artifact-path: |
+              src-tauri/target/release/bundle/nsis/*.exe
+              src-tauri/target/release/bundle/nsis/*.nsis.zip
+              src-tauri/target/release/bundle/nsis/*.nsis.zip.sig
+          - os: macos-latest
+            # app target 是 macOS 更新器产物（.app.tar.gz）的来源；dmg 仍用于分发。
+            bundles: dmg,app
+            artifact: relaydesk-macos-dmg-arm64
+            artifact-path: |
+              src-tauri/target/release/bundle/dmg/*.dmg
+              src-tauri/target/release/bundle/macos/*.app.tar.gz
+              src-tauri/target/release/bundle/macos/*.app.tar.gz.sig
+          - os: ubuntu-24.04
+            bundles: deb,appimage
+            artifact: relaydesk-linux-deb-appimage
+            artifact-path: |
+              src-tauri/target/release/bundle/deb/*.deb
+              src-tauri/target/release/bundle/appimage/*.AppImage
+              src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz
+              src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz.sig
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Linux system deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxdo-dev \
+            libssl-dev \
+            libgtk-3-dev
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Setup Rust
+        # 与仓库 rust-toolchain.toml 保持一致：1.95+ 移除了 proc-macro-hack，
+        # 旧版 phf_macros/cssparser 链在新编译器上无法构建。
+        uses: dtolnay/rust-toolchain@1.90.0
+
+      - name: Setup pnpm
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+        run: |
+          corepack enable
+          corepack install
+          node --version
+          pnpm --version
+
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Build installer (${{ matrix.os }}, unsigned)
+        env:
+          # 更新器签名密钥（仓库 Secret；本地仓库不含私钥）
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          # 密钥为"空密码加密"格式（signer generate --ci 产物），需显式置空
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          # 编译期注入更新端点：未设置时应用诚实显示"更新服务未配置"
+          RELAYDESK_UPDATE_ENDPOINT: https://github.com/zhang520zy-prog/RelayDesk/releases/download/test-build/latest.json
+        run: pnpm tauri build --bundles ${{ matrix.bundles }}
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact-path }}
+          if-no-files-found: error
+
+  # 汇总成功的平台产物，发布为滚动 pre-release，供公开下载（无需登录）。
+  release:
+    needs: build
+    if: always()
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download platform artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: relaydesk-*
+          merge-multiple: true
+          path: dist
+
+      # 由 *.sig 更新器产物拼装 latest.json（Tauri updater 清单）
+      - name: Generate updater manifest (latest.json)
+        run: |
+          python3 - <<'PY'
+          import glob, json, os, re, sys, datetime
+          base = "https://github.com/zhang520zy-prog/RelayDesk/releases/download/test-build"
+          platforms = {}
+          for sig in glob.glob("dist/**/*.sig", recursive=True):
+              asset = sig[:-4]  # strip .sig
+              name = os.path.basename(asset)
+              with open(sig) as f:
+                  signature = f.read().strip()
+              if name.endswith(".nsis.zip"):
+                  key = "windows-x86_64"
+              elif name.endswith(".app.tar.gz"):
+                  key = "darwin-aarch64"
+              elif name.endswith(".AppImage.tar.gz"):
+                  key = "linux-x86_64"
+              else:
+                  continue
+              platforms[key] = {
+                  "signature": signature,
+                  "url": f"{base}/{name}",
+              }
+          # 版本号可能不在 macOS 产物名里，从全部产物文件名中提取
+          version = ""
+          for f in glob.glob("dist/**/*", recursive=True):
+              m = re.search(r"_(\d+\.\d+\.\d+)", os.path.basename(f))
+              if m:
+                  version = "v" + m.group(1)
+                  break
+          if not platforms:
+              sys.exit("no updater artifacts found (*.sig missing)")
+          if not version:
+              sys.exit("could not determine version from artifact names")
+          manifest = {
+              "version": version,
+              "notes": "RelayDesk test build",
+              "pub_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              "platforms": platforms,
+          }
+          with open("dist/latest.json", "w") as f:
+              json.dump(manifest, f, indent=2)
+          print(json.dumps(manifest, indent=2))
+          PY
+
+      - name: Publish rolling test release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: test-build
+          name: RelayDesk Test Build
+          prerelease: true
+          files: |
+            dist/**/*.exe
+            dist/**/*.dmg
+            dist/**/*.deb
+            dist/**/*.AppImage
+            dist/**/*.nsis.zip
+            dist/**/*.app.tar.gz
+            dist/**/*.AppImage.tar.gz
+            dist/**/*.sig
+            dist/latest.json
+          body: |
+            未签名测试包。Windows 点"仍要运行"；macOS 需
+            `xattr -dr com.apple.quarantine /Applications/RelayDesk.app`
+            或右键打开；Linux 用 `.deb` 或 `.AppImage`（需 libfuse2）。
+            已启用应用内自动更新：安装后设置页可检查更新。

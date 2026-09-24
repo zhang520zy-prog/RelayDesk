@@ -1,0 +1,166 @@
+:root {
+  /* Brand primitives and consistent desktop dimensions. */
+  --rd-teal-50: #f0faf7;
+  --rd-teal-100: #ddf3ec;
+  --rd-teal-200: #b8e5d9;
+  --rd-teal-300: #82d2bd;
+  --rd-teal-400: #53bea5;
+  --rd-teal-500: #138b78;
+  --rd-teal-600: #107866;
+  --rd-teal-700: #126555;
+  --rd-teal-800: #184c42;
+  --rd-teal-900: #173a33;
+  --rd-teal-950: #102a25;
+  --rd-font-ui:
+    "RelayDesk Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+  --rd-font-code: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --rd-font-caption: 12px;
+  --rd-font-control: 13px;
+  --rd-font-body: 14px;
+  --rd-font-section: 16px;
+  --rd-font-title: 24px;
+  --rd-font-stat: 32px;
+  --rd-weight-regular: 400;
+  --rd-weight-medium: 500;
+  --rd-weight-strong: 600;
+  --rd-space-1: 4px;
+  --rd-space-2: 8px;
+  --rd-space-3: 12px;
+  --rd-space-4: 16px;
+  --rd-space-5: 20px;
+  --rd-space-6: 24px;
+  --rd-space-8: 32px;
+  --rd-control-height: 40px;
+  --rd-action-height: 44px;
+  --rd-control-radius: 10px;
+  --rd-page-max: 1180px;
+  --rd-motion-panel: 220ms;
+
+  --background: 150 22% 97%;
+  --foreground: 152 25% 17%;
+  --card: 0 0% 100%;
+  --card-foreground: 152 25% 17%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 152 25% 17%;
+  --primary: 168 70% 23%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 202 21% 93%;
+  --secondary-foreground: 204 30% 20%;
+  --muted: 202 21% 94%;
+  --muted-foreground: 158 13% 37%;
+  --accent: 172 28% 92%;
+  --accent-foreground: 172 65% 25%;
+  --destructive: 0 70% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 203 18% 86%;
+  --input: 203 18% 84%;
+  --ring: 168 70% 27%;
+  --radius: 0.75rem;
+  --rd-action: var(--rd-teal-700);
+  --rd-action-hover: var(--rd-teal-800);
+  --rd-on-action: #ffffff;
+  --rd-control-line: #80978c;
+  --rd-focus: var(--rd-teal-600);
+  --rd-panel-radius: 18px;
+  --rd-motion-fast: 140ms;
+  --rd-bg: #f4f8f7;
+  --rd-sidebar: #edf5f2;
+  --rd-surface: #ffffff;
+  --rd-raised: #f2f7f5;
+  --rd-hover: #e8f2ee;
+  --rd-text: #213730;
+  --rd-muted: #536b62;
+  --rd-line: #d5e3dc;
+  --rd-teal: var(--rd-teal-700);
+  --rd-brand: var(--rd-teal-500);
+  --rd-soft: var(--rd-teal-100);
+  --rd-success: #16704e;
+  --rd-warning: #8b571b;
+  --rd-danger: #ba3449;
+  --rd-chart-lightness: 36%;
+  --rd-chart-1: #2463ce;
+  --rd-chart-2: #bd560d;
+  --rd-chart-3: #8450bc;
+  --rd-chart-4: #087b64;
+  --rd-chart-5: #bb3979;
+  --rd-chart-6: #677816;
+  --rd-chart-7: #0c7999;
+  --rd-chart-8: #be4141;
+  --rd-canvas: linear-gradient(
+    135deg,
+    var(--rd-teal-50),
+    var(--rd-bg) 52%,
+    var(--rd-teal-100)
+  );
+  --rd-gradient: linear-gradient(
+    120deg,
+    var(--rd-teal-100),
+    var(--rd-teal-50) 75%
+  );
+  --rd-glass: rgb(255 255 255 / 82%);
+  --rd-glass-line: rgb(255 255 255 / 94%);
+  --rd-sidebar-glass: rgb(238 246 242 / 90%);
+  --rd-shadow-sm: 0 2px 5px rgb(25 62 47 / 4%);
+  --rd-shadow-md: 0 8px 28px rgb(25 62 47 / 6%);
+  --rd-shadow-lg: 0 24px 64px rgb(12 42 31 / 16%);
+  --rd-inset-highlight: inset 0 1px 0 var(--rd-glass-line);
+  --rd-pressed-shadow: inset 0 2px 4px rgb(0 0 0 / 12%);
+  color-scheme: light;
+}
+:root.dark {
+  --background: 155 26% 8%;
+  --foreground: 144 24% 91%;
+  --card: 155 26% 13%;
+  --card-foreground: 144 24% 91%;
+  --popover: 155 26% 13%;
+  --popover-foreground: 144 24% 91%;
+  --primary: 161 52% 67%;
+  --primary-foreground: 162 45% 11%;
+  --secondary: 153 24% 16%;
+  --secondary-foreground: 144 24% 91%;
+  --muted: 153 24% 16%;
+  --muted-foreground: 147 14% 68%;
+  --accent: 155 36% 15%;
+  --accent-foreground: 161 52% 67%;
+  --destructive: 352 77% 76%;
+  --border: 150 20% 25%;
+  --input: 150 13% 46%;
+  --rd-action: #80d7bb;
+  --rd-action-hover: #a8e6d0;
+  --rd-on-action: #102a23;
+  --rd-control-line: #698475;
+  --rd-focus: #a8e6d0;
+  --rd-bg: #101b18;
+  --rd-sidebar: #14221d;
+  --rd-surface: #192a23;
+  --rd-raised: #20342b;
+  --rd-hover: #2a4035;
+  --rd-text: #e4eee8;
+  --rd-muted: #a3b9ad;
+  --rd-line: #334d40;
+  --rd-teal: #80d7bb;
+  --rd-soft: var(--rd-teal-950);
+  --rd-success: #81d3a6;
+  --rd-warning: #efbb72;
+  --rd-danger: #f194a0;
+  --rd-chart-lightness: 68%;
+  --rd-chart-1: #80adff;
+  --rd-chart-2: #f4af62;
+  --rd-chart-3: #c4a0f2;
+  --rd-chart-4: #64d2af;
+  --rd-chart-5: #f48fbd;
+  --rd-chart-6: #ccda70;
+  --rd-chart-7: #66cce9;
+  --rd-chart-8: #f98b86;
+  --rd-canvas: linear-gradient(135deg, #10211b, var(--rd-bg) 52%, #17342a);
+  --rd-gradient: linear-gradient(120deg, #224c3e, #192f26 80%);
+  --rd-glass: rgb(25 42 35 / 86%);
+  --rd-glass-line: rgb(196 242 215 / 9%);
+  --rd-sidebar-glass: rgb(20 34 29 / 92%);
+  --rd-shadow-sm: 0 2px 5px rgb(0 0 0 / 12%);
+  --rd-shadow-md: 0 8px 28px rgb(0 0 0 / 14%);
+  --rd-shadow-lg: 0 24px 64px rgb(0 0 0 / 36%);
+  --ring: 160 55% 78%;
+  color-scheme: dark;
+}

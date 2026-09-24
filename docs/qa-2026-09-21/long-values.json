@@ -1,0 +1,90 @@
+{
+  "qa": true,
+  "page": "模型中心",
+  "languageChoice": "zh",
+  "themeChoice": "light",
+  "width": 900,
+  "height": 600,
+  "theme": "light",
+  "collapsed": false,
+  "fontLoaded": true,
+  "overflow": false,
+  "main": {
+    "class": "rd-content",
+    "width": 680,
+    "height": 470,
+    "x": 220,
+    "y": 130,
+    "client": 680,
+    "scroll": 680,
+    "font": "14px",
+    "fontFamily": "\"RelayDesk Inter\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "overflow": false
+  },
+  "sidebar": {
+    "class": "rd-sidebar ",
+    "width": 220,
+    "height": 566,
+    "x": 0,
+    "y": 34,
+    "client": 219,
+    "scroll": 219,
+    "font": "14px",
+    "fontFamily": "\"RelayDesk Inter\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "overflow": false,
+    "verticalOverflow": true
+  },
+  "dialogs": [],
+  "layout": [
+    {
+      "class": "rd-metric rd-balance",
+      "width": 314,
+      "height": 176,
+      "x": 240,
+      "y": 150,
+      "client": 312,
+      "scroll": 312,
+      "font": "14px",
+      "fontFamily": "\"RelayDesk Inter\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "overflow": false
+    },
+    {
+      "class": "rd-metric ",
+      "width": 314,
+      "height": 176,
+      "x": 566,
+      "y": 150,
+      "client": 312,
+      "scroll": 312,
+      "font": "14px",
+      "fontFamily": "\"RelayDesk Inter\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "overflow": false
+    },
+    {
+      "class": "rd-metric ",
+      "width": 314,
+      "height": 98,
+      "x": 240,
+      "y": 338,
+      "client": 312,
+      "scroll": 312,
+      "font": "14px",
+      "fontFamily": "\"RelayDesk Inter\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "overflow": false
+    },
+    {
+      "class": "rd-metric ",
+      "width": 314,
+      "height": 98,
+      "x": 566,
+      "y": 338,
+      "client": 312,
+      "scroll": 312,
+      "font": "14px",
+      "fontFamily": "\"RelayDesk Inter\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "overflow": false
+    }
+  ],
+  "colors": [],
+  "calls": []
+}

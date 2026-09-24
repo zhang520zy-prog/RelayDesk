@@ -1,0 +1,211 @@
+.rd-restart-entry {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.rd-restart-badge {
+  color: var(--rd-muted);
+  border-left: 1px solid var(--rd-line);
+  padding-left: 7px;
+  font-size: var(--rd-font-caption);
+}
+.rd-restart-target-summary {
+  align-items: center;
+  color: var(--rd-muted);
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: var(--rd-font-caption);
+  line-height: 1.3;
+  max-width: 260px;
+}
+.rd-restart-target-summary-label {
+  white-space: nowrap;
+}
+.rd-restart-target-chip {
+  background: var(--rd-raised);
+  border: 1px solid var(--rd-line);
+  border-radius: 999px;
+  color: var(--rd-text);
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.rd-restart-entry .rd-restart-reserved:disabled {
+  opacity: 0.75;
+}
+.rd-page-header > div:first-child {
+  min-width: 0;
+}
+.rd-header-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.rd-header-actions .rd-restart-target-summary {
+  flex-basis: 100%;
+  justify-content: flex-end;
+  order: 3;
+}
+.rd-dialog.rd-restart-dialog {
+  overflow: hidden;
+  gap: 12px;
+  max-width: 580px;
+}
+.rd-restart-dialog > h2,
+.rd-restart-description,
+.rd-restart-footer {
+  flex-shrink: 0;
+}
+.rd-restart-description {
+  font-size: var(--rd-font-caption);
+  line-height: 1.6;
+}
+.rd-restart-body {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 3px;
+}
+.rd-restart-body p {
+  margin: 0;
+}
+.rd-restart-targets {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rd-restart-target {
+  align-items: center;
+  background: var(--rd-raised);
+  border: 1px solid var(--rd-line);
+  border-radius: 10px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+.rd-restart-target-state {
+  color: var(--rd-muted);
+  display: block;
+  font-size: var(--rd-font-caption);
+  margin-top: 2px;
+}
+.rd-restart-subtitle {
+  font-size: var(--rd-font-control);
+  margin: 0;
+}
+.rd-restart-manual-section {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--rd-line);
+  padding-top: 12px;
+}
+.rd-restart-hint,
+.rd-restart-steps {
+  color: var(--rd-muted);
+  font-size: var(--rd-font-caption);
+  line-height: 1.7;
+}
+.rd-restart-steps {
+  list-style: decimal;
+  margin: 0;
+  padding-left: 22px;
+}
+.rd-restart-steps li + li {
+  margin-top: 6px;
+}
+.rd-restart-progress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  color: var(--rd-muted);
+  font-size: var(--rd-font-caption);
+}
+.rd-restart-progress li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rd-restart-progress li.is-active {
+  color: var(--rd-text);
+}
+.rd-restart-footer {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rd-line);
+}
+.rd-restart-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 1100px) {
+  .rd-header-actions .rd-button {
+    font-size: var(--rd-font-caption);
+    padding-inline: 10px;
+  }
+  .rd-page-header:has(.rd-restart-entry) > div:first-child p {
+    display: none;
+  }
+  .rd-page-header:has(.rd-restart-entry) h1 {
+    font-size: 20px;
+  }
+  .rd-restart-target-summary {
+    max-width: 190px;
+  }
+}
+
+/* Keep disabled explanations reachable; native disabled still blocks actions. */
+.rd-restart-entry .rd-button:disabled {
+  pointer-events: auto;
+  cursor: not-allowed;
+}
+.rd-restart-body {
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.rd-restart-body::-webkit-scrollbar {
+  width: 5px;
+}
+.rd-restart-body::-webkit-scrollbar-thumb {
+  background: var(--rd-line);
+  border-radius: 4px;
+}
+.rd-restart-target > div {
+  min-width: 0;
+}
+.rd-restart-target .rd-button,
+.rd-restart-footer .rd-button {
+  white-space: normal;
+  height: auto;
+  min-height: 36px;
+}
+.rd-restart-target .rd-button {
+  max-width: 55%;
+  flex-shrink: 0;
+}
+.rd-restart-footer:has(> .rd-button + .rd-button) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.rd-restart-footer-actions {
+  grid-column: 1 / -1;
+}
+.rd-restart-progress li.is-active {
+  font-weight: var(--rd-weight-strong);
+}
+
+@media (max-width: 1100px) {
+  .rd-restart-badge {
+    max-width: 110px;
+    white-space: normal;
+    text-align: left;
+    line-height: 1.3;
+  }
+}
