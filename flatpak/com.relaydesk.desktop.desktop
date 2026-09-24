@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=RelayDesk
+Comment=All-in-One Assistant for Claude Code, Codex & Gemini CLI
+Exec=relaydesk
+Icon=com.relaydesk.desktop
+Terminal=false
+Categories=Utility;Development;
+StartupNotify=true

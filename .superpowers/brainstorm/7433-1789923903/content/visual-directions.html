@@ -1,0 +1,63 @@
+<style>
+  :root{--ink:#17323b;--muted:#637781;--line:#dbe7e8;--teal:#138b78;--teal-2:#a9e4d7;--wash:#eef8f5;--card:#fff;--glass:rgba(255,255,255,.72)}
+  .visual-intro{max-width:980px;margin:0 auto 20px}
+  .visual-intro p{max-width:760px}
+  .direction-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;max-width:1200px;margin:0 auto}
+  .direction{cursor:pointer;border:1px solid var(--line);border-radius:18px;background:var(--card);padding:14px;transition:transform .16s,border-color .16s,box-shadow .16s}
+  .direction:hover{transform:translateY(-2px);border-color:var(--teal);box-shadow:0 12px 30px rgba(24,102,91,.12)}
+  .direction h3{margin:12px 2px 4px;font-size:15px;color:var(--ink)}
+  .direction p{margin:0 2px;color:var(--muted);font-size:12px;line-height:1.55}
+  .tag{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 9px;background:var(--wash);color:var(--teal);font-size:11px;font-weight:650}
+  .tag i{width:7px;height:7px;border-radius:50%;background:var(--teal)}
+  .mini{height:250px;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:#f6fbfb;position:relative}
+  .mini.dark{background:#15242a;border-color:#28414a;color:#e5f1ef}
+  .mini-top{height:21px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,#f5fffd,#e5f5f1);font-size:8px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+  .dark .mini-top{background:linear-gradient(90deg,#172d33,#1e3e42);border-color:#28414a;color:#9db5b5}
+  .mini-body{display:grid;grid-template-columns:58px 1fr;height:calc(100% - 21px)}
+  .mini-side{background:#eaf3f2;border-right:1px solid var(--line);padding:12px 7px;display:grid;align-content:start;gap:8px}
+  .dark .mini-side{background:#132127;border-color:#28414a}
+  .mini-brand{height:15px;border-radius:5px;background:linear-gradient(135deg,#61d1bf,#138b78);margin-bottom:8px}
+  .mini-nav{height:9px;border-radius:5px;background:rgba(19,139,120,.13)}
+  .mini-nav.active{background:linear-gradient(90deg,#bdeee5,#76d2c0)}
+  .mini-main{padding:14px 13px;display:grid;align-content:start;gap:10px}
+  .mini-title{height:13px;width:52%;border-radius:6px;background:currentColor;opacity:.8}
+  .mini-sub{height:7px;width:70%;border-radius:4px;background:currentColor;opacity:.25}
+  .mini-panels{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+  .mini-panel{height:42px;border-radius:8px;background:var(--glass);border:1px solid var(--line);padding:7px}
+  .dark .mini-panel{background:rgba(35,62,67,.75);border-color:#315059}
+  .mini-panel b{display:block;width:50%;height:6px;border-radius:4px;background:var(--teal);margin-bottom:6px}
+  .mini-panel span{display:block;width:70%;height:8px;border-radius:4px;background:currentColor;opacity:.62}
+  .mini-chart{height:66px;border-radius:9px;background:linear-gradient(180deg,rgba(169,228,215,.34),rgba(255,255,255,.22));border:1px solid var(--line);position:relative;overflow:hidden}
+  .dark .mini-chart{background:linear-gradient(180deg,rgba(54,118,111,.38),rgba(26,50,57,.35));border-color:#315059}
+  .mini-chart:after{content:"";position:absolute;left:8%;right:8%;top:55%;height:2px;background:linear-gradient(90deg,transparent 0%,#138b78 15%,#62caba 42%,#c89bd6 69%,#e58d9d 88%,transparent 100%);transform:rotate(-4deg);box-shadow:0 -16px 0 -1px rgba(19,139,120,.22)}
+  .mini-buttons{display:flex;gap:7px;margin-top:2px}.mini-button{height:18px;border-radius:6px;background:var(--teal);width:62px}.mini-button.alt{background:transparent;border:1px solid var(--teal)}
+  .direction-a .mini-main{background:linear-gradient(135deg,#f7fffd 0%,#eff8f6 55%,#e8f2fa 100%)}
+  .direction-b .mini-main{background:#f7f9fc}.direction-b .mini-panels{grid-template-columns:repeat(2,1fr)}
+  .direction-b .mini-chart{height:82px}.direction-b .mini-side{background:#e9eff7}.direction-c .mini-main{background:linear-gradient(145deg,#f8fbfc,#f0f7f6)}
+  .direction-c .mini-side{background:#f3f7f7}.direction-c .mini-panels{grid-template-columns:1fr 1fr}.direction-c .mini-panel{height:35px}
+  .direction-c .mini-chart{height:82px}
+  .recommend{margin:18px auto 0;max-width:1200px;border:1px solid #b8e8dd;background:#effbf8;border-radius:12px;padding:12px 14px;color:#285b56;font-size:12px;line-height:1.6}
+  @media(max-width:900px){.direction-grid{grid-template-columns:1fr}.mini{height:210px}}
+</style>
+<div class="visual-intro">
+  <h2>请选择全局视觉方向</h2>
+  <p class="subtitle">这三种方向都保留 RelayDesk 的青绿色品牌色，区别在于层级、密度和玻璃质感。建议先选一种，再将它落实到登录、导航、按钮、充值与用量看板。</p>
+</div>
+<div class="direction-grid">
+  <div class="direction direction-a" data-choice="a" onclick="toggleSelect(this)">
+    <div class="mini">
+      <div class="mini-top">RelayDesk · overview</div><div class="mini-body"><div class="mini-side"><div class="mini-brand"></div><div class="mini-nav active"></div><div class="mini-nav"></div><div class="mini-nav"></div><div class="mini-nav"></div></div><div class="mini-main"><div class="mini-title"></div><div class="mini-sub"></div><div class="mini-panels"><div class="mini-panel"><b></b><span></span></div><div class="mini-panel"><b></b><span></span></div><div class="mini-panel"><b></b><span></span></div></div><div class="mini-chart"></div><div class="mini-buttons"><div class="mini-button"></div><div class="mini-button alt"></div></div></div></div>
+    </div><span class="tag"><i></i>推荐 · Google Glass-lite</span><h3>A · 清爽渐变 + 轻玻璃</h3><p>单一青绿色主色，层级靠明度、透明度和间距区分；适合 RelayDesk 的桌面控制中心与数据看板。</p>
+  </div>
+  <div class="direction direction-b" data-choice="b" onclick="toggleSelect(this)">
+    <div class="mini dark">
+      <div class="mini-top">RelayDesk · usage</div><div class="mini-body"><div class="mini-side"><div class="mini-brand"></div><div class="mini-nav active"></div><div class="mini-nav"></div><div class="mini-nav"></div><div class="mini-nav"></div></div><div class="mini-main"><div class="mini-title"></div><div class="mini-sub"></div><div class="mini-panels"><div class="mini-panel"><b></b><span></span></div><div class="mini-panel"><b></b><span></span></div><div class="mini-panel"><b></b><span></span></div><div class="mini-panel"><b></b><span></span></div></div><div class="mini-chart"></div><div class="mini-buttons"><div class="mini-button"></div><div class="mini-button alt"></div></div></div></div>
+    </div><span class="tag"><i></i>高密度 · 暗色优先</span><h3>B · 深色数据工作台</h3><p>数据密度更高，玻璃层级更明显；适合重度统计用户，但需要更严格的对比度与留白控制。</p>
+  </div>
+  <div class="direction direction-c" data-choice="c" onclick="toggleSelect(this)">
+    <div class="mini">
+      <div class="mini-top">RelayDesk · setup</div><div class="mini-body"><div class="mini-side"><div class="mini-brand"></div><div class="mini-nav active"></div><div class="mini-nav"></div><div class="mini-nav"></div><div class="mini-nav"></div></div><div class="mini-main"><div class="mini-title"></div><div class="mini-sub"></div><div class="mini-panels"><div class="mini-panel"><b></b><span></span></div><div class="mini-panel"><b></b><span></span></div></div><div class="mini-chart"></div><div class="mini-buttons"><div class="mini-button"></div><div class="mini-button alt"></div></div></div></div>
+    </div><span class="tag"><i></i>极简 · 低干扰</span><h3>C · 极简分步操作</h3><p>每页只保留一个主要动作，适合登录、应用目标和部署流程；统计页需要另外增加信息层级。</p>
+  </div>
+</div>
+<div class="recommend">我的建议：选择 A。它在 Google 系的清爽、现代感与 RelayDesk 现有青绿色品牌之间最平衡；B 可作为深色看板的变体，C 可作为登录和安装确认对话框的局部模式。</div>
