@@ -27,7 +27,8 @@ jobs:
               src-tauri/target/release/bundle/nsis/*.nsis.zip
               src-tauri/target/release/bundle/nsis/*.nsis.zip.sig
           - os: macos-latest
-            bundles: dmg
+            # app target 是 macOS 更新器产物（.app.tar.gz）的来源；dmg 仍用于分发。
+            bundles: dmg,app
             artifact: relaydesk-macos-dmg-arm64
             artifact-path: |
               src-tauri/target/release/bundle/dmg/*.dmg
@@ -67,7 +68,9 @@ jobs:
           node-version: '20'
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        # 与仓库 rust-toolchain.toml 保持一致：1.95+ 移除了 proc-macro-hack，
+        # 旧版 phf_macros/cssparser 链在新编译器上无法构建。
+        uses: dtolnay/rust-toolchain@1.90.0
 
       - name: Setup pnpm
         env:
@@ -85,6 +88,8 @@ jobs:
         env:
           # 更新器签名密钥（仓库 Secret；本地仓库不含私钥）
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          # 密钥为"空密码加密"格式（signer generate --ci 产物），需显式置空
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
           # 编译期注入更新端点：未设置时应用诚实显示"更新服务未配置"
           RELAYDESK_UPDATE_ENDPOINT: https://github.com/zhang520zy-prog/RelayDesk/releases/download/test-build/latest.json
         run: pnpm tauri build --bundles ${{ matrix.bundles }}
@@ -115,10 +120,9 @@ jobs:
       - name: Generate updater manifest (latest.json)
         run: |
           python3 - <<'PY'
-          import glob, json, os, re, datetime
+          import glob, json, os, re, sys, datetime
           base = "https://github.com/zhang520zy-prog/RelayDesk/releases/download/test-build"
           platforms = {}
-          version = ""
           for sig in glob.glob("dist/**/*.sig", recursive=True):
               asset = sig[:-4]  # strip .sig
               name = os.path.basename(asset)
@@ -132,15 +136,23 @@ jobs:
                   key = "linux-x86_64"
               else:
                   continue
-              m = re.search(r"_(\d+\.\d+\.\d+)", name)
-              if m and not version:
-                  version = "v" + m.group(1)
               platforms[key] = {
                   "signature": signature,
                   "url": f"{base}/{name}",
               }
+          # 版本号可能不在 macOS 产物名里，从全部产物文件名中提取
+          version = ""
+          for f in glob.glob("dist/**/*", recursive=True):
+              m = re.search(r"_(\d+\.\d+\.\d+)", os.path.basename(f))
+              if m:
+                  version = "v" + m.group(1)
+                  break
+          if not platforms:
+              sys.exit("no updater artifacts found (*.sig missing)")
+          if not version:
+              sys.exit("could not determine version from artifact names")
           manifest = {
-              "version": version or "v0.0.0",
+              "version": version,
               "notes": "RelayDesk test build",
               "pub_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
               "platforms": platforms,

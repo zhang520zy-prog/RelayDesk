@@ -38,7 +38,8 @@ jobs:
           node-version: '20'
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        # 与 rust-toolchain.toml 一致：1.95+ 移除了 proc-macro-hack 内置支持。
+        uses: dtolnay/rust-toolchain@1.90.0
 
       - name: Add Windows ARM64 target
         if: runner.os == 'Windows' && matrix.arch == 'arm64'
