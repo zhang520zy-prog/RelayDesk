@@ -506,14 +506,59 @@ fn usage_path(query: &RelayUsageQuery) -> Result<String, AppError> {
     ))
 }
 
-/// 规范化实例地址：去尾部斜杠；无 scheme 时补 https://
+/// 规范化实例地址：去尾部斜杠；无 scheme 时补 https://。
+/// 用户可能把浏览器里的页面地址整段粘进来（如 `/sign-in`、`/console`），
+/// 这类 SPA 页面路径会被剥离只保留源站；其余子路径（真实子路径部署）保留。
 pub fn normalize_base_url(base_url: &str) -> String {
     let trimmed = base_url.trim().trim_end_matches('/');
-    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+    let with_scheme = if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
         trimmed.to_string()
     } else {
         format!("https://{trimmed}")
+    };
+    let Ok(parsed) = url::Url::parse(&with_scheme) else {
+        return with_scheme;
+    };
+    let first_segment = parsed
+        .path_segments()
+        .and_then(|mut s| s.next())
+        .unwrap_or("");
+    const SPA_ROUTES: &[&str] = &[
+        "sign-in",
+        "signin",
+        "login",
+        "register",
+        "signup",
+        "console",
+        "panel",
+        "home",
+        "about",
+        "pricing",
+        "user",
+        "token",
+        "channel",
+        "detail",
+        "reset",
+        "personal",
+        "topup",
+        "midjourney",
+        "task",
+        "model",
+        "log",
+        "setting",
+        "settings",
+        "404",
+    ];
+    if !first_segment.is_empty()
+        && SPA_ROUTES.contains(&first_segment.to_ascii_lowercase().as_str())
+    {
+        let mut origin = format!("{}://{}", parsed.scheme(), parsed.host_str().unwrap_or(""));
+        if let Some(port) = parsed.port() {
+            origin.push_str(&format!(":{port}"));
+        }
+        return origin;
     }
+    with_scheme
 }
 
 /// 把 new-api 返回的 key 规整为 `sk-` 前缀形式（与 m0_verify 一致）
@@ -670,6 +715,33 @@ mod tests {
         assert_eq!(
             RelayClient::new("https://relay.example.test/prefix", "").url("/api/status"),
             "https://relay.example.test/prefix/api/status"
+        );
+    }
+
+    #[test]
+    fn pasted_page_urls_strip_spa_routes() {
+        // 新手常见操作：从浏览器地址栏整段复制页面地址
+        for pasted in [
+            "https://relay.example.test/sign-in",
+            "https://relay.example.test/console/token",
+            "relay.example.test/login",
+            "https://relay.example.test/sign-in?next=/console",
+        ] {
+            assert_eq!(
+                normalize_base_url(pasted),
+                "https://relay.example.test",
+                "pasted: {pasted}"
+            );
+        }
+        // 真实子路径部署不受影响
+        assert_eq!(
+            normalize_base_url("https://relay.example.test/newapi"),
+            "https://relay.example.test/newapi"
+        );
+        // 端口保留
+        assert_eq!(
+            normalize_base_url("https://relay.example.test:8443/sign-in"),
+            "https://relay.example.test:8443"
         );
         assert_eq!(
             RelayClient::new("https://yjapi.manqiaotechnology.com/958c19c404a5", "")
