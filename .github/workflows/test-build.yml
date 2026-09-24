@@ -82,3 +82,34 @@ jobs:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact-path }}
           if-no-files-found: error
+
+  # 汇总成功的平台产物，发布为滚动 pre-release，供公开下载（无需登录）。
+  release:
+    needs: build
+    if: always()
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download platform artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: relaydesk-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish rolling test release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: test-build
+          name: RelayDesk Test Build
+          prerelease: true
+          files: |
+            dist/**/*.exe
+            dist/**/*.dmg
+            dist/**/*.deb
+            dist/**/*.AppImage
+          body: |
+            未签名测试包。Windows 点"仍要运行"；macOS 需
+            `xattr -dr com.apple.quarantine /Applications/RelayDesk.app`
+            或右键打开；Linux 用 `.deb` 或 `.AppImage`（需 libfuse2）。
