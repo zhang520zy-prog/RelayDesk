@@ -62,15 +62,21 @@ pub async fn relay_env_check(state: State<'_, AppState>) -> Result<Vec<RelayEnvC
 
 /// 供命令与诊断导出共用：收集全部只读检查。
 pub(crate) async fn collect_env_checks(state: &AppState) -> Vec<RelayEnvCheck> {
-    let (git, python, node, writable, proxy, relay) = tokio::join!(
+    let (git, python, node, writable, proxy, relay, webview2, claude, codex, gemini) = tokio::join!(
         timed_probe("git", probe_git),
         timed_probe("python", probe_python),
         timed_probe("node", probe_node),
         timed_probe("writable", probe_writable),
         timed_probe("proxy", probe_proxy),
         relay_reachability(state),
+        timed_probe("webview2", probe_webview2),
+        timed_probe("claude", probe_claude),
+        timed_probe("codex", probe_codex),
+        timed_probe("gemini", probe_gemini),
     );
-    vec![git, python, node, writable, relay, proxy]
+    vec![
+        git, python, node, writable, relay, proxy, webview2, claude, codex, gemini,
+    ]
 }
 
 async fn timed_probe(id: &'static str, probe: fn() -> RelayEnvCheck) -> RelayEnvCheck {
@@ -277,18 +283,88 @@ fn probe_writable() -> RelayEnvCheck {
 }
 
 fn probe_proxy() -> RelayEnvCheck {
+    match detect_system_proxy() {
+        Some(endpoint) => RelayEnvCheck::new("proxy", "ok", Some(endpoint), Some("detected")),
+        None => RelayEnvCheck::new("proxy", "ok", None, Some("none")),
+    }
+}
+
+/// 检测系统代理：环境变量 > 操作系统代理设置（macOS scutil / Windows 注册表）。
+/// 返回值已脱敏为 scheme://host:port，不含凭据。
+pub(crate) fn detect_system_proxy() -> Option<String> {
     if let Some(endpoint) = env_proxy() {
-        return RelayEnvCheck::new("proxy", "ok", Some(endpoint), Some("detected"));
+        return Some(endpoint);
     }
     #[cfg(target_os = "macos")]
     if let Some(endpoint) = macos_system_proxy() {
-        return RelayEnvCheck::new("proxy", "ok", Some(endpoint), Some("detected"));
+        return Some(endpoint);
     }
     #[cfg(target_os = "windows")]
     if let Some(endpoint) = windows_system_proxy() {
-        return RelayEnvCheck::new("proxy", "ok", Some(endpoint), Some("detected"));
+        return Some(endpoint);
     }
-    RelayEnvCheck::new("proxy", "ok", None, Some("none"))
+    None
+}
+
+/// AI CLI 的安装探测：报告版本号或 missing。
+fn probe_cli(id: &'static str, binary: &'static str) -> RelayEnvCheck {
+    match probe_version(binary, "--version") {
+        Probe::Found(out) => RelayEnvCheck::new(id, "ok", sanitize_version(&out), None),
+        _ => RelayEnvCheck::new(id, "warn", None, Some("missing")),
+    }
+}
+
+fn probe_claude() -> RelayEnvCheck {
+    probe_cli("claude", "claude")
+}
+
+fn probe_codex() -> RelayEnvCheck {
+    probe_cli("codex", "codex")
+}
+
+fn probe_gemini() -> RelayEnvCheck {
+    probe_cli("gemini", "gemini")
+}
+
+/// WebView2 Runtime 是 Windows 端的必需依赖；其他平台不适用。
+#[cfg(target_os = "windows")]
+fn probe_webview2() -> RelayEnvCheck {
+    // 系统级安装路径存在即认为可用；否则查注册表（含 per-user 安装）。
+    let program_files = std::env::var("ProgramFiles(x86)")
+        .unwrap_or_else(|_| "C:\\Program Files (x86)".to_string());
+    let runtime_dir = std::path::Path::new(&program_files)
+        .join("Microsoft")
+        .join("EdgeWebView")
+        .join("Application");
+    if runtime_dir.is_dir() {
+        return RelayEnvCheck::new("webview2", "ok", Some("installed".to_string()), None);
+    }
+    for (hive, subkey) in [
+        (
+            winreg::enums::HKEY_LOCAL_MACHINE,
+            "SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+        ),
+        (
+            winreg::enums::HKEY_LOCAL_MACHINE,
+            "SOFTWARE\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+        ),
+        (
+            winreg::enums::HKEY_CURRENT_USER,
+            "Software\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+        ),
+    ] {
+        if let Ok(key) = winreg::RegKey::predef(hive).open_subkey(subkey) {
+            if let Ok(version) = key.get_value::<String, _>("pv") {
+                return RelayEnvCheck::new("webview2", "ok", sanitize_version(&version), None);
+            }
+        }
+    }
+    RelayEnvCheck::new("webview2", "error", None, Some("missing"))
+}
+
+#[cfg(not(target_os = "windows"))]
+fn probe_webview2() -> RelayEnvCheck {
+    RelayEnvCheck::new("webview2", "ok", None, Some("not_required"))
 }
 
 async fn relay_reachability(state: &AppState) -> RelayEnvCheck {

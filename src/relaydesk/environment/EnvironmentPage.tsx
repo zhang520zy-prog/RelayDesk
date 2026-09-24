@@ -189,7 +189,14 @@ export function EnvironmentPage({
       detail: t("envDesktopMissingOptional"),
     };
   }
-  const systemCheckIds = ["git", "python", "node", "writable"];
+  const systemCheckIds = [
+    "git",
+    "python",
+    "node",
+    "writable",
+    // WebView2 只在 Windows 端有意义；诊断导出仍会包含其他平台的检查项。
+    ...(platform === "windows" ? ["webview2"] : []),
+  ];
   // 这几项缺失时后端可以给出自动安装方案；其余检查只提供指引。
   const envFixableIds = new Set(["git", "python", "node"]);
   const connectionCheckIds = ["relay", "proxy"];
@@ -200,6 +207,7 @@ export function EnvironmentPage({
     writable: t("envConfigWritable"),
     relay: t("envRelayConnection"),
     proxy: t("envSystemProxy"),
+    webview2: "WebView2 Runtime",
   };
   function envRow(id: string): EnvironmentCheck {
     const label = checkLabels[id];

@@ -35,7 +35,7 @@ pub fn set_proxy_port(port: u16) {
 }
 
 /// 获取 RelayDesk 代理服务器的监听端口
-fn get_proxy_port() -> u16 {
+pub(crate) fn get_proxy_port() -> u16 {
     RELAYDESK_PROXY_PORT
         .get()
         .and_then(|lock| lock.read().ok())

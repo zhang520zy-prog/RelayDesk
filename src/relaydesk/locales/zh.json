@@ -512,5 +512,12 @@
   "usernamePlaceholder": "输入邮箱或用户名",
   "topupSummary": "本次充值",
   "topupIntro": "选择金额与支付方式，确认后前往收银台。",
-  "usageModelBreakdown": "模型明细"
+  "usageModelBreakdown": "模型明细",
+  "guestEnvironment": "环境诊断与工具",
+  "envCheck_webview2_missing": "缺少 WebView2 Runtime，应用界面可能无法显示；请安装 Evergreen Bootstrapper",
+  "envCheck_webview2_not_required": "当前平台无需 WebView2",
+  "envCheck_webview2_probe_failed": "WebView2 检测失败",
+  "envCheck_claude_missing": "未安装 Claude Code CLI",
+  "envCheck_codex_missing": "未安装 Codex CLI",
+  "envCheck_gemini_missing": "未安装 Gemini CLI"
 }

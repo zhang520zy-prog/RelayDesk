@@ -381,7 +381,7 @@ pub fn run() {
             }
 
             if !found_deeplink {
-                log::info!("ℹ No deep link URL found in args (this is expected on macOS when launched via system)");
+                log::info!("ℹ Single-instance launch without deep-link arguments");
             }
 
             // Show and focus window regardless
@@ -1177,7 +1177,18 @@ pub fn run() {
             // 初始化全局出站代理 HTTP 客户端
             {
                 let db = &app.state::<AppState>().db;
-                let proxy_url = db.get_global_proxy_url().ok().flatten();
+                // 用户显式配置 > 系统代理检测 > 直连。
+                // 公司内网等必须走代理的环境里，浏览器能访问而应用直连必败。
+                let proxy_url = db.get_global_proxy_url().ok().flatten().or_else(|| {
+                    let detected = commands::env_doctor::detect_system_proxy()?;
+                    // 排除 RelayDesk 自身代理端口，避免自回环
+                    let own = format!(":{}", crate::proxy::http_client::get_proxy_port());
+                    if detected.ends_with(&own) {
+                        return None;
+                    }
+                    log::info!("[GlobalProxy] Using detected system proxy: {detected}");
+                    Some(detected)
+                });
 
                 if let Err(e) = crate::proxy::http_client::init(proxy_url.as_deref()) {
                     log::error!(

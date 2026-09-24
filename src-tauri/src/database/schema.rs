@@ -460,94 +460,94 @@ impl Database {
             while version < SCHEMA_VERSION {
                 match version {
                     0 => {
-                        log::info!("检测到 user_version=0，迁移到 1（补齐缺失列并设置版本）");
+                        log::debug!("检测到 user_version=0，迁移到 1（补齐缺失列并设置版本）");
                         Self::migrate_v0_to_v1(conn)?;
                         Self::set_user_version(conn, 1)?;
                     }
                     1 => {
-                        log::info!(
+                        log::debug!(
                             "迁移数据库从 v1 到 v2（添加使用统计表和完整字段，重构 skills 表）"
                         );
                         Self::migrate_v1_to_v2(conn)?;
                         Self::set_user_version(conn, 2)?;
                     }
                     2 => {
-                        log::info!("迁移数据库从 v2 到 v3（Skills 统一管理架构）");
+                        log::debug!("迁移数据库从 v2 到 v3（Skills 统一管理架构）");
                         Self::migrate_v2_to_v3(conn)?;
                         Self::set_user_version(conn, 3)?;
                     }
                     3 => {
-                        log::info!("迁移数据库从 v3 到 v4（OpenCode 支持）");
+                        log::debug!("迁移数据库从 v3 到 v4（OpenCode 支持）");
                         Self::migrate_v3_to_v4(conn)?;
                         Self::set_user_version(conn, 4)?;
                     }
                     4 => {
-                        log::info!("迁移数据库从 v4 到 v5（计费模式支持）");
+                        log::debug!("迁移数据库从 v4 到 v5（计费模式支持）");
                         Self::migrate_v4_to_v5(conn)?;
                         Self::set_user_version(conn, 5)?;
                     }
                     5 => {
-                        log::info!("迁移数据库从 v5 到 v6（使用量聚合表 + Copilot 模板类型统一）");
+                        log::debug!("迁移数据库从 v5 到 v6（使用量聚合表 + Copilot 模板类型统一）");
                         Self::migrate_v5_to_v6(conn)?;
                         Self::set_user_version(conn, 6)?;
                     }
                     6 => {
-                        log::info!("迁移数据库从 v6 到 v7（Skills 更新检测支持）");
+                        log::debug!("迁移数据库从 v6 到 v7（Skills 更新检测支持）");
                         Self::migrate_v6_to_v7(conn)?;
                         Self::set_user_version(conn, 7)?;
                     }
                     7 => {
-                        log::info!("迁移数据库从 v7 到 v8（会话日志使用追踪 + 修正模型定价）");
+                        log::debug!("迁移数据库从 v7 到 v8（会话日志使用追踪 + 修正模型定价）");
                         Self::migrate_v7_to_v8(conn)?;
                         Self::set_user_version(conn, 8)?;
                     }
                     8 => {
-                        log::info!("迁移数据库从 v8 到 v9（全面补充模型定价）");
+                        log::debug!("迁移数据库从 v8 到 v9（全面补充模型定价）");
                         Self::migrate_v8_to_v9(conn)?;
                         Self::set_user_version(conn, 9)?;
                     }
                     9 => {
-                        log::info!("迁移数据库从 v9 到 v10（添加 Hermes Agent 支持）");
+                        log::debug!("迁移数据库从 v9 到 v10（添加 Hermes Agent 支持）");
                         Self::migrate_v9_to_v10(conn)?;
                         Self::set_user_version(conn, 10)?;
                     }
                     10 => {
-                        log::info!("迁移数据库从 v10 到 v11（usage_daily_rollups 保留 request_model 维度）");
+                        log::debug!("迁移数据库从 v10 到 v11（usage_daily_rollups 保留 request_model 维度）");
                         Self::migrate_v10_to_v11(conn)?;
                         Self::set_user_version(conn, 11)?;
                     }
                     11 => {
-                        log::info!("迁移数据库从 v11 到 v12（添加项目 Profiles 表）");
+                        log::debug!("迁移数据库从 v11 到 v12（添加项目 Profiles 表）");
                         Self::migrate_v11_to_v12(conn)?;
                         Self::set_user_version(conn, 12)?;
                     }
                     12 => {
-                        log::info!("迁移数据库从 v12 到 v13（记录输入 token 缓存语义）");
+                        log::debug!("迁移数据库从 v12 到 v13（记录输入 token 缓存语义）");
                         Self::migrate_v12_to_v13(conn)?;
                         Self::set_user_version(conn, 13)?;
                     }
                     13 => {
-                        log::info!("迁移数据库从 v13 到 v14（添加 Grok Build 代理配置）");
+                        log::debug!("迁移数据库从 v13 到 v14（添加 Grok Build 代理配置）");
                         Self::migrate_v13_to_v14(conn)?;
                         Self::set_user_version(conn, 14)?;
                     }
                     14 => {
-                        log::info!("迁移数据库从 v14 到 v15（Skills/MCP 添加 Grok Build 支持）");
+                        log::debug!("迁移数据库从 v14 到 v15（Skills/MCP 添加 Grok Build 支持）");
                         Self::migrate_v14_to_v15(conn)?;
                         Self::set_user_version(conn, 15)?;
                     }
                     15 => {
-                        log::info!("迁移数据库从 v15 到 v16（重建 Codex 会话用量）");
+                        log::debug!("迁移数据库从 v15 到 v16（重建 Codex 会话用量）");
                         Self::migrate_v15_to_v16(conn)?;
                         Self::set_user_version(conn, 16)?;
                     }
                     16 => {
-                        log::info!("迁移数据库从 v16 到 v17（添加会话用量持久去重账本）");
+                        log::debug!("迁移数据库从 v16 到 v17（添加会话用量持久去重账本）");
                         Self::migrate_v16_to_v17(conn)?;
                         Self::set_user_version(conn, 17)?;
                     }
                     17 => {
-                        log::info!("迁移数据库从 v17 到 v18（会话日志字节游标列）");
+                        log::debug!("迁移数据库从 v17 到 v18（会话日志字节游标列）");
                         Self::migrate_v17_to_v18(conn)?;
                         Self::set_user_version(conn, 18)?;
                     }
@@ -797,7 +797,7 @@ impl Database {
 
         if Self::has_column(conn, "proxy_config", "app_type")? {
             // 已经是三行结构，跳过迁移
-            log::info!("proxy_config 已经是三行结构，跳过迁移");
+            log::debug!("proxy_config 已经是三行结构，跳过迁移");
             return Ok(());
         }
 
@@ -934,7 +934,7 @@ impl Database {
             [],
         )?;
 
-        log::info!("proxy_config 已迁移为三行结构");
+        log::debug!("proxy_config 已迁移为三行结构");
         Ok(())
     }
 
@@ -947,17 +947,17 @@ impl Database {
         if Self::has_column(conn, "skills", "enabled_claude")?
             || Self::has_column(conn, "skills", "id")?
         {
-            log::info!("skills 表已经是 v3 结构，跳过 v1 -> v2 迁移");
+            log::debug!("skills 表已经是 v3 结构，跳过 v1 -> v2 迁移");
             return Ok(());
         }
 
         // 检查是否已经是新表结构
         if Self::has_column(conn, "skills", "app_type")? {
-            log::info!("skills 表已经包含 app_type 字段，跳过迁移");
+            log::debug!("skills 表已经包含 app_type 字段，跳过迁移");
             return Ok(());
         }
 
-        log::info!("开始迁移 skills 表...");
+        log::debug!("开始迁移 skills 表...");
 
         // 1. 重命名旧表
         conn.execute("ALTER TABLE skills RENAME TO skills_old", [])
@@ -1018,7 +1018,7 @@ impl Database {
         conn.execute("DROP TABLE skills_old", [])
             .map_err(|e| AppError::Database(format!("删除旧 skills 表失败: {e}")))?;
 
-        log::info!("skills 表迁移完成，共迁移 {count} 条记录");
+        log::debug!("skills 表迁移完成，共迁移 {count} 条记录");
         Ok(())
     }
 
@@ -1033,17 +1033,17 @@ impl Database {
     fn migrate_v2_to_v3(conn: &Connection) -> Result<(), AppError> {
         // 检查是否已经是新结构（通过检查是否有 enabled_claude 列）
         if Self::has_column(conn, "skills", "enabled_claude")? {
-            log::info!("skills 表已经是 v3 结构，跳过迁移");
+            log::debug!("skills 表已经是 v3 结构，跳过迁移");
             return Ok(());
         }
 
-        log::info!("开始迁移 skills 表到 v3 结构（统一管理架构）...");
+        log::debug!("开始迁移 skills 表到 v3 结构（统一管理架构）...");
 
         // 1. 备份旧数据（用于日志和后续启动迁移）
         let old_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM skills", [], |row| row.get(0))
             .unwrap_or(0);
-        log::info!("旧 skills 表有 {old_count} 条记录");
+        log::debug!("旧 skills 表有 {old_count} 条记录");
 
         let mut stmt = conn
             .prepare(
@@ -1100,7 +1100,7 @@ impl Database {
         )
         .map_err(|e| AppError::Database(format!("创建新 skills 表失败: {e}")))?;
 
-        log::info!(
+        log::debug!(
             "skills 表已迁移到 v3 结构。\n\
              注意：旧的安装记录已清除，首次启动时将自动扫描文件系统重建数据。"
         );
@@ -1128,7 +1128,7 @@ impl Database {
             "BOOLEAN NOT NULL DEFAULT 0",
         )?;
 
-        log::info!("v3 -> v4 迁移完成：已添加 OpenCode 支持");
+        log::debug!("v3 -> v4 迁移完成：已添加 OpenCode 支持");
         Ok(())
     }
 
@@ -1152,7 +1152,7 @@ impl Database {
             Self::add_column_if_missing(conn, "proxy_request_logs", "request_model", "TEXT")?;
         }
 
-        log::info!("v4 -> v5 迁移完成：已添加计费模式与请求模型字段");
+        log::debug!("v4 -> v5 迁移完成：已添加计费模式与请求模型字段");
         Ok(())
     }
 
@@ -1227,7 +1227,7 @@ impl Database {
             .map_err(|e| AppError::Database(e.to_string()))?;
         }
 
-        log::info!("v5 -> v6 迁移完成：已添加使用量日聚合表，统一 copilot 模板类型");
+        log::debug!("v5 -> v6 迁移完成：已添加使用量日聚合表，统一 copilot 模板类型");
         Ok(())
     }
 
@@ -1242,7 +1242,7 @@ impl Database {
                 "INTEGER NOT NULL DEFAULT 0",
             )?;
         }
-        log::info!("v6 -> v7 迁移完成：已添加 content_hash 和 updated_at 列");
+        log::debug!("v6 -> v7 迁移完成：已添加 content_hash 和 updated_at 列");
         Ok(())
     }
 
@@ -1302,7 +1302,7 @@ impl Database {
             }
         }
 
-        log::info!("v7 -> v8 迁移完成：data_source 列、session_log_sync 表、修正 13 个模型定价");
+        log::debug!("v7 -> v8 迁移完成：data_source 列、session_log_sync 表、修正 13 个模型定价");
         Ok(())
     }
 
@@ -1321,7 +1321,7 @@ impl Database {
         conn.execute("DELETE FROM model_pricing", [])
             .map_err(|e| AppError::Database(format!("清空模型定价失败: {e}")))?;
         Self::seed_model_pricing(conn)?;
-        log::info!("v8 -> v9 迁移完成：已刷新全部模型定价数据");
+        log::debug!("v8 -> v9 迁移完成：已刷新全部模型定价数据");
         Ok(())
     }
 
@@ -1344,7 +1344,7 @@ impl Database {
             )?;
         }
 
-        log::info!("v9 -> v10 迁移完成：已添加 Hermes Agent 支持");
+        log::debug!("v9 -> v10 迁移完成：已添加 Hermes Agent 支持");
         Ok(())
     }
 
@@ -1362,7 +1362,7 @@ impl Database {
         }
 
         if !Self::table_exists(conn, "usage_daily_rollups")? {
-            log::info!("v10 -> v11：usage_daily_rollups 不存在，跳过重建");
+            log::debug!("v10 -> v11：usage_daily_rollups 不存在，跳过重建");
             return Ok(());
         }
 
@@ -1399,7 +1399,7 @@ impl Database {
             AppError::Database(format!("v10 -> v11 重建 usage_daily_rollups 失败: {e}"))
         })?;
 
-        log::info!(
+        log::debug!(
             "v10 -> v11 迁移完成：usage_daily_rollups 已保留 request_model/pricing_model 维度"
         );
         Ok(())
@@ -2715,7 +2715,7 @@ impl Database {
             .map_err(|e| AppError::Database(format!("插入模型定价失败: {e}")))?;
         }
 
-        log::info!("已插入 {} 条默认模型定价数据", pricing_data.len());
+        log::debug!("已插入 {} 条默认模型定价数据", pricing_data.len());
         Ok(())
     }
 
@@ -3588,7 +3588,7 @@ impl Database {
         let sql = format!("ALTER TABLE \"{table}\" ADD COLUMN \"{column}\" {definition};");
         conn.execute(&sql, [])
             .map_err(|e| AppError::Database(format!("为表 {table} 添加列 {column} 失败: {e}")))?;
-        log::info!("已为表 {table} 添加缺失列 {column}");
+        log::debug!("已为表 {table} 添加缺失列 {column}");
         Ok(true)
     }
 }

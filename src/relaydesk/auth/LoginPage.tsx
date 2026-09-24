@@ -32,6 +32,7 @@ export function LoginPage({
   savedLoginsLoading = false,
   loginSaved,
   forgetSavedLogin,
+  openEnvironment,
 }: {
   busy: boolean;
   error: string | null;
@@ -45,6 +46,7 @@ export function LoginPage({
   savedLoginsLoading?: boolean;
   loginSaved?: (savedId: string) => Promise<void>;
   forgetSavedLogin?: (savedId: string) => Promise<void>;
+  openEnvironment?: () => void;
 }) {
   const { t, i18n } = useTranslation("relaydesk");
   const { theme, setTheme } = useTheme();
@@ -321,6 +323,15 @@ export function LoginPage({
       </main>
       <footer className="rd-login-footer">
         RelayDesk<span>{t("ready")}</span>
+        {openEnvironment && (
+          <button
+            type="button"
+            className="rd-text-button rd-login-env-link"
+            onClick={openEnvironment}
+          >
+            {t("guestEnvironment")}
+          </button>
+        )}
       </footer>
     </div>
   );

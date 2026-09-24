@@ -62,6 +62,7 @@ export default function RelayDeskApp() {
     group: "",
   });
   const [showEnvironmentIntro, setShowEnvironmentIntro] = useState(false);
+  const [guestEnvironment, setGuestEnvironment] = useState(false);
   const installing =
     useIsMutating({ mutationKey: ["relaydesk", "tool-install"] }) > 0;
   const busy =
@@ -104,6 +105,7 @@ export default function RelayDeskApp() {
             setPage("models");
           }}
           forgetSavedLogin={session.forgetSavedLogin}
+          openEnvironment={() => setGuestEnvironment(true)}
           login={async (...args) => {
             await session.login(...args);
             setPage("models");
@@ -125,7 +127,17 @@ export default function RelayDeskApp() {
       </div>
     );
   }
-  if (!session.account)
+  if (!session.account) {
+    if (guestEnvironment)
+      return (
+        <div className="rd-guest-env">
+          <Titlebar />
+          <EnvironmentPage
+            busy={false}
+            onBack={() => setGuestEnvironment(false)}
+          />
+        </div>
+      );
     return (
       <LoginPage
         busy={session.busy}
@@ -137,6 +149,7 @@ export default function RelayDeskApp() {
           setPage("models");
         }}
         forgetSavedLogin={session.forgetSavedLogin}
+        openEnvironment={() => setGuestEnvironment(true)}
         login={async (...args) => {
           await session.login(...args);
           setPage("models");
@@ -144,6 +157,7 @@ export default function RelayDeskApp() {
         }}
       />
     );
+  }
   const account = session.account;
   const refresh = () => {
     if (!busy) void session.refresh();

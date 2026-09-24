@@ -54,6 +54,12 @@ fn export_diagnostics_from(
         }
     };
     let mut sections = String::new();
+    sections.push_str(&format!(
+        "RelayDesk {} | {}/{}\n",
+        env!("CARGO_PKG_VERSION"),
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    ));
     if let Some(checks) = checks.filter(|checks| !checks.is_empty()) {
         let section = checks
             .iter()
@@ -220,8 +226,9 @@ mod tests {
         )];
         export_diagnostics_from(&source, &destination, Some(&checks)).unwrap();
         let content = std::fs::read_to_string(&destination).unwrap();
-        assert!(content.starts_with(
+        assert!(content.contains(
             "=== RelayDesk Environment Check ===\n[ok] git: 2.54.0\n=== Application Log ===\n"
         ));
+        assert!(content.starts_with(&format!("RelayDesk {}", env!("CARGO_PKG_VERSION"))));
     }
 }

@@ -512,5 +512,12 @@
   "usernamePlaceholder": "Email or username",
   "topupSummary": "Your top-up",
   "topupIntro": "Choose an amount and payment method, then continue to checkout.",
-  "usageModelBreakdown": "Model breakdown"
+  "usageModelBreakdown": "Model breakdown",
+  "guestEnvironment": "Diagnostics & tools",
+  "envCheck_webview2_missing": "WebView2 Runtime is missing; install the Evergreen Bootstrapper",
+  "envCheck_webview2_not_required": "WebView2 is not required on this platform",
+  "envCheck_webview2_probe_failed": "WebView2 check failed",
+  "envCheck_claude_missing": "Claude Code CLI is not installed",
+  "envCheck_codex_missing": "Codex CLI is not installed",
+  "envCheck_gemini_missing": "Gemini CLI is not installed"
 }

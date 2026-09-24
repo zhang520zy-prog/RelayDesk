@@ -128,7 +128,7 @@ fn resolve_path(raw: &str) -> PathBuf {
 pub fn migrate_app_config_dir_from_settings(app: &tauri::AppHandle) -> Result<(), AppError> {
     // app_config_dir 已从 settings.json 移除，此函数保留但不再执行迁移
     // 如果用户在旧版本设置过 app_config_dir，需要在 Store 中手动配置
-    log::info!("app_config_dir 迁移功能已移除，请在设置中重新配置");
+    log::debug!("app_config_dir 迁移功能已移除，此调用为兼容保留");
 
     let _ = refresh_app_config_dir_override(app);
     Ok(())
