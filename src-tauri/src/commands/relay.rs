@@ -614,6 +614,20 @@ pub async fn relay_list_tokens(state: State<'_, AppState>) -> Result<Vec<RelayTo
 }
 
 fn safe_relay_error(error: &AppError, login: bool) -> String {
+    let mapped = map_relay_error(error, login);
+    if mapped == "relay.login_failed" || mapped == "relay.sync_failed" {
+        let detail = match error {
+            AppError::Message(m) => m.clone(),
+            AppError::HttpStatus { status, body } => format!("HTTP {status}: {body}"),
+            other => format!("{other:?}"),
+        };
+        let detail = detail.chars().take(160).collect::<String>();
+        log::warn!("relay error mapped to {mapped}: {detail}");
+    }
+    mapped
+}
+
+fn map_relay_error(error: &AppError, login: bool) -> String {
     match error {
         AppError::Localized { key, .. } => (*key).to_string(),
         AppError::Message(message) if message.starts_with("relay.") => message.clone(),
@@ -638,7 +652,16 @@ fn safe_relay_error(error: &AppError, login: bool) -> String {
             if login
                 && (message.contains("用户名或密码错误")
                     || message.contains("账号或密码错误")
-                    || message.to_ascii_lowercase().contains("invalid credentials")) =>
+                    || message.contains("密码错误")
+                    || message.contains("用户不存在")
+                    || message.contains("已被禁用")
+                    || {
+                        let lower = message.to_ascii_lowercase();
+                        lower.contains("invalid credentials")
+                            || lower.contains("password is incorrect")
+                            || lower.contains("has been banned")
+                            || lower.contains("user not found")
+                    }) =>
         {
             "relay.invalid_credentials".to_string()
         }
