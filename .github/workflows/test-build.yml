@@ -221,7 +221,23 @@ jobs:
             dist/**/*.sig
             dist/latest.json
           body: |
-            未签名测试包。Windows 点"仍要运行"；macOS 需
-            `xattr -dr com.apple.quarantine /Applications/RelayDesk.app`
-            或右键打开；Linux 用 `.deb` 或 `.AppImage`（需 libfuse2）。
-            已启用应用内自动更新：安装后设置页可检查更新。
+            ## 🖥️ 我该下载哪个？（按你的电脑选一行）
+
+            | 你的设备 | 点击下载这个文件 |
+            |---|---|
+            | **Windows 10 / 11**（绝大多数电脑） | `RelayDesk_x.xx.x_x64-setup.exe` |
+            | **Mac**（M1/M2/M3/M4 芯片，即 Apple Silicon） | `RelayDesk_x.xx.x_aarch64.dmg` |
+            | **Ubuntu / Debian / Deepin 等 Linux** | `RelayDesk_x.xx.x_amd64.deb` |
+            | **其他 Linux**（免安装，双击即用） | `RelayDesk_x.xx.x_amd64.AppImage` |
+
+            > ⚠️ 其余带 `.sig`、`.tar.gz`、`latest.json` 的文件是**应用内自动更新**的数据，
+            > 手动下载不需要管它们。
+
+            ## 安装注意
+
+            - **Windows**：如弹出"Windows 已保护你的电脑"（SmartScreen），点 **"更多信息" → "仍要运行"**（测试版未购买代码签名证书，属正常提示）
+            - **macOS**：拖拽进"应用程序"后，如提示"无法打开"，在终端运行
+              `xattr -dr com.apple.quarantine /Applications/RelayDesk.app`
+              或右键点图标选"打开"
+            - **Linux**：`.deb` 用 `sudo dpkg -i` 安装；`.AppImage` 需 `chmod +x` 且系统装有 libfuse2
+            - **自动更新**：装好后在"设置"页可一键检查更新，无需再来这里下载新版
