@@ -104,6 +104,31 @@ jobs:
           RELAYDESK_UPDATE_ENDPOINT: https://github.com/zhang520zy-prog/RelayDesk/releases/download/test-build/latest.json
         run: pnpm tauri build --bundles ${{ matrix.bundles }}
 
+      # 诊断：列出 bundle 目录实际产出的全部文件（含 .sig/.zip 更新器产物）
+      - name: List bundle outputs
+        run: find src-tauri/target/release/bundle -type f | sort
+
+      # 更新器产物缺失必须显式失败，而不是静默发布一个不完整的 latest.json
+      - name: Assert updater artifacts exist
+        shell: bash
+        run: |
+          missing=0
+          case "${{ runner.os }}" in
+            Windows) pat='*.nsis.zip' ;;
+            macOS)   pat='*.app.tar.gz' ;;
+            Linux)   pat='*.AppImage.tar.gz' ;;
+          esac
+          for ext in "$pat" "$pat.sig"; do
+            found=$(find src-tauri/target/release/bundle -name "$ext" | head -1)
+            if [ -z "$found" ]; then
+              echo "::error::updater artifact missing: $ext"
+              missing=1
+            else
+              echo "found: $found"
+            fi
+          done
+          [ "$missing" -eq 0 ]
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v7
         with:
