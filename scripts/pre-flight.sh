@@ -102,6 +102,9 @@ sys.exit(0 if ok else 1)
 PY
 [ $? -eq 0 ] && ok "updater 配置完整" || bad "updater 配置缺失"
 grep -q 'bundle/macos/\*.app.tar.gz' .github/workflows/test-build.yml && ok "workflow 收集 .app.tar.gz" || bad "缺 .app.tar.gz 收集"
+# v2 原生更新器格式：签名直接打在 exe/AppImage 上
+grep -q 'bundle/nsis/\*.exe.sig' .github/workflows/test-build.yml && ok "workflow 收集 .exe.sig" || bad "缺 .exe.sig 收集（v2 签名打在 exe 上）"
+grep -q 'bundle/appimage/\*.AppImage.sig' .github/workflows/test-build.yml && ok "workflow 收集 .AppImage.sig" || bad "缺 .AppImage.sig 收集"
 grep -q 'bundles: dmg,app' .github/workflows/test-build.yml && ok "macOS bundles 含 app target" || bad "macOS 缺 app target（无 .app.tar.gz 产物！）"
 grep -q 'TAURI_SIGNING_PRIVATE_KEY:' .github/workflows/test-build.yml && ok "签名 env 注入" || bad "缺签名 env"
 grep -q 'TAURI_SIGNING_PRIVATE_KEY_PASSWORD' .github/workflows/test-build.yml && ok "签名密码 env 置空" || bad "缺密码 env"
