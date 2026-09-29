@@ -203,6 +203,17 @@ fn build_updater(app: &AppHandle) -> Result<tauri_plugin_updater::Updater, Strin
             .endpoints(vec![url])
             .map_err(|_| "update.endpoint_invalid".to_string())?;
     }
+    // updater 插件用自己的 HTTP 客户端，不走 GlobalProxy——主动注入当前生效的代理，
+    // 否则内网/需代理网络下 latest.json 检查会失败（用户看不到热更新）。
+    if let Some(proxy_url) = crate::proxy::http_client::get_current_proxy_url() {
+        match proxy_url.parse() {
+            Ok(url) => builder = builder.proxy(url),
+            Err(_) => log::warn!(
+                "[Update] 忽略无法解析的代理地址: {}",
+                crate::proxy::http_client::mask_url(&proxy_url)
+            ),
+        }
+    }
     builder
         .build()
         .map_err(|e| format!("初始化更新器失败: {e}"))
