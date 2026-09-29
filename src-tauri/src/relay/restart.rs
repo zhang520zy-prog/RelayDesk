@@ -1204,6 +1204,7 @@ mod tests {
                 app_name: "Evil.app".to_string(),
                 display_name: "Evil".to_string(),
                 reads_cli_config: true,
+                windows_names: vec![],
             });
         let mut ops = FakeOps::default();
         ops.install("Evil.app", Some("com.evil.backdoor"));

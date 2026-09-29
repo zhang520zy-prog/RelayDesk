@@ -129,6 +129,7 @@ export interface RelayEnvFixPlan {
   command?: string;
   source?: string;
   docsUrl?: string;
+  reason?: string;
 }
 
 export interface RelayToken {

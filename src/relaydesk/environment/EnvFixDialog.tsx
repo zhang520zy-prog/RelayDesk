@@ -13,6 +13,13 @@ import { relayApi } from "@/lib/api/relay";
 import { Action } from "../ui";
 import "./environment.css";
 
+// 后端下发的安装不可行原因码 → 本地化文案；未知码回退到通用提示。
+function envFixReasonKey(reason?: string): string {
+  return ["winget_missing", "brew_missing", "manual_only"].includes(reason ?? "")
+    ? `envFixReason_${reason}`
+    : "envFixUnsupported";
+}
+
 export function EnvFixDialog({
   check,
   onClose,
@@ -111,7 +118,9 @@ function EnvFixConfirmation({
             </dd>
           </dl>
         ) : (
-          <p className="rd-alert warning">{t("envFixUnsupported")}</p>
+          <p className="rd-alert warning">
+            {t(envFixReasonKey(plan.data.reason))}
+          </p>
         )}
         {plan.data?.supported && (
           <p className="rd-muted rd-small">{t("envFixHint")}</p>

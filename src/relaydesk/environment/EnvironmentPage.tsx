@@ -177,7 +177,8 @@ export function EnvironmentPage({
             : "envDesktopInstalledSeparate",
         ),
       };
-    if (platform !== "macos")
+    // macOS/Windows 均已实现桌面端探测；其余平台无定义可匹配，保持"暂不支持"。
+    if (platform !== "macos" && platform !== "windows")
       return {
         ...base,
         status: "unsupported",

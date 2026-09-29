@@ -101,16 +101,21 @@ pub struct RelayEnvFixPlan {
     command: Option<String>,
     source: Option<String>,
     docs_url: Option<String>,
+    /// 不支持自动安装时的原因码（winget_missing / brew_missing / manual_only），
+    /// 前端据此给出可操作的指引而非笼统的"暂不支持"。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<&'static str>,
 }
 
 impl RelayEnvFixPlan {
-    fn manual(id: &str) -> Self {
+    fn manual(id: &str, reason: &'static str) -> Self {
         Self {
             id: id.to_string(),
             supported: false,
             command: None,
             source: None,
             docs_url: Some(env_docs_url(id).to_string()),
+            reason: Some(reason),
         }
     }
 }
@@ -168,7 +173,7 @@ fn env_fix_plan(id: &'static str) -> RelayEnvFixPlan {
         _ => "OpenJS.NodeJS.LTS",
     };
     if !matches!(probe_version("winget", "--version"), Probe::Found(_)) {
-        return RelayEnvFixPlan::manual(id);
+        return RelayEnvFixPlan::manual(id, "winget_missing");
     }
     RelayEnvFixPlan {
         id: id.to_string(),
@@ -178,6 +183,7 @@ fn env_fix_plan(id: &'static str) -> RelayEnvFixPlan {
         )),
         source: Some(format!("winget · {package}")),
         docs_url: Some(env_docs_url(id).to_string()),
+        reason: None,
     }
 }
 
@@ -190,7 +196,7 @@ fn env_fix_plan(id: &'static str) -> RelayEnvFixPlan {
         _ => "node",
     };
     if !matches!(probe_version("brew", "--version"), Probe::Found(_)) {
-        return RelayEnvFixPlan::manual(id);
+        return RelayEnvFixPlan::manual(id, "brew_missing");
     }
     RelayEnvFixPlan {
         id: id.to_string(),
@@ -198,13 +204,14 @@ fn env_fix_plan(id: &'static str) -> RelayEnvFixPlan {
         command: Some(format!("brew install {formula}")),
         source: Some(format!("Homebrew · {formula}")),
         docs_url: Some(env_docs_url(id).to_string()),
+        reason: None,
     }
 }
 
 /// Linux 发行版包管理需要 sudo 交互；静默执行无法输入密码，统一走手动指引。
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn env_fix_plan(id: &'static str) -> RelayEnvFixPlan {
-    RelayEnvFixPlan::manual(id)
+    RelayEnvFixPlan::manual(id, "manual_only")
 }
 
 #[cfg(target_os = "windows")]
@@ -419,13 +426,18 @@ fn probe_version(binary: &str, arg: &str) -> Probe {
     }
 }
 
+/// Windows 探测必须使用新鲜 PATH：winget/安装器把新工具目录写进注册表 PATH，
+/// 但运行中的进程继承的是启动时的旧 PATH 快照——装完立刻探测会永远 "missing"。
+/// `effective_path_string` 每次调用都从注册表重新合成（与 `locate_tool_executable`
+/// 的搜索目录来源一致），保证探测与安装看到同一组目录。
 #[cfg(target_os = "windows")]
 fn probe_version(binary: &str, arg: &str) -> Probe {
     use std::process::{Command, Stdio};
-    let result = Command::new("cmd")
-        .args(["/c", binary, arg])
+    let mut cmd = Command::new("cmd");
+    cmd.args(["/c", binary, arg])
         .stdin(Stdio::null())
-        .output();
+        .env("PATH", super::effective_path_string());
+    let result = cmd.output();
     match result {
         Ok(out) if out.status.success() => {
             Probe::Found(crate::commands::decode_command_output(&out.stdout))

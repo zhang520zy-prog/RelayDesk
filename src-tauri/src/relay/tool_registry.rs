@@ -19,6 +19,10 @@ pub struct DesktopToolDefinition {
     pub display_name: String,
     #[serde(default)]
     pub reads_cli_config: bool,
+    /// Windows 检测线索：常见安装目录名、卸载注册表 DisplayName 子串、MSIX 包名
+    /// 共用同一名称做大小写不敏感匹配。为空表示该桌面端无 Windows 版本。
+    #[serde(default)]
+    pub windows_names: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -58,6 +62,9 @@ pub fn builtin_registry() -> ToolRegistry {
                         // settingSources:["user"] 启动，user 源即
                         // ~/.claude/settings.json——正是 relay 写入的目标文件。
                         reads_cli_config: true,
+                        // Windows 版为 Electron 安装包：卸载登记名 "Claude"，
+                        // 安装目录 %LOCALAPPDATA%\AnthropicClaude。
+                        windows_names: vec!["Claude".to_string(), "AnthropicClaude".to_string()],
                     }],
                 },
             ),
@@ -73,11 +80,15 @@ pub fn builtin_registry() -> ToolRegistry {
                             app_name: "ChatGPT.app".to_string(),
                             display_name: "ChatGPT (Codex)".to_string(),
                             reads_cli_config: true,
+                            // Windows 版为 Store MSIX（OpenAI.ChatGPT-Desktop），
+                            // 卸载表与 Appx 查询均按 "ChatGPT" 子串命中。
+                            windows_names: vec!["ChatGPT".to_string()],
                         },
                         DesktopToolDefinition {
                             app_name: "Codex.app".to_string(),
                             display_name: "Codex (legacy name)".to_string(),
                             reads_cli_config: true,
+                            windows_names: vec!["Codex".to_string()],
                         },
                     ],
                 },
@@ -94,6 +105,7 @@ pub fn builtin_registry() -> ToolRegistry {
                         app_name: "Gemini.app".to_string(),
                         display_name: "Gemini desktop".to_string(),
                         reads_cli_config: false,
+                        windows_names: vec![],
                     }],
                 },
             ),
@@ -185,7 +197,13 @@ fn validate_registry(registry: &ToolRegistry) -> bool {
                 .unwrap_or(true)
             && tool.desktop_apps.len() <= 4
             && tool.desktop_apps.iter().all(|desktop| {
-                !desktop.display_name.trim().is_empty() && valid_app_name(&desktop.app_name)
+                !desktop.display_name.trim().is_empty()
+                    && valid_app_name(&desktop.app_name)
+                    && desktop.windows_names.len() <= 8
+                    && desktop
+                        .windows_names
+                        .iter()
+                        .all(|name| valid_windows_name(name))
             })
     })
 }
@@ -200,6 +218,19 @@ fn valid_app_name(value: &str) -> bool {
         && !value.contains('/')
         && !value.contains('\\')
         && !value.contains("..")
+}
+
+/// Windows 检测名只允许纯显示名/包名片段：禁止路径分隔符与通配符注入，
+/// 使其可安全拼进目录路径、DisplayName 子串匹配与 Appx `-Name` 过滤。
+fn valid_windows_name(value: &str) -> bool {
+    !value.trim().is_empty()
+        && value.len() <= 60
+        && !value.contains('/')
+        && !value.contains('\\')
+        && !value.contains("..")
+        && !value.contains('*')
+        && !value.contains('\'')
+        && !value.contains('"')
 }
 
 fn unix_timestamp() -> u64 {
@@ -233,6 +264,17 @@ mod tests {
         let mut registry = builtin_registry();
         registry.tools.remove("gemini");
         assert!(!validate_registry(&registry));
+    }
+
+    #[test]
+    fn validation_rejects_unsafe_windows_names() {
+        for bad in ["Claude**", "..\\x", "a/b", "x'y", "x\"y", "", "   "] {
+            let mut registry = builtin_registry();
+            registry.tools.get_mut("claude").unwrap().desktop_apps[0].windows_names =
+                vec![bad.to_string()];
+            assert!(!validate_registry(&registry), "accepted {bad:?}");
+        }
+        assert!(validate_registry(&builtin_registry()));
     }
 
     #[test]

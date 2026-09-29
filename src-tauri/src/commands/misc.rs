@@ -223,6 +223,7 @@ pub(crate) fn run_tool_lifecycle_silently(command_line: &str, _label: &str) -> R
         let inherited = std::env::var("PATH").unwrap_or_default();
         cmd.env("PATH", merge_path_segments(&login_path, &inherited));
     }
+    apply_effective_proxy_env(&mut cmd);
     let output = cmd.output().map_err(|e| format!("启动安装进程失败: {e}"))?;
     finish_lifecycle_output(&output)
 }
@@ -238,14 +239,29 @@ pub(crate) fn run_tool_lifecycle_silently(command_line: &str, label: &str) -> Re
         std::env::temp_dir().join(format!("relaydesk_{}_{}.bat", label, std::process::id()));
     std::fs::write(&bat_file, command_line).map_err(|e| format!("写入批处理文件失败: {e}"))?;
 
-    let output = Command::new("cmd")
-        .arg("/C")
+    // winget 刚装完的工具只在注册表 PATH 里；进程继承的旧 PATH 看不到。
+    // 用注册表合成的新鲜 PATH 运行脚本，保证「装 node → npm install -g」一轮连通。
+    let mut cmd = Command::new("cmd");
+    cmd.arg("/C")
         .arg(&bat_file)
-        .creation_flags(CREATE_NO_WINDOW)
-        .output();
+        .env("PATH", effective_path_string())
+        .creation_flags(CREATE_NO_WINDOW);
+    apply_effective_proxy_env(&mut cmd);
+    let output = cmd.output();
     let _ = std::fs::remove_file(&bat_file);
 
     finish_lifecycle_output(&output.map_err(|e| format!("启动安装进程失败: {e}"))?)
+}
+
+/// 把应用内生效的代理（用户配置 > 系统检测）传给安装子进程。npm/git/curl/winget
+/// 都认 HTTP(S)_PROXY 系列变量；直连模式（None）则不设置，保持原有行为。
+/// 代理 URL 可能含凭据——仅注入子进程环境，不落日志。
+fn apply_effective_proxy_env(cmd: &mut std::process::Command) {
+    if let Some(proxy) = crate::proxy::http_client::get_current_proxy_url() {
+        for key in ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"] {
+            cmd.env(key, &proxy);
+        }
+    }
 }
 
 /// 把子进程退出结果转成 `Result`：成功返回 `Ok`；失败提取 stderr（空则回退 stdout）
@@ -1654,7 +1670,7 @@ fn extend_mise_node_search_paths(paths: &mut Vec<std::path::PathBuf>, home: &Pat
 /// See `env_checker::check_system_env` for the same set of registry keys; here
 /// we read only the `Path` value.
 #[cfg(target_os = "windows")]
-fn effective_path_string() -> String {
+pub(crate) fn effective_path_string() -> String {
     use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
     use winreg::RegKey;
 

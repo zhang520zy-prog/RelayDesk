@@ -492,7 +492,122 @@ fn find_desktop_app(
     None
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Windows 桌面端探测：依次尝试常见安装目录 → 卸载注册表 DisplayName 子串 →
+/// MSIX/Store 包（Get-AppxPackage）。任一命中即返回；返回的路径仅作为
+/// "已安装"证据展示，启动桌面端目前仍仅限 macOS。
+#[cfg(target_os = "windows")]
+fn find_desktop_app(
+    app: &str,
+    registry: &ToolRegistry,
+) -> Option<(std::path::PathBuf, DesktopToolDefinition)> {
+    let definition = registry.tools.get(app)?;
+    for desktop in &definition.desktop_apps {
+        for name in &desktop.windows_names {
+            if let Some(path) = find_windows_desktop_dir(name)
+                .or_else(|| find_windows_uninstall_entry(name))
+                .or_else(|| find_windows_msix_package(name))
+            {
+                return Some((path, desktop.clone()));
+            }
+        }
+    }
+    None
+}
+
+/// %LOCALAPPDATA%\Programs\<name>、%LOCALAPPDATA%\<name>、Program Files 下的目录。
+#[cfg(target_os = "windows")]
+fn find_windows_desktop_dir(name: &str) -> Option<std::path::PathBuf> {
+    let mut bases: Vec<std::path::PathBuf> = Vec::new();
+    if let Some(local) = dirs::data_local_dir() {
+        bases.push(local.join("Programs"));
+        bases.push(local);
+    }
+    for var in ["ProgramFiles", "ProgramFiles(x86)"] {
+        if let Ok(dir) = std::env::var(var) {
+            bases.push(std::path::PathBuf::from(dir));
+        }
+    }
+    bases
+        .into_iter()
+        .map(|base| base.join(name))
+        .find(|candidate| candidate.is_dir())
+}
+
+/// 卸载注册表扫描：HKCU/HKLM 的 Uninstall 子键里 DisplayName 含 name 即视为已装。
+/// 命中时优先返回 InstallLocation，其次 DisplayIcon（可能是 exe 路径）。
+#[cfg(target_os = "windows")]
+fn find_windows_uninstall_entry(name: &str) -> Option<std::path::PathBuf> {
+    use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+    let needle = name.to_ascii_lowercase();
+    for (hive, subkey) in [
+        (
+            HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Uninstall",
+        ),
+        (
+            HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+        ),
+        (
+            HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+        ),
+    ] {
+        let Ok(uninstall) = winreg::RegKey::predef(hive).open_subkey(subkey) else {
+            continue;
+        };
+        for entry in uninstall.enum_keys().flatten() {
+            let Ok(key) = uninstall.open_subkey(&entry) else {
+                continue;
+            };
+            let display = key
+                .get_value::<String, _>("DisplayName")
+                .unwrap_or_default();
+            if !display.to_ascii_lowercase().contains(&needle) {
+                continue;
+            }
+            for field in ["InstallLocation", "DisplayIcon"] {
+                if let Ok(value) = key.get_value::<String, _>(field) {
+                    let trimmed = value.trim().trim_matches('"').to_string();
+                    if !trimmed.is_empty() {
+                        return Some(std::path::PathBuf::from(trimmed));
+                    }
+                }
+            }
+            // 卸载项命中但无路径字段：仍认为已安装，用显示名占位。
+            return Some(std::path::PathBuf::from(&display));
+        }
+    }
+    None
+}
+
+/// Store/MSIX 应用（如 ChatGPT 桌面端）不出现在经典安装目录；用 Appx 查询兜底。
+/// windows_names 已过滤通配符，`-Name '*name*'` 是子串匹配的安全用法。
+#[cfg(target_os = "windows")]
+fn find_windows_msix_package(name: &str) -> Option<std::path::PathBuf> {
+    use std::os::windows::process::CommandExt;
+    let output = std::process::Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            &format!(
+                "Get-AppxPackage -Name '*{name}*' -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty InstallLocation"
+            ),
+        ])
+        .stdin(std::process::Stdio::null())
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let location = crate::commands::decode_command_output(&output.stdout);
+    let location = location.trim().trim_matches('"');
+    (!location.is_empty()).then(|| std::path::PathBuf::from(location))
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn find_desktop_app(
     _app: &str,
     _registry: &ToolRegistry,
