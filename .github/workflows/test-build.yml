@@ -111,6 +111,7 @@ jobs:
 
       # 诊断：列出 bundle 目录实际产出的全部文件（含 .sig/.zip 更新器产物）
       - name: List bundle outputs
+        shell: bash
         run: find src-tauri/target/release/bundle -type f | sort
 
       # 更新器产物缺失必须显式失败，而不是静默发布一个不完整的 latest.json
