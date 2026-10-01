@@ -400,13 +400,13 @@ describe("RelayDesk user flows", () => {
       "page",
     );
     expect(
-      screen.getByRole("heading", { name: "AI 工具" }),
+      await screen.findByRole("heading", { name: "AI 工具" }),
     ).toBeInTheDocument();
-    const git = screen.getByText("Git").closest("li")!;
+    const git = (await screen.findAllByText("Git"))[0].closest("li")!;
     expect(await within(git).findByText("2.45.0")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "返回模型中心" }));
+    await user.click(await screen.findByRole("button", { name: "返回模型中心" }));
     expect(
-      screen.getByRole("heading", { name: "模型中心", level: 1 }),
+      await screen.findByRole("heading", { name: "模型中心", level: 1 }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "设置" }));
     expect(
@@ -900,7 +900,7 @@ describe("RelayDesk user flows", () => {
     const user = userEvent.setup();
     mount();
     await user.click(await screen.findByRole("button", { name: "应用目标" }));
-    await user.click(screen.getByRole("switch", { name: /Gemini CLI/ }));
+    await user.click(await screen.findByRole("switch", { name: /Gemini CLI/ }));
     await waitFor(() => expect(account!.applyApps.gemini).toBe(true));
     expect(calls).toHaveLength(0);
   });
@@ -909,7 +909,7 @@ describe("RelayDesk user flows", () => {
     mount();
     await user.click(await screen.findByRole("button", { name: "应用目标" }));
     await user.selectOptions(
-      screen.getByRole("combobox", { name: "standard · 目标工具" }),
+      await screen.findByRole("combobox", { name: "standard · 目标工具" }),
       "claude",
     );
     await waitFor(() => expect(account!.groupTargets.standard).toBe("claude"));

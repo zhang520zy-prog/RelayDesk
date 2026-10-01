@@ -1,6 +1,16 @@
+import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ArrowUpRight, Check, FolderSearch, Terminal, Info, Undo2 } from "lucide-react";
+import {
+  ArrowUpRight,
+  Check,
+  FolderSearch,
+  Bot,
+  Code,
+  Sparkles,
+  Info,
+  Undo2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { settingsApi } from "@/lib/api/settings";
@@ -15,18 +25,27 @@ import {
   targetLabels,
 } from "../state/useRelayApply";
 import { GroupRouting } from "./GroupRouting";
+
+const targetIcons: Record<RelayTarget, typeof Bot> = {
+  claude: Bot,
+  codex: Code,
+  gemini: Sparkles,
+};
+
 function TargetCard({
   app,
   apps,
   busy,
   report,
   change,
+  focused,
 }: {
   app: RelayTarget;
   apps: RelayApplyApps;
   busy: boolean;
   report: ApplyReport | null;
   change: (apps: RelayApplyApps) => void;
+  focused?: boolean;
 }) {
   const { t } = useTranslation("relaydesk");
   const queryClient = useQueryClient();
@@ -61,11 +80,21 @@ function TargetCard({
     }
   };
   const result = report?.results.find((r) => r.app === app);
+  const Icon = targetIcons[app];
+  const cardRef = useRef<HTMLElement>(null);
+  // 只在聚焦状态变更时滚动一次；ref 回调写法会让任意重渲染都把用户拽回来。
+  useEffect(() => {
+    if (focused) cardRef.current?.scrollIntoView({ block: "center" });
+  }, [focused]);
   return (
-    <section className={`rd-target-card ${apps[app] ? "is-enabled" : ""}`}>
+    <section
+      id={`rd-target-${app}`}
+      ref={cardRef}
+      className={`rd-target-card ${apps[app] ? "is-enabled" : ""} ${focused ? "is-focus" : ""}`}
+    >
       <div className="rd-target-card-top">
         <span className={`rd-tool-icon ${app}`}>
-          <Terminal size={23} />
+          <Icon size={23} aria-hidden="true" />
         </span>
         <div>
           <h2>{targetLabels[app]}</h2>
@@ -139,7 +168,9 @@ export function TargetsPage({
   report,
   change,
   changeGroupTarget,
+  focusTarget,
 }: {
+  focusTarget?: RelayTarget | null;
   apps: RelayApplyApps;
   groups: RelayGroup[];
   groupTargets: Record<string, RelayTarget>;
@@ -168,7 +199,11 @@ export function TargetsPage({
         <ArrowUpRight size={18} />
       </div>
       {targetIds.map((app) => (
-        <TargetCard key={app} {...{ app, apps, busy, report, change }} />
+        <TargetCard
+          key={app}
+          {...{ app, apps, busy, report, change }}
+          focused={focusTarget === app}
+        />
       ))}
       <GroupRouting
         {...{ apps, groups, groupTargets, changeGroupTarget }}

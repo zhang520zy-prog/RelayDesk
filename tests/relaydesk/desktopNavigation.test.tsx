@@ -75,7 +75,7 @@ it("keeps navigation static without a hover layer or scale animation", () => {
     </AppShell>,
   );
   expect(container.querySelector(".rd-nav-hover")).toBeNull();
-  expect(container.querySelectorAll(".rd-nav-content")).toHaveLength(5);
+  expect(container.querySelectorAll(".rd-nav-content")).toHaveLength(6);
   expect(
     [...container.querySelectorAll<HTMLElement>(".rd-nav-content")].every(
       (element) => !element.style.transform,

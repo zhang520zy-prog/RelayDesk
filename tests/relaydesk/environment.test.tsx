@@ -213,8 +213,23 @@ describe("environment health", () => {
     );
     await waitFor(() => expect(open).toHaveBeenCalledWith("codex"));
   });
-  it("marks desktop detection as unsupported off macOS but still offers the download", async () => {
+  it("marks desktop detection as supported on Windows and offers the download", async () => {
     mount(<EnvironmentPage onBack={() => {}} platform="windows" />);
+    const desktop = (
+      await screen.findByText("ChatGPT (Codex) desktop")
+    ).closest("li")!;
+    expect(
+      within(desktop).getByText(
+        "Not installed (optional; the CLI works without it)",
+      ),
+    ).toBeInTheDocument();
+    expect(within(desktop).getByText("Needs attention")).toBeInTheDocument();
+    expect(
+      within(desktop).getByRole("button", { name: "Download desktop app" }),
+    ).toBeEnabled();
+  });
+  it("marks desktop detection as unsupported on Linux desktop but still offers the download", async () => {
+    mount(<EnvironmentPage onBack={() => {}} platform="linux-desktop" />);
     const desktop = (
       await screen.findByText("ChatGPT (Codex) desktop")
     ).closest("li")!;

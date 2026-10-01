@@ -8,6 +8,7 @@ import {
   Download,
   WalletCards,
   BarChart3,
+  MessageSquare,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatRelayQuota, type RelayAccountInfo } from "@/lib/api/relay";
@@ -17,6 +18,7 @@ export type Page =
   | "models"
   | "deployment"
   | "targets"
+  | "sessions"
   | "wallet"
   | "usage"
   | "settings";
@@ -44,6 +46,7 @@ export function Sidebar({
             { id: "models", Icon: Boxes },
             { id: "deployment", Icon: Download },
             { id: "targets", Icon: SlidersHorizontal },
+            { id: "sessions", Icon: MessageSquare },
             { id: "wallet", Icon: WalletCards },
             { id: "usage", Icon: BarChart3 },
           ] as const

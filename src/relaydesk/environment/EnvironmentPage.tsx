@@ -270,8 +270,7 @@ export function EnvironmentPage({
                     <EnvironmentCheckRow key={desktop.id} check={desktop}>
                       {found?.desktopUrl &&
                         (desktop.status === "warn" ||
-                          (desktop.status === "unsupported" &&
-                            platform === "windows")) && (
+                          desktop.status === "unsupported") && (
                           <Action
                             onClick={() =>
                               void relayApi

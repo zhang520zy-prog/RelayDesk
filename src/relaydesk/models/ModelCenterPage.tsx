@@ -5,12 +5,14 @@ import {
   type RelayAccountInfo,
   type RelayGroup,
   type RelayGroupModels,
+  type RelayTarget,
   formatRelayQuota,
 } from "@/lib/api/relay";
 import { Action, Field } from "../ui";
 import type { ApplyReport } from "../state/useRelayApply";
 import { CurrentModelCard } from "./CurrentModelCard";
 import { ModelTable } from "./ModelTable";
+import { ModelTargetQuickBar } from "./ModelTargetQuickBar";
 import { modelChoices, uniqueModelCount } from "./modelPresentation";
 export function ModelCenterPage({
   account,
@@ -47,7 +49,7 @@ export function ModelCenterPage({
   refresh: () => void;
   apply: (group: string, model: string) => void;
   details: () => void;
-  targets: () => void;
+  targets: (app?: RelayTarget) => void;
   viewAccount: () => void;
   viewWallet: () => void;
 }) {
@@ -103,10 +105,16 @@ export function ModelCenterPage({
         ))}
       </section>
       <CurrentModelCard {...{ account, report, pending }} onDetails={details} />
+      <ModelTargetQuickBar
+        apps={account.applyApps}
+        report={report}
+        busy={busy}
+        onConfigure={targets}
+      />
       {notice && (
         <div className="rd-alert warning" role="alert">
           <span>{t(notice)}</span>
-          <Action onClick={targets}>{t("manageTargets")}</Action>
+          <Action onClick={() => targets()}>{t("manageTargets")}</Action>
         </div>
       )}
       <section className="rd-catalog">

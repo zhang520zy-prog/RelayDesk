@@ -1,3 +1,10 @@
+// ============================================================================
+// LEGACY / DEPRECATED — RelayDesk 的入口是 src/relaydesk/RelayDeskApp.tsx，
+// 本文件不再被 main.tsx 引用，也不进入打包产物。
+// 保留原因：components/providers、mcp、skills、sessions 等遗留实现仍是
+// src/lib 共享逻辑与后续 P3 移植（MCP/技能面板迁入主流程）的参考与测试载体。
+// 往这里面改功能 = 改死代码；新需求请写进 src/relaydesk/。
+// ============================================================================
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";

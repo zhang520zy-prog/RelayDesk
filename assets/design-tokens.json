@@ -1,0 +1,180 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "RelayDesk design tokens. Source of truth: src/relaydesk/design/tokens.css. Keep this file in sync when tokens change.",
+  "color": {
+    "primitive": {
+      "teal": {
+        "50": { "value": "#f0faf7" },
+        "100": { "value": "#ddf3ec" },
+        "200": { "value": "#b8e5d9" },
+        "300": { "value": "#82d2bd" },
+        "400": { "value": "#53bea5" },
+        "500": { "value": "#138b78" },
+        "600": { "value": "#107866" },
+        "700": { "value": "#126555" },
+        "800": { "value": "#184c42" },
+        "900": { "value": "#173a33" },
+        "950": { "value": "#102a25" }
+      },
+      "chart": {
+        "light": {
+          "1": { "value": "#2463ce" },
+          "2": { "value": "#bd560d" },
+          "3": { "value": "#8450bc" },
+          "4": { "value": "#087b64" },
+          "5": { "value": "#bb3979" },
+          "6": { "value": "#677816" },
+          "7": { "value": "#0c7999" },
+          "8": { "value": "#be4141" }
+        },
+        "dark": {
+          "1": { "value": "#80adff" },
+          "2": { "value": "#f4af62" },
+          "3": { "value": "#c4a0f2" },
+          "4": { "value": "#64d2af" },
+          "5": { "value": "#f48fbd" },
+          "6": { "value": "#ccda70" },
+          "7": { "value": "#66cce9" },
+          "8": { "value": "#f98b86" }
+        }
+      }
+    },
+    "semantic": {
+      "light": {
+        "bg": { "value": "#f4f8f7" },
+        "sidebar": { "value": "#edf5f2" },
+        "surface": { "value": "#ffffff" },
+        "raised": { "value": "#f2f7f5" },
+        "hover": { "value": "#e8f2ee" },
+        "text": { "value": "#213730" },
+        "muted": { "value": "#536b62" },
+        "line": { "value": "#d5e3dc" },
+        "teal": { "value": "{color.primitive.teal.700}" },
+        "brand": { "value": "{color.primitive.teal.500}" },
+        "soft": { "value": "{color.primitive.teal.100}" },
+        "action": { "value": "{color.primitive.teal.700}" },
+        "actionHover": { "value": "{color.primitive.teal.800}" },
+        "onAction": { "value": "#ffffff" },
+        "focus": { "value": "{color.primitive.teal.600}" },
+        "controlLine": { "value": "#80978c" },
+        "success": { "value": "#16704e" },
+        "warning": { "value": "#8b571b" },
+        "danger": { "value": "#ba3449" }
+      },
+      "dark": {
+        "bg": { "value": "#101b18" },
+        "sidebar": { "value": "#14221d" },
+        "surface": { "value": "#192a23" },
+        "raised": { "value": "#20342b" },
+        "hover": { "value": "#2a4035" },
+        "text": { "value": "#e4eee8" },
+        "muted": { "value": "#a3b9ad" },
+        "line": { "value": "#334d40" },
+        "teal": { "value": "#80d7bb" },
+        "brand": { "value": "{color.primitive.teal.500}" },
+        "soft": { "value": "{color.primitive.teal.950}" },
+        "action": { "value": "#80d7bb" },
+        "actionHover": { "value": "#a8e6d0" },
+        "onAction": { "value": "#102a23" },
+        "focus": { "value": "#a8e6d0" },
+        "controlLine": { "value": "#698475" },
+        "success": { "value": "#81d3a6" },
+        "warning": { "value": "#efbb72" },
+        "danger": { "value": "#f194a0" }
+      }
+    }
+  },
+  "typography": {
+    "family": {
+      "ui": {
+        "value": "'RelayDesk Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+      },
+      "code": {
+        "value": "ui-monospace, SFMono-Regular, Consolas, monospace"
+      }
+    },
+    "size": {
+      "caption": { "value": "12px" },
+      "control": { "value": "13px" },
+      "body": { "value": "14px" },
+      "section": { "value": "16px" },
+      "title": { "value": "24px" },
+      "stat": { "value": "32px" }
+    },
+    "weight": {
+      "regular": { "value": 400 },
+      "medium": { "value": 500 },
+      "strong": { "value": 600 }
+    }
+  },
+  "spacing": {
+    "1": { "value": "4px" },
+    "2": { "value": "8px" },
+    "3": { "value": "12px" },
+    "4": { "value": "16px" },
+    "5": { "value": "20px" },
+    "6": { "value": "24px" },
+    "8": { "value": "32px" }
+  },
+  "size": {
+    "controlHeight": { "value": "40px" },
+    "actionHeight": { "value": "44px" },
+    "pageMax": { "value": "1180px" }
+  },
+  "radius": {
+    "control": { "value": "10px" },
+    "panel": { "value": "18px" }
+  },
+  "motion": {
+    "fast": { "value": "140ms" },
+    "panel": { "value": "220ms" }
+  },
+  "elevation": {
+    "light": {
+      "shadowSm": { "value": "0 2px 5px rgb(25 62 47 / 4%)" },
+      "shadowMd": { "value": "0 8px 28px rgb(25 62 47 / 6%)" },
+      "shadowLg": { "value": "0 24px 64px rgb(12 42 31 / 16%)" },
+      "insetHighlight": { "value": "inset 0 1px 0 rgb(255 255 255 / 94%)" },
+      "glass": { "value": "rgb(255 255 255 / 82%)" },
+      "glassLine": { "value": "rgb(255 255 255 / 94%)" },
+      "sidebarGlass": { "value": "rgb(238 246 242 / 90%)" }
+    },
+    "dark": {
+      "shadowSm": { "value": "0 2px 5px rgb(0 0 0 / 12%)" },
+      "shadowMd": { "value": "0 8px 28px rgb(0 0 0 / 14%)" },
+      "shadowLg": { "value": "0 24px 64px rgb(0 0 0 / 36%)" },
+      "insetHighlight": { "value": "inset 0 1px 0 rgb(196 242 215 / 9%)" },
+      "glass": { "value": "rgb(25 42 35 / 86%)" },
+      "glassLine": { "value": "rgb(196 242 215 / 9%)" },
+      "sidebarGlass": { "value": "rgb(20 34 29 / 92%)" }
+    }
+  },
+  "component": {
+    "sidebar": {
+      "background": { "value": "{color.semantic.light.sidebar}" },
+      "width": { "value": "expanded/collapsed via --rd-nav-* in brand.css" }
+    },
+    "targetCard": {
+      "border": { "value": "1px solid {color.semantic.light.line}" },
+      "radius": { "value": "{radius.panel}" },
+      "focusState": { "value": "border {color.semantic.light.teal} + color-mix ring" }
+    },
+    "targetQuickBarChip": {
+      "states": {
+        "enabled": { "value": "default surface styling" },
+        "synced": { "value": "{color.semantic.light.success} border+8% wash" },
+        "failed": { "value": "{color.semantic.light.danger} border+8% wash" },
+        "pending": { "value": "{color.semantic.light.warning} border+8% wash" },
+        "disabled": { "value": "muted" }
+      }
+    },
+    "sessionItem": {
+      "selected": { "value": "background {color.semantic.light.soft}, border teal" }
+    }
+  },
+  "policy": {
+    "icons": "lucide-react in src/relaydesk/**; legacy @/components ProviderIcon only in legacy surfaces",
+    "statusSemantics": "success/synced=green, warning/pending=amber, danger/failed=red, muted=disabled",
+    "accessibility": "2px var(--rd-focus) focus ring, aria-current for selection, role=status for spinners, honor prefers-reduced-motion"
+  }
+}
