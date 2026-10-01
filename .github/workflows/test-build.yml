@@ -234,6 +234,24 @@ jobs:
             > ⚠️ 其余带 `.sig`、`.tar.gz`、`latest.json` 的文件是**应用内自动更新**的数据，
             > 手动下载不需要管它们。
 
+      # 滚动 release 只展示当次构建的产物：删掉任何不在本次 dist/ 里的资产，
+      # 避免新旧版本号文件并排出现。
+      - name: Prune stale assets from rolling release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          find dist -type f -printf "%f\n" | sort -u > /tmp/keep.txt
+          gh release view test-build --json assets \
+            -q '.assets[] | [.id, .name] | @tsv' | while IFS=$'\t' read -r id name; do
+            if grep -qxF "$name" /tmp/keep.txt; then
+              continue
+            fi
+            echo "pruning stale asset: $name"
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id"
+          done
+
             ## 安装注意
 
             - **Windows**：如弹出"Windows 已保护你的电脑"（SmartScreen），点 **"更多信息" → "仍要运行"**（测试版未购买代码签名证书，属正常提示）
