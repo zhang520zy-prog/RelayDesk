@@ -79,6 +79,8 @@ pub(crate) struct TrustedDesktopIdentity {
     pub display_name: String,
     pub reads_cli_config: bool,
     /// 仅 debug 注入使用的额外搜索目录（生产身份为空）。
+    /// 仅在 macOS 查找路径中被消费，其余平台构建时视为未使用。
+    #[allow(dead_code)]
     pub extra_roots: Vec<PathBuf>,
 }
 
@@ -495,7 +497,7 @@ pub(crate) fn platform_ops() -> Box<dyn RestartOps> {
 // ── 能力检测 ────────────────────────────────────────────────────────────
 
 enum DesktopProbe {
-    Verified(DesktopCandidate),
+    Verified(Box<DesktopCandidate>),
     /// 目录存在但 Info.plist 的 bundle id 与 allowlist 不符/不可读。
     Unverified,
 }
@@ -540,14 +542,14 @@ fn probe_desktops(app: &str, registry: &ToolRegistry, ops: &dyn RestartOps) -> V
                 Some(from_registry) => identity.reads_cli_config && from_registry,
                 None => identity.reads_cli_config,
             };
-            Some(DesktopProbe::Verified(DesktopCandidate {
+            Some(DesktopProbe::Verified(Box::new(DesktopCandidate {
                 target_id: target_id(app, &identity.app_name),
                 identity,
                 app_root,
                 exe_path,
                 running_pid,
                 reads_cli_config,
-            }))
+            })))
         })
         .collect()
 }
@@ -621,7 +623,7 @@ fn desktop_capability(
     let verified: Vec<&DesktopCandidate> = probes
         .iter()
         .filter_map(|probe| match probe {
-            DesktopProbe::Verified(candidate) => Some(candidate),
+            DesktopProbe::Verified(candidate) => Some(&**candidate),
             DesktopProbe::Unverified => None,
         })
         .collect();
@@ -772,7 +774,7 @@ fn restart_exec(
     let verified: Vec<&DesktopCandidate> = probes
         .iter()
         .filter_map(|probe| match probe {
-            DesktopProbe::Verified(candidate) => Some(candidate),
+            DesktopProbe::Verified(candidate) => Some(&**candidate),
             DesktopProbe::Unverified => None,
         })
         .collect();

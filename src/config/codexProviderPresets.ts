@@ -1038,8 +1038,7 @@ requires_openai_auth = true`,
   {
     name: "SudoCode.chat",
     websiteUrl: "https://sudocode.chat",
-    apiKeyUrl:
-      "https://sudocode.chat/sign-up",
+    apiKeyUrl: "https://sudocode.chat/sign-up",
     category: "third_party",
     auth: generateThirdPartyAuth(""),
     config: `model_provider = "relaydesk"

@@ -879,8 +879,7 @@ const piProviderPresetDefinitions: PiProviderPreset[] = [
     name: "SudoCode.chat",
     providerKey: "relaydesk-sudo-code-chat",
     websiteUrl: "https://sudocode.chat",
-    apiKeyUrl:
-      "https://sudocode.chat/sign-up",
+    apiKeyUrl: "https://sudocode.chat/sign-up",
     settingsConfig: {
       name: "SudoCode.chat",
       baseUrl: "https://api.sudocode.chat/v1",

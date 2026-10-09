@@ -1632,8 +1632,7 @@ export const openclawProviderPresets: OpenClawProviderPreset[] = [
   {
     name: "SudoCode.chat",
     websiteUrl: "https://sudocode.chat",
-    apiKeyUrl:
-      "https://sudocode.chat/sign-up",
+    apiKeyUrl: "https://sudocode.chat/sign-up",
     settingsConfig: {
       baseUrl: "https://api.sudocode.chat/v1",
       apiKey: "",

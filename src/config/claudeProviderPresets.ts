@@ -811,8 +811,7 @@ export const providerPresets: ProviderPreset[] = [
   {
     name: "SudoCode.chat",
     websiteUrl: "https://sudocode.chat",
-    apiKeyUrl:
-      "https://sudocode.chat/sign-up",
+    apiKeyUrl: "https://sudocode.chat/sign-up",
     settingsConfig: {
       env: {
         ANTHROPIC_BASE_URL: "https://api.sudocode.chat",

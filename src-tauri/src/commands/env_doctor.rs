@@ -375,10 +375,7 @@ fn probe_webview2() -> RelayEnvCheck {
 }
 
 async fn relay_reachability(state: &AppState) -> RelayEnvCheck {
-    let account = match RelayService::account(state) {
-        Ok(account) => account,
-        Err(_) => None,
-    };
+    let account = RelayService::account(state).unwrap_or_default();
     let Some(account) = account else {
         return RelayEnvCheck::new("relay", "unavailable", None, Some("not_logged_in"));
     };
@@ -457,9 +454,7 @@ fn sanitize_version(raw: &str) -> Option<String> {
         .chars()
         .filter(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | '+'))
         .collect();
-    if version.starts_with(|c| matches!(c, 'v' | 'V'))
-        && version[1..].starts_with(|c: char| c.is_ascii_digit())
-    {
+    if version.starts_with(['v', 'V']) && version[1..].starts_with(|c: char| c.is_ascii_digit()) {
         version.remove(0);
     }
     (!version.is_empty() && version.len() <= 40).then_some(version)

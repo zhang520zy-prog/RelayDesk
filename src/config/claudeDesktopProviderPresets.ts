@@ -784,8 +784,7 @@ export const claudeDesktopProviderPresets: ClaudeDesktopProviderPreset[] = [
   {
     name: "SudoCode.chat",
     websiteUrl: "https://sudocode.chat",
-    apiKeyUrl:
-      "https://sudocode.chat/sign-up",
+    apiKeyUrl: "https://sudocode.chat/sign-up",
     category: "third_party",
     baseUrl: "https://api.sudocode.chat",
     mode: "direct",

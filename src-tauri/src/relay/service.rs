@@ -222,11 +222,9 @@ impl RelayService {
         // The password never leaves this call. When requested, retain only the
         // encrypted long-lived token in the app-local vault; a vault failure
         // must not turn a valid one-session login into a failed login.
-        if remember {
-            if Self::save_remembered(state, &account).is_err() {
-                log::warn!("无法保存中转站记住登录信息");
-                account.remembered = false;
-            }
+        if remember && Self::save_remembered(state, &account).is_err() {
+            log::warn!("无法保存中转站记住登录信息");
+            account.remembered = false;
         }
         // remember=false 只表示本次不保存。既有保存记录只能由 forget_login
         // 显式删除——一次未勾选不能意外清掉用户已保存的账号。
@@ -889,7 +887,7 @@ fn apply_model_blocking(
             if !same_active_session(&latest, &expected_session) {
                 return Err(AppError::Message("relay.session_expired".to_string()));
             }
-            resolve_apply_targets(&latest.apply_apps, Some(&[app.clone()]))?;
+            resolve_apply_targets(&latest.apply_apps, Some(std::slice::from_ref(&app)))?;
             let child_id =
                 ProviderService::sync_universal_to_app(state, &universal_id, app_type.clone())?;
             let current = crate::settings::get_effective_current_provider(&state.db, &app_type)?;

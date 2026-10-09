@@ -155,7 +155,9 @@ export function LaunchChoices({
                         <Monitor size={14} />
                       )}
                       {installed?.desktopName
-                        ? t("launchDesktopNamed", { name: installed.desktopName })
+                        ? t("launchDesktopNamed", {
+                            name: installed.desktopName,
+                          })
                         : t("launchDesktop")}
                     </Action>
                   )}
