@@ -652,6 +652,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Prune old releases (keep only the current tag)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # 发版约定：每次发布只保留当前 tag 的 Release，其余连同其 tag 一并删除。
+          current="${GITHUB_REF_NAME}"
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName \
+            --jq '.[].tagName' | while read -r tag; do
+            if [ "$tag" != "$current" ]; then
+              echo "Deleting release + tag: $tag"
+              gh release delete "$tag" --yes --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
+            fi
+          done
+
   assemble-latest-json:
     name: Assemble latest.json
     runs-on: ubuntu-22.04
