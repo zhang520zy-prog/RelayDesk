@@ -1084,6 +1084,7 @@ mod tests {
 
     // ── 测试 ────────────────────────────────────────────────────────────
 
+    #[cfg(target_os = "macos")] // 桌面探测仅 macOS 实现，其他平台恒 platform_unsupported
     #[test]
     fn capability_reports_not_installed_when_no_candidate_exists() {
         let ops = FakeOps::default();
@@ -1095,6 +1096,7 @@ mod tests {
         assert_eq!(cap.target_id, None);
     }
 
+    #[cfg(target_os = "macos")] // 桌面探测仅 macOS 实现，其他平台恒 platform_unsupported
     #[test]
     fn capability_detects_chatgpt_and_legacy_codex_names() {
         // ChatGPT.app：当前官方 Codex 桌面入口，已验证可重启。
@@ -1115,6 +1117,7 @@ mod tests {
         assert_eq!(cap.display_name.as_deref(), Some("Codex (legacy name)"));
     }
 
+    #[cfg(target_os = "macos")] // 桌面探测仅 macOS 实现，其他平台恒 platform_unsupported
     #[test]
     fn capability_prefers_the_running_instance_when_both_installed() {
         let mut ops = FakeOps::default();
@@ -1127,6 +1130,7 @@ mod tests {
         assert_eq!(cap.running, Some(true));
     }
 
+    #[cfg(target_os = "macos")] // 桌面探测仅 macOS 实现，其他平台恒 platform_unsupported
     #[test]
     fn bundle_id_mismatch_is_identity_unverified_and_never_restartable() {
         let mut ops = FakeOps::default();
@@ -1144,6 +1148,7 @@ mod tests {
         assert_eq!(cap.reason.as_deref(), Some("identity_unverified"));
     }
 
+    #[cfg(target_os = "macos")] // 桌面探测仅 macOS 实现，其他平台恒 platform_unsupported
     #[test]
     fn claude_desktop_is_restartable_when_verified_installed() {
         // Claude.app 实测 bundle id = com.anthropic.claudefordesktop，
@@ -1170,6 +1175,7 @@ mod tests {
         assert_eq!(claude.running, None);
     }
 
+    #[cfg(target_os = "macos")] // 桌面探测仅 macOS 实现，其他平台恒 platform_unsupported
     #[test]
     fn claude_desktop_identity_mismatch_is_not_restartable() {
         let mut ops = FakeOps::default();
@@ -1193,6 +1199,7 @@ mod tests {
         assert_eq!(gemini.target_id, None);
     }
 
+    #[cfg(target_os = "macos")] // 桌面探测仅 macOS 实现，其他平台恒 platform_unsupported
     #[test]
     fn remote_registry_cannot_authorize_new_terminable_identities() {
         // 远程注册表塞入任意 .app 名称：不在本地 allowlist，绝不能被检测/重启。
@@ -1218,6 +1225,7 @@ mod tests {
         assert_ne!(codex.target_id.as_deref(), Some("codex:desktop:evil"));
     }
 
+    #[cfg(target_os = "macos")] // 桌面探测仅 macOS 实现，其他平台恒 platform_unsupported
     #[test]
     fn remote_registry_can_only_downgrade_reads_cli_config() {
         let mut registry = builtin_registry();
