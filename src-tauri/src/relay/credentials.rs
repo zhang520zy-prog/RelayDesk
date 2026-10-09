@@ -286,15 +286,15 @@ fn normalize_base_url(base_url: &str) -> String {
     base_url.trim().trim_end_matches('/').to_string()
 }
 
-fn set_private_mode(path: &Path) -> Result<(), AppError> {
+fn set_private_mode(_path: &Path) -> Result<(), AppError> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut permissions = fs::metadata(path)
+        let mut permissions = fs::metadata(_path)
             .map_err(|_| storage_error())?
             .permissions();
         permissions.set_mode(0o600);
-        fs::set_permissions(path, permissions).map_err(|_| storage_error())?;
+        fs::set_permissions(_path, permissions).map_err(|_| storage_error())?;
     }
     Ok(())
 }

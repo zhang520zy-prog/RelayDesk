@@ -313,7 +313,9 @@ describe("RelayDesk user flows", () => {
       expect(
         await screen.findByRole("button", { name: "登录 RelayDesk" }),
       ).toBeInTheDocument();
-      expect(screen.getByText("登录已过期，请重新登录")).toBeInTheDocument();
+      expect(
+        await screen.findByText("登录已过期，请重新登录"),
+      ).toBeInTheDocument();
       expect(screen.queryByText(/secret-response/)).not.toBeInTheDocument();
       expect(
         screen.queryByRole("heading", { name: page, level: 1 }),
@@ -396,7 +398,9 @@ describe("RelayDesk user flows", () => {
         expect(
           await screen.findByRole("button", { name: "登录 RelayDesk" }),
         ).toBeInTheDocument();
-        expect(screen.getByText("登录已过期，请重新登录")).toBeInTheDocument();
+        expect(
+        await screen.findByText("登录已过期，请重新登录"),
+      ).toBeInTheDocument();
       } else {
         expect(
           await within(screen.getByRole("dialog")).findByRole("alert"),
@@ -1127,7 +1131,7 @@ describe("RelayDesk user flows", () => {
     mount();
     await user.click(await screen.findByRole("button", { name: "关于" }));
     await user.click(await screen.findByRole("button", { name: "检查更新" }));
-    expect(await screen.findByText(/3\.21\.0/)).toBeInTheDocument();
+    expect(await screen.findByText(/发现新版本 3\.21\.0/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "更新并重启" }));
     await waitFor(() => expect(installed).toBe(true));
   });
@@ -1154,6 +1158,8 @@ describe("RelayDesk user flows", () => {
     expect(
       await screen.findByRole("button", { name: "登录 RelayDesk" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("登录已过期，请重新登录")).toBeInTheDocument();
+    expect(
+        await screen.findByText("登录已过期，请重新登录"),
+      ).toBeInTheDocument();
   });
 });

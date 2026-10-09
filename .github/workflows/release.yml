@@ -258,9 +258,10 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           if ($env:WINDOWS_RELEASE_ARCH -eq 'arm64') {
-            pnpm tauri build --target aarch64-pc-windows-msvc --bundles msi
+            pnpm tauri build --target aarch64-pc-windows-msvc --bundles nsis
           } else {
-            pnpm tauri build
+            # WiX/msi 的 light.exe 在 runner 上不可用；NSIS setup.exe 是历史验证路径
+            pnpm tauri build --bundles nsis
           }
 
       - name: Build Tauri App (Linux)
@@ -442,29 +443,29 @@ jobs:
           $targetRoot = if ($isArm64) { 'src-tauri/target/aarch64-pc-windows-msvc/release' } else { 'src-tauri/target/release' }
           $assetSuffix = if ($isArm64) { '-arm64' } else { '' }
 
-          # 仅打包 MSI 安装器 + .sig（用于 Updater）
-          $msi = Get-ChildItem -Path (Join-Path $targetRoot 'bundle/msi') -Recurse -Include *.msi -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($null -eq $msi) {
-            # 兜底：全局搜索 .msi
-            $msi = Get-ChildItem -Path (Join-Path $targetRoot 'bundle') -Recurse -Include *.msi -ErrorAction SilentlyContinue | Select-Object -First 1
+          # 仅打包 NSIS 安装器（-setup.exe）+ .sig（用于 Updater）
+          $installer = Get-ChildItem -Path (Join-Path $targetRoot 'bundle/nsis') -Recurse -Include *-setup.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($null -eq $installer) {
+            # 兜底：全局搜索 setup.exe
+            $installer = Get-ChildItem -Path (Join-Path $targetRoot 'bundle') -Recurse -Include *-setup.exe -ErrorAction SilentlyContinue | Select-Object -First 1
           }
-          if ($null -ne $msi) {
-            $dest = "RelayDesk-$VERSION-Windows$assetSuffix.msi"
-            Copy-Item $msi.FullName (Join-Path release-assets $dest)
+          if ($null -ne $installer) {
+            $dest = "RelayDesk-$VERSION-Windows$assetSuffix-setup.exe"
+            Copy-Item $installer.FullName (Join-Path release-assets $dest)
             Write-Host "Installer copied: $dest"
-            $sigPath = "$($msi.FullName).sig"
+            $sigPath = "$($installer.FullName).sig"
             if (Test-Path $sigPath) {
               Copy-Item $sigPath (Join-Path release-assets ("$dest.sig"))
               Write-Host "Signature copied: $dest.sig"
             } elseif ($isArm64) {
-              throw "Signature not found for $($msi.Name)"
+              throw "Signature not found for $($installer.Name)"
             } else {
-              Write-Warning "Signature not found for $($msi.Name)"
+              Write-Warning "Signature not found for $($installer.Name)"
             }
           } elseif ($isArm64) {
-            throw 'No Windows ARM64 MSI installer found'
+            throw 'No Windows ARM64 NSIS installer found'
           } else {
-            Write-Warning 'No Windows MSI installer found'
+            throw 'No Windows NSIS installer found'
           }
 
           # 绿色版（portable）：仅可执行文件打 zip（不参与 Updater）
@@ -629,8 +630,8 @@ jobs:
               echo "### 下载"
               echo
               echo "- **macOS**: \`RelayDesk-${TAG}-macOS.dmg\`（推荐）或 \`.zip\`（解压即用）"
-              echo "- **Windows (x86_64)**: \`RelayDesk-${TAG}-Windows.msi\`（安装版）或 \`-Portable.zip\`（绿色版）"
-              echo "- **Windows (ARM64)**: \`RelayDesk-${TAG}-Windows-arm64.msi\` 或 \`-Portable.zip\`"
+              echo "- **Windows (x86_64)**: \`RelayDesk-${TAG}-Windows-setup.exe\`（安装版）或 \`-Portable.zip\`（绿色版）"
+              echo "- **Windows (ARM64)**: \`RelayDesk-${TAG}-Windows-arm64-setup.exe\` 或 \`-Portable.zip\`"
               echo "- **Linux (x86_64)**: \`RelayDesk-${TAG}-Linux-x86_64.AppImage\` / \`.deb\` / \`.rpm\`"
               echo "- **Linux (ARM64)**: \`RelayDesk-${TAG}-Linux-arm64.AppImage\` / \`.deb\` / \`.rpm\`"
               echo
@@ -707,9 +708,9 @@ jobs:
               *.tar.gz)
                 # 视为 macOS updater artifact
                 mac_url="$url"; mac_sig="$sig_content";;
-              *-Windows-arm64.msi)
+              *-Windows-arm64-setup.exe)
                 win_arm64_url="$url"; win_arm64_sig="$sig_content";;
-              *-Windows.msi)
+              *-Windows-setup.exe)
                 win_x64_url="$url"; win_x64_sig="$sig_content";;
               *-Linux-arm64.AppImage|*-Linux-arm64.appimage)
                 linux_arm64_url="$url"; linux_arm64_sig="$sig_content";;

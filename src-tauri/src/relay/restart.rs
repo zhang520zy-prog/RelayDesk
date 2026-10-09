@@ -1423,6 +1423,7 @@ mod tests {
         clear_restart_tickets();
     }
 
+    #[cfg(target_os = "macos")] // 桌面探测仅 macOS 实现，其他平台恒 platform_unsupported
     #[test]
     #[serial]
     fn restart_rejects_unknown_target_and_foreign_target_id() {
