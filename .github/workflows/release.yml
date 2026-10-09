@@ -597,31 +597,56 @@ jobs:
           set -euo pipefail
           ls -la release-assets
 
+      - name: Checkout for release notes
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare release body
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          NOTES_FILE="docs/releases/${TAG}.md"
+          if [ -f "$NOTES_FILE" ]; then
+            # 优先使用随版本提交的更新日志；正文文件已含下载指引
+            cp "$NOTES_FILE" release-body.md
+          else
+            # 无日志文件时回退：从上一个 tag 生成变更摘要 + 通用下载指引
+            {
+              echo "## RelayDesk ${TAG}"
+              echo
+              echo "### 更新日志 / Changes"
+              echo
+              prev_tag=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)
+              if [ -n "$prev_tag" ]; then
+                git log "${prev_tag}..${TAG}" --pretty='- %s' --no-merges || true
+              else
+                git log -20 --pretty='- %s' --no-merges || true
+              fi
+              echo
+              echo "---"
+              echo "### 下载"
+              echo
+              echo "- **macOS**: \`RelayDesk-${TAG}-macOS.dmg\`（推荐）或 \`.zip\`（解压即用）"
+              echo "- **Windows (x86_64)**: \`RelayDesk-${TAG}-Windows.msi\`（安装版）或 \`-Portable.zip\`（绿色版）"
+              echo "- **Windows (ARM64)**: \`RelayDesk-${TAG}-Windows-arm64.msi\` 或 \`-Portable.zip\`"
+              echo "- **Linux (x86_64)**: \`RelayDesk-${TAG}-Linux-x86_64.AppImage\` / \`.deb\` / \`.rpm\`"
+              echo "- **Linux (ARM64)**: \`RelayDesk-${TAG}-Linux-arm64.AppImage\` / \`.deb\` / \`.rpm\`"
+              echo
+              echo "> \`.tar.gz\` 为 Tauri updater 自动更新专用，无需手动下载。"
+              echo "macOS 版本已通过 Apple 代码签名和公证，可直接安装使用。"
+            } > release-body.md
+          fi
+          echo "=== release body ===" && cat release-body.md
+
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: RelayDesk ${{ github.ref_name }}
           prerelease: true
-          body: |
-            ## RelayDesk ${{ github.ref_name }}
-
-            🌐 **Only Official Website / 唯一官方网站 / 唯一の公式サイト**: [shenlanqaq.com](https://www.shenlanqaq.com)
-
-            Claude Code 供应商切换工具
-
-            ### 下载
-
-            - **macOS**: `RelayDesk-${{ github.ref_name }}-macOS.dmg`（推荐）或 `RelayDesk-${{ github.ref_name }}-macOS.zip`（解压即用）
-            - **Windows (x86_64)**: `RelayDesk-${{ github.ref_name }}-Windows.msi`（安装版）或 `RelayDesk-${{ github.ref_name }}-Windows-Portable.zip`（绿色版）
-            - **Windows (ARM64)**: `RelayDesk-${{ github.ref_name }}-Windows-arm64.msi`（安装版）或 `RelayDesk-${{ github.ref_name }}-Windows-arm64-Portable.zip`（绿色版）
-            - **Linux (x86_64)**: `RelayDesk-${{ github.ref_name }}-Linux-x86_64.AppImage` / `.deb` / `.rpm`
-            - **Linux (ARM64)**: `RelayDesk-${{ github.ref_name }}-Linux-arm64.AppImage` / `.deb` / `.rpm`
-
-            > `.tar.gz` 为 Tauri updater 自动更新专用，无需手动下载。
-
-            ---
-            macOS 版本已通过 Apple 代码签名和公证，可直接安装使用。
+          body_path: release-body.md
           files: release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -633,6 +658,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout for release notes
+        uses: actions/checkout@v4
+
       - name: Prepare GH
         run: |
           gh --version || (type -p curl >/dev/null && sudo apt-get update && sudo apt-get install -y gh || true)
@@ -656,6 +684,13 @@ jobs:
           VERSION="${TAG#v}"
           PUB_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           base_url="https://github.com/$REPO/releases/download/$TAG"
+          # 更新日志注入 latest.json.notes（应用内"关于"页展示）；缺失时回退版本号
+          NOTES_FILE="docs/releases/${TAG}.md"
+          if [ -f "$NOTES_FILE" ]; then
+            NOTES_JSON=$(jq -Rs '.' < "$NOTES_FILE")
+          else
+            NOTES_JSON="\"Release $TAG\""
+          fi
           # 初始化空平台映射
           mac_url=""; mac_sig=""
           win_x64_url=""; win_x64_sig=""
@@ -687,7 +722,7 @@ jobs:
           {
             echo '{'
             echo "  \"version\": \"$VERSION\",";
-            echo "  \"notes\": \"Release $TAG\",";
+            echo "  \"notes\": $NOTES_JSON,";
             echo "  \"pub_date\": \"$PUB_DATE\",";
             echo '  "platforms": {'
             first=1
