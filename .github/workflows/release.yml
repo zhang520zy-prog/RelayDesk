@@ -184,9 +184,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Decode .p12 certificate from base64
           CERT_PATH="$RUNNER_TEMP/certificate.p12"
-          printf '%s' "${{ secrets.APPLE_CERTIFICATE }}" | (base64 --decode 2>/dev/null || base64 -D) > "$CERT_PATH"
+          # 证书可选：缺失/损坏时降级为无签名构建而不是阻塞发版。
+          # 解码前剥掉空白和 '%'——粘贴 Secret 时 zsh 的 % 提示符会混入导致损坏。
+          if [ -z "${{ secrets.APPLE_CERTIFICATE }}" ]; then
+            echo "⚠️ APPLE_CERTIFICATE not configured — unsigned macOS build"
+            exit 0
+          fi
+          printf '%s' "${{ secrets.APPLE_CERTIFICATE }}" | tr -d '%[:space:]' | (base64 --decode 2>/dev/null || base64 -D) > "$CERT_PATH" || {
+            echo "⚠️ APPLE_CERTIFICATE base64 decode failed — unsigned macOS build"
+            exit 0
+          }
+          if [ ! -s "$CERT_PATH" ]; then
+            echo "⚠️ certificate.p12 is empty — unsigned macOS build"
+            exit 0
+          fi
+          {
+            set -e
+            trap 'echo "⚠️ certificate import/signing prep failed — unsigned macOS build"; exit 0' ERR
 
           # Save original default keychain for cleanup
           ORIGINAL_DEFAULT_KEYCHAIN=$(security default-keychain -d user | tr -d '"' | xargs)
@@ -211,22 +226,24 @@ jobs:
           IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
             | grep "Developer ID Application" | grep -oE '"[^"]+"' | head -1 | tr -d '"')
           if [ -z "$IDENTITY" ]; then
-            echo "❌ No 'Developer ID Application' identity found — listing all identities:" >&2
+            echo "⚠️ No 'Developer ID Application' identity found — unsigned macOS build:" >&2
             security find-identity -v -p codesigning "$KEYCHAIN_PATH"
-            exit 1
+            exit 0
           fi
           echo "✅ Signing identity: $IDENTITY"
           echo "APPLE_SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
 
           # Cleanup certificate file
           rm -f "$CERT_PATH"
+          }
 
       - name: Build Tauri App (macOS)
         if: runner.os == 'macOS'
         shell: bash
         timeout-minutes: 60
         env:
-          APPLE_SIGNING_IDENTITY: ${{ env.APPLE_SIGNING_IDENTITY }}
+          # 证书就绪时用真签名；否则传 '-' 让 tauri 走 ad-hoc 签名（无签名构建）
+          APPLE_SIGNING_IDENTITY: ${{ env.APPLE_SIGNING_IDENTITY || '-' }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -298,9 +315,13 @@ jobs:
             exit 1
           fi
 
-          # Staple notarization ticket to .app (Tauri already notarized it)
-          xcrun stapler staple "$APP_PATH"
-          echo "✅ .app stapled"
+          # Staple notarization ticket only when a real signing identity exists
+          if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
+            xcrun stapler staple "$APP_PATH"
+            echo "✅ .app stapled"
+          else
+            echo "⚠️ unsigned build — skipping .app stapling"
+          fi
 
           # 1) Collect .tar.gz (updater artifact)
           NEW_TAR_GZ="RelayDesk-${VERSION}-macOS.tar.gz"
@@ -313,18 +334,20 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "release-assets/$NEW_ZIP"
           echo "macOS zip ready: $NEW_ZIP"
 
-          # 3) Create styled DMG with create-dmg (Tauri's built-in DMG styling doesn't work on CI)
-          if [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
-            echo "❌ APPLE_SIGNING_IDENTITY is missing before DMG creation" >&2
-            exit 1
-          fi
-
+          # 3) Create styled DMG with create-dmg (signed when identity available)
           HOMEBREW_NO_AUTO_UPDATE=1 brew install create-dmg
           NEW_DMG="RelayDesk-${VERSION}-macOS.dmg"
           DMG_STAGE_DIR="$RUNNER_TEMP/dmg-stage"
           rm -rf "$DMG_STAGE_DIR"
           mkdir -p "$DMG_STAGE_DIR"
           ditto "$APP_PATH" "$DMG_STAGE_DIR/RelayDesk.app"
+
+          CODESIGN_ARGS=()
+          if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
+            CODESIGN_ARGS=(--codesign "$APPLE_SIGNING_IDENTITY")
+          else
+            echo "⚠️ unsigned build — DMG created without codesign"
+          fi
 
           create-dmg \
             --volname "RelayDesk" \
@@ -335,7 +358,7 @@ jobs:
             --icon "RelayDesk.app" 180 220 \
             --hide-extension "RelayDesk.app" \
             --app-drop-link 480 220 \
-            --codesign "$APPLE_SIGNING_IDENTITY" \
+            "${CODESIGN_ARGS[@]}" \
             --no-internet-enable \
             "release-assets/$NEW_DMG" \
             "$DMG_STAGE_DIR"
@@ -344,7 +367,7 @@ jobs:
           echo "✅ Styled DMG created: $NEW_DMG"
 
       - name: Notarize macOS DMG
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && env.APPLE_SIGNING_IDENTITY != ''
         shell: bash
         timeout-minutes: 30
         env:
@@ -386,7 +409,7 @@ jobs:
           done
 
       - name: Verify macOS code signing and notarization
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && env.APPLE_SIGNING_IDENTITY != ''
         shell: bash
         run: |
           set -euo pipefail
