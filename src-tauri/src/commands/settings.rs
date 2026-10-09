@@ -226,6 +226,8 @@ pub async fn relay_check_update(app: AppHandle) -> Result<RelayUpdateCheck, Stri
         return Ok(RelayUpdateCheck {
             configured: false,
             version: None,
+            notes: None,
+            date: None,
         });
     }
     let updater = build_updater(&app)?;
@@ -235,7 +237,9 @@ pub async fn relay_check_update(app: AppHandle) -> Result<RelayUpdateCheck, Stri
         .map_err(|_| "update.check_failed".to_string())?;
     Ok(RelayUpdateCheck {
         configured: true,
-        version: update.map(|u| u.version),
+        version: update.as_ref().map(|u| u.version.clone()),
+        notes: update.as_ref().and_then(|u| u.body.clone()),
+        date: update.as_ref().and_then(|u| u.date.map(|d| d.to_string())),
     })
 }
 
@@ -244,6 +248,10 @@ pub async fn relay_check_update(app: AppHandle) -> Result<RelayUpdateCheck, Stri
 pub struct RelayUpdateCheck {
     pub configured: bool,
     pub version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub date: Option<String>,
 }
 
 /// 下载并安装应用更新，然后由后端直接重启应用。

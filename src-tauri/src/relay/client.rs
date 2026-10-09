@@ -218,6 +218,22 @@ impl RelayClient {
             .await
     }
 
+    /// 按类型拉取用户日志（new-api LogType）：1=充值到账、3=管理员调整、6=退款。
+    /// 分页按类型独立进行，必须用指定 type 分别请求，不能 type=0 拉全量。
+    pub async fn recharge_logs(
+        &self,
+        log_type: u32,
+        page: u32,
+        page_size: u32,
+    ) -> Result<Value, AppError> {
+        self.get(&format!(
+            "/api/log/self?type={log_type}&p={}&page_size={}",
+            page.max(1),
+            page_size.clamp(1, 100)
+        ))
+        .await
+    }
+
     pub async fn topup_history(&self, page: u32, page_size: u32) -> Result<Value, AppError> {
         self.get(&format!(
             "/api/user/topup/self?p={}&page_size={}",

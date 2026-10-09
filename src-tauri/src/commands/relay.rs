@@ -178,6 +178,22 @@ pub async fn relay_list_topup_history(
     .map_err(|e| safe_relay_error(&e, false))
 }
 
+/// 与站点网页端"充值记录"同源：到账日志 + 未完结支付订单。
+#[tauri::command]
+pub async fn relay_list_recharge_history(
+    state: State<'_, AppState>,
+    page: Option<u32>,
+    page_size: Option<u32>,
+) -> Result<crate::relay::RelayRechargeHistory, String> {
+    RelayService::recharge_history(
+        state.inner(),
+        page.unwrap_or(1).max(1),
+        page_size.unwrap_or(20).clamp(1, 100),
+    )
+    .await
+    .map_err(|e| safe_relay_error(&e, false))
+}
+
 #[tauri::command]
 pub async fn relay_get_usage_models(
     state: State<'_, AppState>,

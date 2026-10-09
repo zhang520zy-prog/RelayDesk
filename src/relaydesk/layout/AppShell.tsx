@@ -55,7 +55,9 @@ export function AppShell({
             ? "walletSubtitle"
             : page === "usage"
               ? "usageSubtitle"
-              : "settingsSubtitle";
+              : page === "about"
+                ? "aboutSubtitle"
+                : "settingsSubtitle";
   return (
     <div className="rd-app">
       <Titlebar />
@@ -71,7 +73,7 @@ export function AppShell({
       </a>
       <div className="rd-workspace">
         <Sidebar
-          {...{ page, navigate, account, collapsed }}
+          {...{ page, navigate, collapsed }}
           onCollapse={() => setSidebar(collapsed ? "expanded" : "collapsed")}
         />
         <div className="rd-main">

@@ -513,10 +513,14 @@ fn macos_system_proxy() -> Option<String> {
         return None;
     }
     let text = crate::commands::decode_command_output(&out.stdout);
+    // scutil 的 key 名是"作用于哪种目标流量"，不是代理端协议。
+    // HTTPSProxy/HTTPProxy 都是纯 HTTP（CONNECT）代理——Clash/Surge/公司代理
+    // 的本地端口均不讲 TLS，必须输出 http:// 让 reqwest 正确走 CONNECT；
+    // SOCKS 同理统一规范化为 socks5h（DNS 由代理解析）。
     for (enable_key, host_key, port_key, scheme) in [
-        ("HTTPSEnable", "HTTPSProxy", "HTTPSPort", "https"),
+        ("HTTPSEnable", "HTTPSProxy", "HTTPSPort", "http"),
         ("HTTPEnable", "HTTPProxy", "HTTPPort", "http"),
-        ("SOCKSEnable", "SOCKSProxy", "SOCKSPort", "socks"),
+        ("SOCKSEnable", "SOCKSProxy", "SOCKSPort", "socks5h"),
     ] {
         if scutil_value(&text, enable_key).as_deref() == Some("1") {
             let host = scutil_value(&text, host_key)?;

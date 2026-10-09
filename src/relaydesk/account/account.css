@@ -4,6 +4,11 @@
   display: grid;
   gap: 16px;
 }
+/* grid 子元素默认 min-width:auto，宽内容（表格/结账网格）会把 section
+   撑出视口；统一放行，让内部滚动容器接管 */
+.rd-account-page > * {
+  min-width: 0;
+}
 .rd-account-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -54,6 +59,8 @@
   border-radius: 13px;
   background: var(--rd-surface);
   color: var(--rd-text);
+  /* grid 子元素默认 min-width:auto，会把 section 撑出视口裁掉表格右列 */
+  min-width: 0;
 }
 .rd-account-section-heading {
   display: flex;
@@ -112,18 +119,19 @@
   align-items: center;
   gap: 9px;
   margin: 0 0 14px;
-  font-size: var(--rd-font-control);
+  font-size: 15px;
   font-weight: var(--rd-weight-strong);
 }
 .rd-step-number {
   display: inline-grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
-  color: var(--rd-teal);
-  background: var(--rd-soft);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--rd-teal-50);
+  background: var(--rd-teal-600);
   font-size: var(--rd-font-caption);
+  font-weight: var(--rd-weight-strong);
   font-variant-numeric: tabular-nums;
 }
 .rd-wallet-choice-list {
@@ -134,13 +142,13 @@
 .rd-wallet-choice {
   position: relative;
   min-width: 0;
-  min-height: 54px;
-  padding: 12px 8px;
+  min-height: 44px;
+  padding: 8px;
   border: 1px solid var(--rd-line);
   border-radius: 10px;
   color: var(--rd-text);
   background: var(--rd-surface);
-  font-size: 17px;
+  font-size: 15px;
   font-weight: var(--rd-weight-strong);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
@@ -162,11 +170,11 @@
 }
 .rd-wallet-method {
   min-width: 0;
-  min-height: 52px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px;
+  padding: 10px 12px;
   border: 1px solid var(--rd-line);
   border-radius: 10px;
   cursor: pointer;
@@ -206,6 +214,8 @@
   background: var(--rd-raised);
   border: 1px solid var(--rd-line);
   border-radius: 12px;
+  /* 不随左侧表单列等高拉伸，内容顶部对齐，消除下方死留白 */
+  align-self: start;
 }
 .rd-wallet-checkout h3 {
   font-size: var(--rd-font-body);
@@ -215,8 +225,13 @@
 .rd-wallet-quote {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 12px;
+  gap: 14px 12px;
   align-items: baseline;
+}
+.rd-wallet-quote-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 .rd-wallet-quote span {
   color: var(--rd-muted);
@@ -225,22 +240,18 @@
 .rd-wallet-quote strong {
   font-size: var(--rd-font-body);
   font-weight: var(--rd-weight-medium);
-  text-align: right;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
-.rd-wallet-quote span:nth-of-type(2) {
+/* 支付金额是主数字：整行 + 大字号 + 品牌色 */
+.rd-wallet-quote-item.is-payable {
   grid-column: 1 / -1;
-  border-top: 1px solid var(--rd-line);
-  padding-top: 18px;
 }
-.rd-wallet-quote strong:nth-of-type(2) {
-  grid-column: 1 / -1;
-  text-align: left;
+.rd-wallet-quote-item.is-payable strong {
   color: var(--rd-teal);
   font-size: var(--rd-font-stat);
   font-weight: var(--rd-weight-strong);
-  line-height: 1.2;
+  line-height: 1.15;
 }
 .rd-wallet-quote p {
   grid-column: 1 / -1;
@@ -275,7 +286,9 @@
 }
 .rd-account-table {
   width: 100%;
-  min-width: 760px;
+  /* 不设 min-width：说明列吸收余量、表格始终贴合容器，
+     避免最右列（状态）被裁掉需横向滚动才看得见 */
+  table-layout: auto;
   border-collapse: collapse;
   font-size: var(--rd-font-caption);
 }
@@ -288,7 +301,7 @@
 }
 .rd-account-table th,
 .rd-account-table td {
-  padding: 11px 10px;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--rd-line);
   vertical-align: middle;
 }
@@ -308,6 +321,23 @@
   color: var(--rd-text);
   white-space: nowrap;
 }
+/* 内容列按自身内容收缩（nowrap 防断行），首列（名称/单号）吸收剩余宽度并允许换行，
+   杜绝"最后一列被卡片边缘裁掉" */
+.rd-account-table th:not(:first-child),
+.rd-account-table td:not(:first-child) {
+  width: 1%;
+}
+.rd-account-table td:first-child {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* 订单号这类长 token 换行很丑：单行省略，title 给全文 */
+.rd-account-table td.rd-mono {
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .rd-account-table td strong,
 .rd-account-table td small {
   display: block;
@@ -323,6 +353,7 @@
   border-radius: 999px;
   background: var(--rd-raised);
   color: var(--rd-muted);
+  white-space: nowrap;
 }
 .rd-order-status.credited {
   color: var(--rd-success);
@@ -466,7 +497,7 @@
   gap: 6px;
 }
 .rd-usage-core .rd-usage-table {
-  min-width: 850px;
+  min-width: 640px;
 }
 .rd-usage-core .rd-usage-table tr > :nth-child(3),
 .rd-usage-core .rd-usage-table tr > :nth-child(11),
@@ -842,17 +873,19 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(170px, 0.65fr);
     gap: 0 24px;
+    align-items: start;
   }
   .rd-wallet-checkout h3 {
     grid-column: 1 / -1;
     margin-bottom: 16px;
   }
   .rd-wallet-payment-actions {
-    align-content: center;
+    align-content: start;
     margin-top: 0;
   }
-  .rd-wallet-quote strong:nth-of-type(2) {
-    font-size: 28px;
+  .rd-wallet-payment-actions p {
+    text-align: left;
+    margin: 0;
   }
 }
 @media (max-width: 760px) {
@@ -888,4 +921,17 @@
 }
 .rd-chart-breakdown .rd-chart-legend small {
   align-self: end;
+}
+
+/* 充值记录来源说明：低调小字，与表格拉开一行 */
+.rd-topup-scope {
+  margin: 10px 2px 0;
+}
+
+/* 待付订单的支付时限提示：状态胶囊下的小字 */
+.rd-order-expiry {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--rd-muted);
 }

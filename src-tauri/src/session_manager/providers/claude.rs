@@ -77,6 +77,26 @@ pub fn load_messages(path: &Path) -> Result<Vec<SessionMessage>, String> {
             continue;
         }
 
+        // user 消息里混着 CLI 注入的包装块（斜杠命令回显、本地命令输出、
+        // system-reminder、Caveat 说明），整段包裹的直接剔除，会话视图只留
+        // 真实输入。
+        if role == "user" {
+            let trimmed = content.trim_start();
+            const INJECTED_PREFIXES: [&str; 5] = [
+                "<command-name>",
+                "<command-message>",
+                "<local-command-",
+                "<system-reminder>",
+                "<Caveat:",
+            ];
+            if INJECTED_PREFIXES
+                .iter()
+                .any(|prefix| trimmed.starts_with(prefix))
+            {
+                continue;
+            }
+        }
+
         let ts = value.get("timestamp").and_then(parse_timestamp_to_ms);
 
         messages.push(SessionMessage { role, content, ts });
@@ -533,5 +553,28 @@ mod tests {
         .expect("write");
 
         assert!(!is_agent_session(&path));
+    }
+    #[test]
+    fn load_messages_skips_injected_wrappers() {
+        let temp = tempdir().expect("tempdir");
+        let path = temp.path().join("session.jsonl");
+        std::fs::write(
+            &path,
+            concat!(
+                r##"{"timestamp":"2026-03-06T21:50:12Z","message":{"role":"user","content":"<command-name>/clear</command-name><command-message>clear</command-message>"},"isMeta":false}"##,
+                "\n",
+                r##"{"timestamp":"2026-03-06T21:50:13Z","message":{"role":"user","content":"<local-command-stdout>output</local-command-stdout>"},"isMeta":false}"##,
+                "\n",
+                r##"{"timestamp":"2026-03-06T21:50:14Z","message":{"role":"user","content":"<system-reminder>note</system-reminder>"},"isMeta":false}"##,
+                "\n",
+                r##"{"timestamp":"2026-03-06T21:50:15Z","message":{"role":"user","content":"帮我修复登录报错"},"isMeta":false}"##,
+                "\n",
+            ),
+        )
+        .expect("write");
+        let msgs = load_messages(&path).expect("load");
+        assert_eq!(msgs.len(), 1, "unexpected messages: {msgs:?}");
+        assert_eq!(msgs[0].role, "user");
+        assert_eq!(msgs[0].content, "帮我修复登录报错");
     }
 }

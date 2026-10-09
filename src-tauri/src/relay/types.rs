@@ -349,6 +349,46 @@ pub struct RelayTopupHistory {
     pub next_cursor: Option<String>,
 }
 
+/// 统一的充值记录行：到账日志（/api/log/self?type=1，与站点网页端"充值记录"
+/// 同源）+ 未完结的支付订单（topup/self）。已支付订单若出现在到账日志中则
+/// 以日志为准去重。
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelayRechargeRecord {
+    /// 订单号或日志 id，用于复制/展示。
+    pub ref_id: String,
+    /// "order" = 支付订单；"log" = 到账日志。
+    pub source: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_at_ms: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pay_amount: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credit_amount: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub currency_symbol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub method: Option<String>,
+    /// 与 normalize_topup_status 同族取值；日志行恒为 "credited"。
+    pub status: String,
+    /// 日志原文（兑换码充值/管理员充值等说明）。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    /// 订单支付截止（毫秒）。待付订单过期后 status 归为 "expired"。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at_ms: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelayRechargeHistory {
+    pub items: Vec<RelayRechargeRecord>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total: Option<u64>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RelayUsageQuery {

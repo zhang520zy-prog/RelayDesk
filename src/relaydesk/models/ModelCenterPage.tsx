@@ -11,9 +11,9 @@ import {
 import { Action, Field } from "../ui";
 import type { ApplyReport } from "../state/useRelayApply";
 import { CurrentModelCard } from "./CurrentModelCard";
-import { ModelTable } from "./ModelTable";
+import { ModelGroupCards } from "./ModelGroupCards";
 import { ModelTargetQuickBar } from "./ModelTargetQuickBar";
-import { modelChoices, uniqueModelCount } from "./modelPresentation";
+import { uniqueModelCount } from "./modelPresentation";
 export function ModelCenterPage({
   account,
   groups,
@@ -34,8 +34,8 @@ export function ModelCenterPage({
   filters,
   onFiltersChange,
 }: {
-  filters: { search: string; group: string };
-  onFiltersChange: (filters: { search: string; group: string }) => void;
+  filters: { search: string };
+  onFiltersChange: (filters: { search: string }) => void;
   account: RelayAccountInfo;
   groups: RelayGroup[];
   models: RelayGroupModels[];
@@ -54,16 +54,25 @@ export function ModelCenterPage({
   viewWallet: () => void;
 }) {
   const { t } = useTranslation("relaydesk");
-  const { group, search } = filters;
-  const setGroup = (group: string) => onFiltersChange({ ...filters, group });
+  const { search } = filters;
   const setSearch = (search: string) => onFiltersChange({ ...filters, search });
   const groupNames = [
     ...new Set([...groups.map((g) => g.name), ...models.map((g) => g.group)]),
   ].sort();
-  const choices = useMemo(
-    () => modelChoices(models, group, search, account.lastApplied),
-    [models, group, search, account.lastApplied],
-  );
+  const query = search.trim().toLocaleLowerCase();
+  const matchCount = useMemo(() => {
+    if (!query) return uniqueModelCount(models);
+    return models.reduce(
+      (sum, g) =>
+        sum +
+        g.models.filter((m) =>
+          [m.id, m.description ?? "", ...(m.tags ?? [])].some((v) =>
+            v.toLocaleLowerCase().includes(query),
+          ),
+        ).length,
+      0,
+    );
+  }, [models, query]);
   const metrics = [
     {
       key: "balance",
@@ -121,7 +130,7 @@ export function ModelCenterPage({
         <div className="rd-catalog-heading">
           <h2>
             {t("allModels")}
-            <span>{t("resultCount", { count: choices.length })}</span>
+            <span>{t("resultCount", { count: matchCount })}</span>
           </h2>
           {fetching && !loading && (
             <small className="rd-muted" role="status">
@@ -148,19 +157,6 @@ export function ModelCenterPage({
               </button>
             )}
           </div>
-          <select
-            className="rd-select"
-            aria-label={t("groups")}
-            value={group}
-            onChange={(e) => setGroup(e.target.value)}
-          >
-            <option value="">{t("allGroups")}</option>
-            {groupNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
         </div>
         {loadingError && models.length > 0 && (
           <div role="alert" className="rd-alert warning">
@@ -192,27 +188,27 @@ export function ModelCenterPage({
               {t("retry")}
             </Action>
           </div>
-        ) : choices.length ? (
-          <ModelTable
-            {...{ choices, busy, apply, report }}
+        ) : !models.length ? (
+          <div className="rd-empty">
+            <Boxes size={30} />
+            <h3>{t("emptyModels")}</h3>
+            <p>{t("emptyModelsHint")}</p>
+            <Action disabled={busy} onClick={refresh}>
+              {t("refresh")}
+            </Action>
+          </div>
+        ) : matchCount ? (
+          <ModelGroupCards
+            groups={models}
+            search={search}
             current={account.lastApplied}
+            {...{ busy, report, apply }}
           />
         ) : (
           <div className="rd-empty">
             <Search size={30} />
-            <h3>
-              {t(search ? "noResults" : group ? "emptyGroup" : "emptyModels")}
-            </h3>
-            {search ? (
-              <Action onClick={() => setSearch("")}>{t("clearSearch")}</Action>
-            ) : (
-              <>
-                <p>{t("emptyModelsHint")}</p>
-                <Action disabled={busy} onClick={refresh}>
-                  {t("refresh")}
-                </Action>
-              </>
-            )}
+            <h3>{t("noResults")}</h3>
+            <Action onClick={() => setSearch("")}>{t("clearSearch")}</Action>
           </div>
         )}
       </section>

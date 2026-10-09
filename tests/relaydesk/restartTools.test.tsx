@@ -637,7 +637,7 @@ describe("restart help dialog", () => {
       within(dialog).getByText(/manual restart steps/i),
     ).toBeInTheDocument();
     await user.click(
-      within(dialog).getByRole("button", { name: "Go to tool deployment" }),
+      within(dialog).getByRole("button", { name: "Go to environment setup" }),
     );
     expect(openDeployment).toHaveBeenCalledOnce();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

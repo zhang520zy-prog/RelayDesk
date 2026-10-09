@@ -14,10 +14,10 @@ use super::client::RelayClient;
 use super::credentials::{SavedLogin, SavedLoginInfo};
 use super::types::{
     RelayAccount, RelayAccountInfo, RelayAppliedModel, RelayApplyApps, RelayApplyResult,
-    RelayGroup, RelayGroupModels, RelayGroupToken, RelayToken, RelayTopupAmountOption,
-    RelayTopupHistory, RelayTopupInfo, RelayTopupOrder, RelayTopupPaymentMethod, RelayTopupQuote,
-    RelayUsageModelRow, RelayUsageModels, RelayUsageOverview, RelayUsageQuery, TOKEN_NAME_PREFIX,
-    UNIVERSAL_ID_PREFIX,
+    RelayGroup, RelayGroupModels, RelayGroupToken, RelayRechargeHistory, RelayRechargeRecord,
+    RelayToken, RelayTopupAmountOption, RelayTopupHistory, RelayTopupInfo, RelayTopupOrder,
+    RelayTopupPaymentMethod, RelayTopupQuote, RelayUsageModelRow, RelayUsageModels,
+    RelayUsageOverview, RelayUsageQuery, TOKEN_NAME_PREFIX, UNIVERSAL_ID_PREFIX,
 };
 use crate::app_config::AppType;
 use crate::error::AppError;
@@ -637,6 +637,48 @@ impl RelayService {
         Ok(parse_topup_history(&raw))
     }
 
+    /// 充值记录 = 到账日志（type=1，与站点"充值记录"同源）∪ 未完结支付订单。
+    /// 已支付订单若在日志中出现（内容含单号）则以日志为准去重；日志接口失败
+    /// 时退化为仅订单列表，保证页面不至空白。
+    pub async fn recharge_history(
+        state: &AppState,
+        page: u32,
+        page_size: u32,
+    ) -> Result<RelayRechargeHistory, AppError> {
+        let account = require_account(state)?;
+        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let orders_raw = client
+            .topup_history(page, page_size)
+            .await
+            .map_err(|error| authenticated_error(state, &account, error))?;
+        // 充值相关日志分类型拉取：1=到账（支付回调/兑换码）、3=管理员调整、6=退款。
+        // 每类取第一页 100 条；个别类型失败降级忽略，保证页面不至空白。
+        let mut log_entries: Vec<Value> = Vec::new();
+        let mut fetched_counts: Vec<String> = Vec::new();
+        for log_type in [1u32, 3, 6] {
+            match client.recharge_logs(log_type, 1, 100).await {
+                Ok(raw) => {
+                    let root = payload(&raw);
+                    let items = value_array(root, &["items", "data", "records", "list"]);
+                    let count = items.map(|v| v.len()).unwrap_or(0);
+                    fetched_counts.push(format!("t{log_type}={count}"));
+                    if let Some(items) = items {
+                        log_entries.extend(items.iter().cloned());
+                    }
+                }
+                Err(error) => {
+                    if is_auth_error(&error) {
+                        return Err(authenticated_error(state, &account, error));
+                    }
+                    fetched_counts.push(format!("t{log_type}=err"));
+                    log::warn!("充值日志 type={log_type} 拉取失败，忽略该类来源: {error:?}");
+                }
+            }
+        }
+        log::info!("recharge logs fetched: {}", fetched_counts.join(","));
+        Ok(merge_recharge_history(&orders_raw, &log_entries))
+    }
+
     pub async fn usage_models(
         state: &AppState,
         query: RelayUsageQuery,
@@ -1183,6 +1225,140 @@ fn parse_topup_history(raw: &Value) -> RelayTopupHistory {
         total: value_i64(root, &["total", "count"]).map(|n| n.max(0) as u64),
         is_complete: value_bool(root, &["is_complete", "complete"]),
         next_cursor: value_string(root, &["next_cursor", "next", "cursor"]),
+        items,
+    }
+}
+
+fn parse_time_ms(raw: &Value) -> Option<i64> {
+    match raw {
+        Value::Number(n) => n
+            .as_i64()
+            .map(|v| if v < 1_000_000_000_000 { v * 1000 } else { v }),
+        Value::String(s) => {
+            let s = s.trim();
+            if let Ok(v) = s.parse::<i64>() {
+                return Some(if v < 1_000_000_000_000 { v * 1000 } else { v });
+            }
+            chrono::DateTime::parse_from_rfc3339(s)
+                .ok()
+                .map(|d| d.timestamp_millis())
+        }
+        _ => None,
+    }
+}
+
+/// 从到账日志内容推断支付方式关键词；识别不出返回 None，原文放进 note。
+fn recharge_method_from_content(content: &str) -> Option<String> {
+    let lower = content.to_lowercase();
+    for (needles, method) in [
+        (["微信", "wechat", "wxpay"].as_slice(), "wxpay"),
+        (["支付宝", "alipay"].as_slice(), "alipay"),
+        (["兑换码", "redemption", "redeem"].as_slice(), "redeem"),
+        (["管理员", "admin", "manual"].as_slice(), "admin"),
+    ] {
+        if needles.iter().any(|n| lower.contains(n)) {
+            return Some(method.to_string());
+        }
+    }
+    None
+}
+
+fn merge_recharge_history(orders_raw: &Value, log_items: &[Value]) -> RelayRechargeHistory {
+    let orders = parse_topup_history(orders_raw).items;
+
+    // 日志 content 中出现的订单号 → 该订单已由到账日志覆盖，剔除订单行防重复。
+    let mut items: Vec<RelayRechargeRecord> = Vec::new();
+    for entry in log_items {
+        // 只保留充值相关日志：1=到账、3=管理员调整、6=退款；过滤无额度变化的
+        // 管理操作（配额为 0 且非 type1 的条目与充值无关）。
+        let log_type = entry.get("type").and_then(Value::as_i64).unwrap_or(-1);
+        let quota = entry.get("quota").and_then(Value::as_f64).unwrap_or(0.0);
+        let keep = match log_type {
+            1 | 6 => true,
+            3 => quota != 0.0,
+            _ => false,
+        };
+        if !keep {
+            continue;
+        }
+        let content = value_string(entry, &["content", "note", "message"]).unwrap_or_default();
+        let id = value_string(entry, &["id", "log_id"]).unwrap_or_else(|| "log".to_string());
+        items.push(RelayRechargeRecord {
+            ref_id: id,
+            source: "log".to_string(),
+            created_at_ms: entry.get("created_at").and_then(parse_time_ms),
+            pay_amount: None,
+            credit_amount: entry.get("quota").and_then(Value::as_f64),
+            currency: None,
+            currency_symbol: None,
+            method: recharge_method_from_content(&content),
+            status: if log_type == 6 {
+                "refunded".to_string()
+            } else {
+                "credited".to_string()
+            },
+            note: if content.is_empty() {
+                None
+            } else {
+                Some(content)
+            },
+            expires_at_ms: None,
+        });
+    }
+    // 站点不返回 expires_at 时，待付订单按创建时间 + 30 分钟为支付时限；
+    // 超时的僵尸待付单在展示层标为已过期。
+    const DEFAULT_ORDER_EXPIRY_MS: i64 = 30 * 60 * 1000;
+    let now_ms = chrono::Utc::now().timestamp_millis();
+    for order in orders {
+        let ref_id = order
+            .trade_no
+            .clone()
+            .or(order.order_id.clone())
+            .unwrap_or_default();
+        if log_items.iter().any(|entry| {
+            value_string(entry, &["content", "note", "message"])
+                .map(|c| !ref_id.is_empty() && c.contains(&ref_id))
+                .unwrap_or(false)
+        }) {
+            continue;
+        }
+        let created_ms = order
+            .created_at
+            .as_ref()
+            .and_then(|s| parse_time_ms(&Value::String(s.clone())));
+        let expires_ms = order
+            .expires_at
+            .as_ref()
+            .and_then(|s| parse_time_ms(&Value::String(s.clone())))
+            .or_else(|| created_ms.map(|c| c + DEFAULT_ORDER_EXPIRY_MS));
+        let status = if matches!(order.status.as_str(), "pending" | "created")
+            && expires_ms.is_some_and(|e| now_ms > e)
+        {
+            "expired".to_string()
+        } else {
+            order.status
+        };
+        items.push(RelayRechargeRecord {
+            ref_id,
+            source: "order".to_string(),
+            created_at_ms: created_ms,
+            pay_amount: order.pay_amount.or(order.amount),
+            credit_amount: order.credit_amount,
+            currency: order.currency,
+            currency_symbol: order.currency_symbol,
+            method: order.method,
+            status,
+            note: None,
+            expires_at_ms: expires_ms,
+        });
+    }
+    items.sort_by(|a, b| {
+        b.created_at_ms
+            .unwrap_or(0)
+            .cmp(&a.created_at_ms.unwrap_or(0))
+    });
+    RelayRechargeHistory {
+        total: Some(items.len() as u64),
         items,
     }
 }
@@ -2055,5 +2231,77 @@ mod tests {
             Some(value) => std::env::set_var("RELAYDESK_TEST_HOME", value),
             None => std::env::remove_var("RELAYDESK_TEST_HOME"),
         }
+    }
+}
+
+#[cfg(test)]
+mod recharge_merge_tests {
+    use super::merge_recharge_history;
+    use serde_json::json;
+
+    #[test]
+    fn merges_logs_and_orders_and_dedupes_paid() {
+        let orders = json!({"data":{"items":[
+            {"order_no":"ORD-PAID","status":"success","money":10.0,"quota":5000,"create_time":"2026-09-19T23:38:00Z"},
+            {"order_no":"ORD-PENDING","status":"pending","money":25.0,"create_time":"2999-10-01T10:00:00Z"}
+        ],"total":2}});
+        let logs = json!({"data":{"items":[
+            {"id":11,"type":1,"created_at":1759156800,"content":"订单 ORD-PAID 通过微信充值到账","quota":5000},
+            {"id":12,"type":1,"created_at":1759330000,"content":"兑换码充值","quota":2000},
+            {"id":13,"type":3,"created_at":1759410000,"content":"管理员调整额度","quota":-100},
+            {"id":14,"type":2,"created_at":1759420000,"content":"消费","quota":-50},
+            {"id":15,"type":3,"created_at":1759430000,"content":"管理员登录后台","quota":0}
+        ],"total":5}});
+
+        let merged = merge_recharge_history(&orders, &logs["data"]["items"].as_array().unwrap());
+        // ORD-PAID 被日志覆盖剔除；ORD-PENDING 保留；type1/3(有额度) 日志保留，
+        // type2 消费与 type3 无额度管理操作被过滤。
+        let refs: Vec<&str> = merged.items.iter().map(|r| r.ref_id.as_str()).collect();
+        assert!(!refs.contains(&"ORD-PAID"));
+        assert!(refs.contains(&"ORD-PENDING"));
+        assert!(refs.contains(&"13"));
+        assert!(!refs.contains(&"14"));
+        assert!(!refs.contains(&"15"));
+        assert_eq!(merged.items.len(), 4);
+        // 最新在前：待付订单（2999 远期，永不过期）比日志（2025-09/10）新
+        let newest = &merged.items[0];
+        assert_eq!(newest.ref_id, "ORD-PENDING");
+        assert_eq!(newest.status, "pending");
+        assert_eq!(newest.source, "order");
+        // 日志方式识别
+        let redeem = merged.items.iter().find(|r| r.ref_id == "12").unwrap();
+        assert_eq!(redeem.method.as_deref(), Some("redeem"));
+        assert_eq!(redeem.note.as_deref(), Some("兑换码充值"));
+    }
+
+    #[test]
+    fn stale_pending_order_marks_expired() {
+        let orders = json!({"data":{"items":[
+            {"order_no":"OLD-PENDING","status":"pending","money":10.0,"create_time":"2026-09-19T23:38:00Z"},
+            {"order_no":"FRESH","status":"pending","money":5.0,"create_time":"2999-01-01T00:00:00Z"}
+        ]}});
+        let logs = json!({"data":{"items":[]}});
+        let merged = merge_recharge_history(&orders, &logs["data"]["items"].as_array().unwrap());
+        let old = merged
+            .items
+            .iter()
+            .find(|r| r.ref_id == "OLD-PENDING")
+            .unwrap();
+        assert_eq!(old.status, "expired");
+        let fresh = merged.items.iter().find(|r| r.ref_id == "FRESH").unwrap();
+        assert_eq!(fresh.status, "pending");
+        assert!(fresh.expires_at_ms.is_some());
+    }
+
+    #[test]
+    fn log_only_recharge_still_lists() {
+        let orders = json!({"data":{"items":[],"total":0}});
+        let logs = json!({"data":{"items":[
+            {"id":1,"type":3,"created_at":1759156800,"content":"管理员充值","quota":999}
+        ]}});
+        let merged = merge_recharge_history(&orders, &logs["data"]["items"].as_array().unwrap());
+        assert_eq!(merged.items.len(), 1);
+        assert_eq!(merged.items[0].source, "log");
+        assert_eq!(merged.items[0].method.as_deref(), Some("admin"));
     }
 }

@@ -17,18 +17,22 @@ import "./environment.css";
 
 export function InstallToolDialog({
   app,
+  repair,
   onClose,
   onInstalled,
 }: {
   app: RelayTarget | null;
+  /** 已安装但无法运行时以"修复"语境呈现，避免用户以为是全新安装 */
+  repair?: boolean;
   onClose: () => void;
   onInstalled: () => void | Promise<void>;
 }) {
   // Separate instances reset errors between confirmations without retaining old actions.
   return app ? (
     <InstallConfirmation
-      key={app}
+      key={`${app}-${repair ? "repair" : "install"}`}
       app={app}
+      repair={repair}
       onClose={onClose}
       onInstalled={onInstalled}
     />
@@ -37,10 +41,12 @@ export function InstallToolDialog({
 
 function InstallConfirmation({
   app,
+  repair,
   onClose,
   onInstalled,
 }: {
   app: RelayTarget;
+  repair?: boolean;
   onClose: () => void;
   onInstalled: () => void | Promise<void>;
 }) {
@@ -97,9 +103,13 @@ function InstallConfirmation({
         onPointerDownOutside={(e) => e.preventDefault()}
       >
         <DialogTitle>
-          {t("confirmToolInstall", { tool: targetLabels[app] })}
+          {t(repair ? "confirmToolRepair" : "confirmToolInstall", {
+            tool: targetLabels[app],
+          })}
         </DialogTitle>
-        <DialogDescription>{t("installConfirmationHint")}</DialogDescription>
+        <DialogDescription>
+          {t(repair ? "repairConfirmationHint" : "installConfirmationHint")}
+        </DialogDescription>
         {plan.isPending ? (
           <p role="status" className="rd-env-inline">
             <Loader2 size={16} className="rd-spin" />
@@ -157,7 +167,13 @@ function InstallConfirmation({
               onClick={() => void confirm()}
             >
               <Download size={15} />
-              {t(installation.isPending ? "installing" : "confirmInstall")}
+              {t(
+                installation.isPending
+                  ? "installing"
+                  : repair
+                    ? "envToolRepair"
+                    : "confirmInstall",
+              )}
             </Action>
           )}
         </div>

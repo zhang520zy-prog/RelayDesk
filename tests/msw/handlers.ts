@@ -1,6 +1,6 @@
 import { http, HttpResponse } from "msw";
 import type { AppId } from "@/lib/api/types";
-import { MODELS_DEV_API_URL } from "@/lib/modelsDevPricing";
+const MODELS_DEV_API_URL = "https://models.dev/api.json";
 import type { McpServer, Provider, Settings } from "@/types";
 import {
   addProvider,

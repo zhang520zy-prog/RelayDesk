@@ -11,8 +11,12 @@ import {
   MessageSquareText,
   Search,
   Play,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
+import { copyText } from "@/lib/clipboard";
 import {
   relaydeskSessionApi,
   type RelaySessionMeta,
@@ -68,6 +72,7 @@ export function SessionsPage() {
   const [selected, setSelected] = useState<RelaySessionMeta | null>(null);
   const [search, setSearch] = useState("");
   const [resumeBusy, setResumeBusy] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   const messages = useQuery({
     queryKey: [
@@ -159,7 +164,7 @@ export function SessionsPage() {
 
   return (
     <div className="rd-sessions-page">
-      <div className="rd-sessions-layout">
+      <div className={`rd-sessions-layout ${collapsed ? "is-collapsed" : ""}`}>
         <section className="rd-sessions-list" aria-label={t("sessions")}>
           <div className="rd-session-search">
             <Search size={14} aria-hidden="true" />
@@ -170,6 +175,16 @@ export function SessionsPage() {
               placeholder={t("searchSessions")}
               aria-label={t("searchSessions")}
             />
+            <button
+              type="button"
+              className="rd-sessions-collapse"
+              aria-label={t("collapseSessions")}
+              aria-expanded={!collapsed}
+              title={t("collapseSessions")}
+              onClick={() => setCollapsed(true)}
+            >
+              <PanelLeftClose size={14} aria-hidden="true" />
+            </button>
           </div>
           {list.isPending && (
             <div className="rd-sessions-empty" role="status">
@@ -208,6 +223,7 @@ export function SessionsPage() {
                             ? "is-active"
                             : ""
                         }`}
+                        title={session.title ?? session.sessionId}
                         onClick={() => setSelected(session)}
                         aria-current={
                           selected &&
@@ -247,6 +263,17 @@ export function SessionsPage() {
           className="rd-sessions-detail"
           aria-label={t("sessionMessages")}
         >
+          {collapsed && (
+            <button
+              type="button"
+              className="rd-sessions-expand"
+              aria-label={t("expandSessions")}
+              title={t("expandSessions")}
+              onClick={() => setCollapsed(false)}
+            >
+              <PanelLeftOpen size={14} aria-hidden="true" />
+            </button>
+          )}
           {!selected ? (
             <div className="rd-sessions-empty">
               <MessageSquareText size={32} />
@@ -264,7 +291,9 @@ export function SessionsPage() {
           ) : messages.data && messages.data.length > 0 ? (
             <>
               <header className="rd-sessions-detail-header">
-                <h3>{selected.title ?? selected.sessionId}</h3>
+                <h3 title={selected.title ?? selected.sessionId}>
+                  {selected.title ?? selected.sessionId}
+                </h3>
                 <div className="rd-sessions-detail-actions">
                   <span className="rd-muted">
                     {providerLabel(selected.providerId)}
@@ -299,6 +328,19 @@ export function SessionsPage() {
                     className={`rd-session-message rd-session-message--${msg.role}`}
                   >
                     <span className="rd-session-message-role">{msg.role}</span>
+                    <button
+                      type="button"
+                      className="rd-session-copy"
+                      aria-label={t("copyMessage")}
+                      title={t("copyMessage")}
+                      onClick={() => {
+                        void copyText(msg.content)
+                          .then(() => toast.success(t("copied")))
+                          .catch(() => toast.error(t("copyFailed")));
+                      }}
+                    >
+                      <Copy size={12} aria-hidden="true" />
+                    </button>
                     <p>{msg.content}</p>
                   </li>
                 ))}

@@ -10,12 +10,15 @@ import {
 } from "@/components/ui/dialog";
 import { settingsApi } from "@/lib/api/settings";
 import { relayApi } from "@/lib/api/relay";
+import { copyText } from "@/lib/clipboard";
 import { Action } from "../ui";
 import "./environment.css";
 
 // 后端下发的安装不可行原因码 → 本地化文案；未知码回退到通用提示。
 function envFixReasonKey(reason?: string): string {
-  return ["winget_missing", "brew_missing", "manual_only"].includes(reason ?? "")
+  return ["winget_missing", "brew_missing", "manual_only"].includes(
+    reason ?? "",
+  )
     ? `envFixReason_${reason}`
     : "envFixUnsupported";
 }
@@ -140,7 +143,7 @@ function EnvFixConfirmation({
             {plan.data.command && (
               <Action
                 onClick={() =>
-                  void navigator.clipboard.writeText(plan.data!.command!).then(
+                  void copyText(plan.data!.command!).then(
                     () => setStatus("commandCopied"),
                     () => setStatus("commandCopyFailed"),
                   )

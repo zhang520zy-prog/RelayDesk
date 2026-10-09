@@ -9,13 +9,21 @@ import { Titlebar } from "./layout/Titlebar";
 import { AppShell } from "./layout/AppShell";
 import type { Page } from "./layout/Sidebar";
 import { UpdateBanner, type UpdateBannerStatus } from "./layout/UpdateBanner";
+import {
+  isOnboardingDismissed,
+  resetOnboardingDismissal,
+  accountSeenBefore,
+  markAccountSeen,
+} from "./onboarding/OnboardingChecklist";
 import { LoginPage } from "./auth/LoginPage";
 import { ApplyProgressDialog } from "./models/ApplyProgressDialog";
 import { useRelaySession } from "./state/useRelaySession";
-import { useRelayApply } from "./state/useRelayApply";
+import { useRelayApply, targetLabels } from "./state/useRelayApply";
+import type { ApplyReport } from "./state/useRelayApply";
 import { Action } from "./ui";
 import { RestartToolsAction } from "./models/RestartToolsAction";
 import { relayErrorKey } from "./state/relayErrors";
+import { toast } from "sonner";
 
 // 页面级按需加载：首屏只带登录/骨架，进入哪个页面再取哪个 chunk。
 const ModelCenterPage = lazy(() =>
@@ -44,6 +52,9 @@ const RelayDeskSettingsPage = lazy(() =>
   import("./settings/RelayDeskSettingsPage").then((m) => ({
     default: m.RelayDeskSettingsPage,
   })),
+);
+const AboutPage = lazy(() =>
+  import("./about/AboutPage").then((m) => ({ default: m.AboutPage })),
 );
 
 const UPDATE_DISMISS_KEY = "relaydesk.update.dismissedVersion";
@@ -95,11 +106,35 @@ export default function RelayDeskApp() {
     session.handleError,
     session.generation,
   );
-  const [page, setPage] = useState<Page>("models");
+  // 应用成功时给一条轻量确认（结果详情仍在进度对话框里看）。
+  // 按 report 对象身份去重——operationId 可能缺省，对象引用每次 apply 必新。
+  const toastedReport = useRef<ApplyReport | null>(null);
+  useEffect(() => {
+    const report = operation.report;
+    if (
+      !report ||
+      report.phase !== "success" ||
+      toastedReport.current === report
+    )
+      return;
+    toastedReport.current = report;
+    const apps = report.results
+      .filter((r) => r.ok)
+      .map((r) => targetLabels[r.app as RelayTarget] ?? r.app);
+    toast.success(
+      t("appliedToApps", {
+        model: report.model,
+        apps: apps.join("、"),
+      }),
+    );
+  }, [operation.report, t]);
+  // 未完成新手引导的账号先落到环境部署页，完成/跳过后回模型中心。
+  const [page, setPage] = useState<Page>(() =>
+    isOnboardingDismissed() ? "models" : "deployment",
+  );
   const [modelFilters, setModelFilters] = useState({
     epoch: -1,
     search: "",
-    group: "",
   });
   const [showEnvironmentIntro, setShowEnvironmentIntro] = useState(false);
   const [focusTarget, setFocusTarget] = useState<RelayTarget | null>(null);
@@ -157,6 +192,13 @@ export default function RelayDeskApp() {
       );
     });
   };
+  // 首次登录（本机未见过的账号）落地环境部署页；老账号回模型中心。
+  useEffect(() => {
+    const acct = session.account;
+    if (!acct || accountSeenBefore(acct)) return;
+    markAccountSeen(acct);
+    setPage("deployment");
+  }, [session.account]);
   const updateCheckedFor = useRef<string | null>(null);
   useEffect(() => {
     const acct = session.account;
@@ -344,7 +386,7 @@ export default function RelayDeskApp() {
               filters={
                 modelFilters.epoch === session.generation.current
                   ? modelFilters
-                  : { search: "", group: "" }
+                  : { search: "" }
               }
               onFiltersChange={(filters) =>
                 setModelFilters({
@@ -393,12 +435,24 @@ export default function RelayDeskApp() {
           )}
           {page === "sessions" && <SessionsPage />}
           {page === "deployment" && (
-            <EnvironmentPage busy={busy} onBack={() => setPage("models")} />
+            <EnvironmentPage
+              busy={busy}
+              onBack={() => setPage("models")}
+              account={account}
+              applied={operation.report != null || account.lastApplied != null}
+              openTargets={() => setPage("targets")}
+              openModels={() => setPage("models")}
+            />
           )}
           {page === "settings" && (
             <RelayDeskSettingsPage
               {...{ account, busy, refresh }}
               logout={() => void session.logout()}
+              resetOnboarding={() => {
+                resetOnboardingDismissal();
+                // 引导卡在环境部署页
+                setPage("deployment");
+              }}
             />
           )}
           {page === "wallet" && (
@@ -414,6 +468,7 @@ export default function RelayDeskApp() {
               onSessionExpired={session.handleError}
             />
           )}
+          {page === "about" && <AboutPage />}
         </Suspense>
       </AppShell>
       <ApplyProgressDialog

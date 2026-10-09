@@ -48,8 +48,38 @@ function mount() {
     </QueryClientProvider>,
   );
 }
+/** 找到包含 modelId（可选再含 extra 文本）的分组卡片 */
+async function modelCard(modelId: string, extra?: string) {
+  const card = (await screen.findAllByRole("listitem")).find(
+    (el) =>
+      el.textContent?.includes(modelId) &&
+      (!extra || el.textContent?.includes(extra)),
+  );
+  expect(card).toBeDefined();
+  return card!;
+}
+/** 在分组卡片的下拉中选择目标模型 */
+async function pickModel(
+  user: ReturnType<typeof userEvent.setup>,
+  modelId: string,
+  extra?: string,
+) {
+  const card = await modelCard(modelId, extra);
+  await user.selectOptions(within(card).getByRole("combobox"), modelId);
+  return card;
+}
 beforeEach(async () => {
   localStorage.clear();
+  // 既有用例都以"老用户"视角进模型中心：预置引导已完成 + 账号已见过。
+  localStorage.setItem("relaydesk.onboarding.dismissed", "1");
+  localStorage.setItem(
+    "relaydesk.seenAccounts",
+    JSON.stringify(
+      ["demo", "saved-demo", "Alice", "Bob"].map(
+        (u) => `https://relay.example.test::${u}`,
+      ),
+    ),
+  );
   installRelayTranslations();
   await i18n.changeLanguage("zh");
   Object.defineProperty(window, "matchMedia", {
@@ -157,6 +187,10 @@ beforeEach(async () => {
       () => new HttpResponse("relay.topup_not_ready", { status: 501 }),
     ),
     post(
+      "relay_list_recharge_history",
+      () => new HttpResponse("relay.topup_not_ready", { status: 501 }),
+    ),
+    post(
       "relay_get_usage_models",
       () => new HttpResponse("relay.usage_models_not_ready", { status: 501 }),
     ),
@@ -199,21 +233,23 @@ beforeEach(async () => {
 });
 
 describe("RelayDesk user flows", () => {
-  it("preserves model search and group when navigating away and back", async () => {
+  it("lands first-time users on environment deployment before model center", async () => {
+    localStorage.removeItem("relaydesk.onboarding.dismissed");
+    mount();
+    expect(
+      await screen.findByRole("heading", { name: "环境部署", level: 1 }),
+    ).toBeInTheDocument();
+    // 环境页顶部展示新手引导卡
+    expect(await screen.findByText("登录中转站账号")).toBeInTheDocument();
+  });
+  it("preserves model search when navigating away and back", async () => {
     mount();
     const user = userEvent.setup();
     const search = await screen.findByRole("searchbox");
     await user.type(search, "codex");
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "模型分组" }),
-      "standard",
-    );
     await user.click(screen.getByRole("button", { name: "设置" }));
     await user.click(screen.getByRole("button", { name: "模型中心" }));
     expect(screen.getByRole("searchbox")).toHaveValue("codex");
-    expect(screen.getByRole("combobox", { name: "模型分组" })).toHaveValue(
-      "standard",
-    );
     expect(JSON.stringify(localStorage)).not.toContain("codex");
   });
 
@@ -241,7 +277,7 @@ describe("RelayDesk user flows", () => {
 
   it.each([
     ["relay_get_topup_info", "钱包与充值"],
-    ["relay_list_topup_history", "钱包与充值"],
+    ["relay_list_recharge_history", "钱包与充值"],
     ["relay_calculate_topup_amount", "钱包与充值"],
     ["relay_get_usage_models", "用量统计"],
   ])(
@@ -255,8 +291,8 @@ describe("RelayDesk user flows", () => {
             payMethods: [{ id: "alipay", enabled: true }],
           }),
         ),
-        post("relay_list_topup_history", () =>
-          HttpResponse.json({ items: [], isComplete: true }),
+        post("relay_list_recharge_history", () =>
+          HttpResponse.json({ items: [] }),
         ),
         post("relay_calculate_topup_amount", () =>
           HttpResponse.json({ amount: 10, payAmount: 10 }),
@@ -391,11 +427,11 @@ describe("RelayDesk user flows", () => {
     server.use(post("get_tool_versions", () => HttpResponse.json([])));
     const user = userEvent.setup();
     mount();
-    await user.click(await screen.findByRole("button", { name: "工具部署" }));
+    await user.click(await screen.findByRole("button", { name: "环境部署" }));
     expect(
-      await screen.findByRole("heading", { name: "工具部署", level: 1 }),
+      await screen.findByRole("heading", { name: "环境部署", level: 1 }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "工具部署" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "环境部署" })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -404,7 +440,9 @@ describe("RelayDesk user flows", () => {
     ).toBeInTheDocument();
     const git = (await screen.findAllByText("Git"))[0].closest("li")!;
     expect(await within(git).findByText("2.45.0")).toBeInTheDocument();
-    await user.click(await screen.findByRole("button", { name: "返回模型中心" }));
+    await user.click(
+      await screen.findByRole("button", { name: "返回模型中心" }),
+    );
     expect(
       await screen.findByRole("heading", { name: "模型中心", level: 1 }),
     ).toBeInTheDocument();
@@ -420,7 +458,7 @@ describe("RelayDesk user flows", () => {
     server.use(post("get_tool_versions", () => HttpResponse.json([])));
     const user = userEvent.setup();
     mount();
-    const deployment = await screen.findByRole("button", { name: "工具部署" });
+    const deployment = await screen.findByRole("button", { name: "环境部署" });
     expect(
       screen.queryByRole("button", { name: "部署工具" }),
     ).not.toBeInTheDocument();
@@ -430,29 +468,27 @@ describe("RelayDesk user flows", () => {
     );
     await user.click(deployment);
     expect(
-      screen.getByRole("heading", { name: "工具部署", level: 1 }),
+      screen.getByRole("heading", { name: "环境部署", level: 1 }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "折叠导航" }));
     await user.click(screen.getByRole("button", { name: "模型中心" }));
-    await user.click(screen.getByRole("button", { name: "工具部署" }));
+    await user.click(screen.getByRole("button", { name: "环境部署" }));
     expect(
-      screen.getByRole("heading", { name: "工具部署", level: 1 }),
+      screen.getByRole("heading", { name: "环境部署", level: 1 }),
     ).toBeInTheDocument();
   });
   it("routes the post-apply deployment link to the same top-level tool page", async () => {
     server.use(post("get_tool_versions", () => HttpResponse.json([])));
     const user = userEvent.setup();
     mount();
-    const row = (await screen.findAllByRole("row")).find((r) =>
-      r.textContent?.includes("new-model"),
-    )!;
+    const row = await pickModel(user, "new-model");
     await user.click(within(row).getByRole("button", { name: "使用" }));
     await user.click(
       await screen.findByRole("button", { name: "工具部署与环境检查" }),
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "工具部署", level: 1 }),
+      screen.getByRole("heading", { name: "环境部署", level: 1 }),
     ).toBeInTheDocument();
   });
   it.each(["failure", "success"])(
@@ -486,9 +522,7 @@ describe("RelayDesk user flows", () => {
       );
       const user = userEvent.setup();
       mount();
-      const row = (await screen.findAllByRole("row")).find((r) =>
-        r.textContent?.includes("new-model"),
-      )!;
+      const row = await pickModel(user, "new-model");
       await waitFor(() =>
         expect(within(row).getByRole("button", { name: "使用" })).toBeEnabled(),
       );
@@ -522,9 +556,7 @@ describe("RelayDesk user flows", () => {
     results = [{ app: "codex", ok: false }];
     const user = userEvent.setup();
     mount();
-    const row = (await screen.findAllByRole("row")).find((r) =>
-      r.textContent?.includes("new-model"),
-    )!;
+    const row = await pickModel(user, "new-model");
     await user.click(within(row).getByRole("button", { name: "使用" }));
     await within(await screen.findByRole("dialog")).findByText("应用失败");
     await user.keyboard("{Escape}");
@@ -598,31 +630,29 @@ describe("RelayDesk user flows", () => {
     expect(
       await screen.findByRole("heading", { name: "模型中心", level: 1 }),
     ).toBeInTheDocument();
-    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(await screen.findByRole("list")).toBeInTheDocument();
     expect(screen.getAllByText("$10.00").length).toBeGreaterThan(0);
-    expect(
-      within(screen.getByRole("table")).getAllByText("new-model"),
-    ).toHaveLength(2);
+    // 同名模型出现在不同分组的下拉选项里（standard + value）
+    expect(screen.getAllByRole("option", { name: /new-model/ })).toHaveLength(
+      2,
+    );
     expect(
       screen.queryByRole("button", { name: "MCP" }),
     ).not.toBeInTheDocument();
     expect(screen.getAllByText("RelayDesk").length).toBeGreaterThan(0);
   });
-  it("searches across groups and explains empty groups", async () => {
+  it("searches models inside group cards and shows empty state on no match", async () => {
     const user = userEvent.setup();
     mount();
+    // "economical" 是 value 组 new-model 的 description，只留下 value 组卡片
     await user.type(await screen.findByRole("searchbox"), "economical");
-    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(
-      2,
-    );
+    const cards = await screen.findAllByRole("listitem");
+    expect(cards).toHaveLength(1);
+    expect(cards[0].textContent).toContain("value");
+    // 无模型/描述命中的搜索词 → 无结果空态
     await user.clear(screen.getByRole("searchbox"));
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "模型分组" }),
-      "empty",
-    );
-    expect(
-      await screen.findByText("当前账户在该分组没有可用模型"),
-    ).toBeInTheDocument();
+    await user.type(screen.getByRole("searchbox"), "no-such-model-xyz");
+    expect(await screen.findByText("没有找到匹配的模型")).toBeInTheDocument();
   });
   it("offers opt-in remembered sessions without reading legacy credentials", async () => {
     account = null;
@@ -821,9 +851,7 @@ describe("RelayDesk user flows", () => {
     results = [{ app: "codex", ok: false, error: "secret raw backend detail" }];
     const user = userEvent.setup();
     mount();
-    const row = (await screen.findAllByRole("row")).find((r) =>
-      r.textContent?.includes("new-model"),
-    )!;
+    const row = await pickModel(user, "new-model");
     await user.click(within(row).getByRole("button", { name: "使用" }));
     const dialog = await screen.findByRole("dialog");
     expect(await within(dialog).findByText("应用失败")).toBeInTheDocument();
@@ -842,9 +870,7 @@ describe("RelayDesk user flows", () => {
   it("routes a claude group model to Claude Code only", async () => {
     const user = userEvent.setup();
     mount();
-    const row = (await screen.findAllByRole("row")).find((r) =>
-      r.textContent?.includes("claude-sonnet-4"),
-    )!;
+    const row = await pickModel(user, "claude-sonnet-4");
     await user.click(within(row).getByRole("button", { name: "使用" }));
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0].targetApps).toEqual(["claude"]);
@@ -863,9 +889,7 @@ describe("RelayDesk user flows", () => {
     ];
     const user = userEvent.setup();
     mount();
-    const row = (await screen.findAllByRole("row")).find((r) =>
-      r.textContent?.includes("new-model"),
-    )!;
+    const row = await pickModel(user, "new-model");
     await user.click(within(row).getByRole("button", { name: "使用" }));
     expect(
       await screen.findByText("未能完成同步，保留上次成功应用的模型。"),
@@ -876,9 +900,7 @@ describe("RelayDesk user flows", () => {
     account!.applyApps = { claude: false, codex: false, gemini: false };
     const user = userEvent.setup();
     mount();
-    const row = (await screen.findAllByRole("row")).find((r) =>
-      r.textContent?.includes("new-model"),
-    )!;
+    const row = await pickModel(user, "new-model");
     await user.click(within(row).getByRole("button", { name: "使用" }));
     expect(
       await screen.findByText("请先启用至少一个应用目标"),
@@ -889,9 +911,7 @@ describe("RelayDesk user flows", () => {
     account!.applyApps = { claude: true, codex: false, gemini: false };
     const user = userEvent.setup();
     mount();
-    const row = (await screen.findAllByRole("row")).find((r) =>
-      r.textContent?.includes("new-model"),
-    )!;
+    const row = await pickModel(user, "new-model");
     await user.click(within(row).getByRole("button", { name: "使用" }));
     expect(await screen.findByText(/推荐的目标未启用/)).toBeInTheDocument();
     expect(calls).toHaveLength(0);
@@ -914,11 +934,7 @@ describe("RelayDesk user flows", () => {
     );
     await waitFor(() => expect(account!.groupTargets.standard).toBe("claude"));
     await user.click(screen.getByRole("button", { name: "模型中心" }));
-    const row = (await screen.findAllByRole("row")).find(
-      (candidate) =>
-        candidate.textContent?.includes("new-model") &&
-        candidate.textContent?.includes("standard"),
-    )!;
+    const row = await pickModel(user, "new-model", "standard");
     await user.click(within(row).getByRole("button", { name: "使用" }));
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0].targetApps).toEqual(["claude"]);
@@ -935,9 +951,8 @@ describe("RelayDesk user flows", () => {
       }),
     );
     mount();
-    const row = (await screen.findAllByRole("row")).find((r) =>
-      r.textContent?.includes("new-model"),
-    )!;
+    // standard 卡默认选中已应用的 old-model（按钮为"使用中"），用 value 卡断言"使用"
+    const row = await modelCard("new-model", "value");
     expect(within(row).getByRole("button", { name: "使用" })).toBeDisabled();
     release();
     await waitFor(() =>
@@ -964,9 +979,7 @@ describe("RelayDesk user flows", () => {
     );
     const user = userEvent.setup();
     mount();
-    const row = (await screen.findAllByRole("row")).find((r) =>
-      r.textContent?.includes("new-model"),
-    )!;
+    const row = await pickModel(user, "new-model");
     const button = within(row).getByRole("button", { name: "使用" });
     await waitFor(() => expect(button).toBeEnabled());
     await user.dblClick(button);
@@ -1005,7 +1018,7 @@ describe("RelayDesk user flows", () => {
   it("keeps existing rows visible during refresh", async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByRole("table");
+    await screen.findByRole("list");
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -1020,7 +1033,7 @@ describe("RelayDesk user flows", () => {
       expect(screen.getByRole("button", { name: "刷新数据" })).toBeEnabled(),
     );
     await user.click(screen.getByRole("button", { name: "刷新数据" }));
-    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByRole("list")).toBeInTheDocument();
     release();
     expect(await screen.findByText("当前账户暂无可用模型")).toBeInTheDocument();
   });
@@ -1089,7 +1102,7 @@ describe("RelayDesk user flows", () => {
   it("reports the update service honestly when no endpoint is configured", async () => {
     const user = userEvent.setup();
     mount();
-    await user.click(await screen.findByRole("button", { name: "设置" }));
+    await user.click(await screen.findByRole("button", { name: "关于" }));
     await user.click(await screen.findByRole("button", { name: "检查更新" }));
     expect(
       await screen.findByText("更新服务未配置；请从发布渠道手动获取新版本"),
@@ -1112,7 +1125,7 @@ describe("RelayDesk user flows", () => {
     );
     const user = userEvent.setup();
     mount();
-    await user.click(await screen.findByRole("button", { name: "设置" }));
+    await user.click(await screen.findByRole("button", { name: "关于" }));
     await user.click(await screen.findByRole("button", { name: "检查更新" }));
     expect(await screen.findByText(/3\.21\.0/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "更新并重启" }));

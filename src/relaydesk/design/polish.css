@@ -114,7 +114,7 @@ code {
   margin-bottom: var(--rd-space-3);
 }
 .rd-sidebar .rd-account-card strong {
-  font-size: 24px;
+  font-size: var(--rd-font-title);
   letter-spacing: 0;
   font-weight: 600;
   overflow-wrap: anywhere;
@@ -600,7 +600,7 @@ code {
 }
 .rd-chart-breakdown .rd-chart-legend small {
   min-width: 0;
-  font-size: 12px;
+  font-size: var(--rd-font-caption);
 }
 .rd-account-table {
   font-size: var(--rd-font-control);
@@ -752,7 +752,7 @@ code {
   user-select: text;
   overflow-wrap: anywhere;
   margin-top: 4px;
-  font-size: 12px !important;
+  font-size: var(--rd-font-caption) !important;
   font-family: var(--rd-font-ui);
 }
 .rd-login-form .rd-privacy {

@@ -235,8 +235,23 @@ pub fn load_messages(path: &Path) -> Result<Vec<SessionMessage>, String> {
                     .and_then(Value::as_str)
                     .unwrap_or("unknown")
                     .to_string();
+                // Codex 桌面端把系统上下文写成 developer/system 消息
+                //（app-context、技能清单、多智能体指令等），不属于会话内容。
+                if role == "developer" || role == "system" {
+                    continue;
+                }
                 let content = payload.get("content").map(extract_text).unwrap_or_default();
-                (role, content)
+                // user 角色里混着注入上下文（AGENTS.md / environment_context /
+                // IDE 包装），与标题提取同一套规则剔除/解包，保证会话视图只显示
+                // 用户真实输入。
+                if role == "user" {
+                    match title_candidate_from_user_message(&content) {
+                        Some(text) => (role, text),
+                        None => continue,
+                    }
+                } else {
+                    (role, content)
+                }
             }
             "function_call" => {
                 let name = payload
@@ -993,5 +1008,39 @@ mod tests {
 
         assert_eq!(msgs[3].role, "assistant");
         assert_eq!(msgs[3].content, "Done.");
+    }
+
+    #[test]
+    fn load_messages_skips_injected_context_and_unwraps_ide_prompt() {
+        let temp = tempdir().expect("tempdir");
+        let path = temp.path().join("session.jsonl");
+        std::fs::write(
+            &path,
+            concat!(
+                r##"{"timestamp":"2026-03-06T21:50:12Z","type":"session_meta","payload":{"id":"test-id","cwd":"/tmp"}}"##,
+                "\n",
+                // Codex 启动时注入的 AGENTS.md 指令块，不该出现在会话视图
+                r##"{"timestamp":"2026-03-06T21:50:13Z","type":"response_item","payload":{"type":"message","role":"user","content":"# AGENTS.md instructions\n\n<INSTRUCTIONS>\nbe brief\n</INSTRUCTIONS>"}}"##,
+                "\n",
+                r##"{"timestamp":"2026-03-06T21:50:14Z","type":"response_item","payload":{"type":"message","role":"user","content":"<environment_context>\n  <cwd>/tmp</cwd>\n</environment_context>"}}"##,
+                // Codex 桌面端的 developer/system 脚手架消息（app-context、技能清单等）
+                r##"{"timestamp":"2026-03-06T21:50:14Z","type":"response_item","payload":{"type":"message","role":"developer","content":"<app-context>\n# Codex desktop context\nYou are running inside Codex.</app-context>"}}"##,
+                "\n",
+                r##"{"timestamp":"2026-03-06T21:50:14Z","type":"response_item","payload":{"type":"message","role":"developer","content":"<available_skills>\n- banner-design: Design banners\n</available_skills>"}}"##,
+                "\n",
+                // IDE 包装的用户请求：解包出真实提问
+                r##"{"timestamp":"2026-03-06T21:50:15Z","type":"response_item","payload":{"type":"message","role":"user","content":"# Context from my IDE setup:\nfile: a.rs\n\n## My request for Codex:\n修复空指针崩溃"}}"##,
+                "\n",
+                r##"{"timestamp":"2026-03-06T21:50:16Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Done."}]}}"##,
+                "\n",
+            ),
+        )
+        .expect("write");
+
+        let msgs = load_messages(&path).expect("load");
+        assert_eq!(msgs.len(), 2);
+        assert_eq!(msgs[0].role, "user");
+        assert_eq!(msgs[0].content, "修复空指针崩溃");
+        assert_eq!(msgs[1].role, "assistant");
     }
 }

@@ -1663,6 +1663,7 @@ pub fn run() {
             commands::relay_calculate_topup_amount,
             commands::relay_create_topup_payment,
             commands::relay_list_topup_history,
+            commands::relay_list_recharge_history,
             commands::relay_get_usage_models,
             commands::relay_get_usage_summary,
             commands::relay_logout,

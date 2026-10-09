@@ -71,3 +71,25 @@
 - `src/App.tsx` 标记 LEGACY/DEPRECATED：主 bundle 已不含它，保留仅因 tests 与 lib 共享逻辑覆盖、且 P3 的 MCP/技能面板移植需要参考实现；不批量删除。
 - 验证：typecheck、build:renderer、全量 148 文件 / 1296 tests 通过（中途修掉 3 处同步断言改为 findBy、1 处环境页测试按 Windows 检测新行为更新）、git diff --check 通过。
 - 未验收：真机会话数据、Windows/Linux 原生行为、3.20.4 热更新端到端、真实账号链路。
+
+## 2026-10-02 新手引导重定位 + 模型中心卡片化 + 会话过滤/布局整改（Step 8）
+
+- 新手引导从模型中心迁至环境部署页顶部；侧栏环境部署置顶；"工具部署"更名"环境部署"；未跳过引导的新账号首登落环境页。
+- 模型中心重构：工具栏仅留搜索；每分组一张卡——组名/计费/使用 + 组内模型下拉（默认选中当前在用模型）；单行紧凑布局，组名允许两行防截断。
+- 环境页：Codex CLI 行更名「OpenAI Codex CLI」与桌面端区分；broken 状态新增「修复安装」入口；「查看指引」就地展开于该行下方（`rd-env-guide-row` li 占位同一网格列），不再跳页面底部；raw 后端错误不再上屏。
+- 会话页：列表 240-280px + 详情 1fr，详情可经折叠按钮占满全宽；断点 900px→720px（此前按视口判定，千像素窗口即被上下堆叠——本次"又变挤"的根因）；消息 14px/1.7 行高 + hover 复制钮；删除按钮 hover/focus-within 显现；标题/摘要加 title tooltip。
+- 会话消息过滤（后端）：Codex 跳过 developer/system 脚手架消息（app-context、技能清单——"全英文"元凶）与 user 注入块（AGENTS.md/environment_context/IDE 包装解包真实提问）；Claude 跳过 command-name/local-command-stdout/system-reminder/Caveat 包装。Codex+Claude 回归测试共 12 过。
+- 代理修复保持：env_doctor `HTTPSProxy→http://`、`SOCKS→socks5h`（登录失败"连接失败"根因，此前复发是因为只修了 updater 未修 scheme 生成）。
+- 钱包：金额按钮 54→44px/15px、方式行 52→44px（account.css 随懒加载后载入，之前盖掉 workspace 紧凑值）；订单号 rd-mono max-width+ellipsis 不换行。
+- 反馈补强：apply 成功 toast「已把 X 应用到 A、B」（report 对象身份去重）；修复态安装对话框语境化（confirmToolRepair/repairConfirmationHint）。
+- 统一走 copyText（原生 invoke+webview 兜底）替换裸 navigator.clipboard 4 处。
+- 死代码清理：filters.group、modelChoices/ModelChoice、旧表格样式删除。
+- i18n 单括号插值复发自查脚本揪出 confirmToolRepair/appliedToApps，已统一 {{}}；zh/en 各 568 键。
+- 验证：typecheck ✅ 全量 149 文件/1302 测试 ✅ build:renderer ✅ fmt/diff-check ✅；Rust 会话测试 12/12 ✅。
+- 经验沉淀：locale 加插值必须 {{}}；懒加载页面 CSS 后到会覆盖全局样式，密度类规则两边都得查；断点按视口换算成内容宽度再定阈值；Tauri 剪贴板统一走 copyText。
+
+## 验收/回归经验（2026-10 追加）
+- **"内容被裁切"先查容器链**：grid/flex 子元素默认 `min-width:auto`，宽内容会撑出视口——表格类布局一律 `> * { min-width: 0 }` + 内部滚动容器接管，别再只改表格内部
+- **时间型测试夹具**：`create_time` 写死日期会随时间过期触发过期逻辑 → 用远期（2999）或相对 `Date.now()`
+- **死代码清理方法**：从 `main.tsx` 沿 import 爬可达图（含 tests/ 作根、副作用 import、`import.meta.glob`），未达文件整批删；`@import` 的 CSS 与 fetch 加载的资源要人工复核白名单
+- **new-api 日志语义**：`type=1` 充值到账（含兑换码）、`3` 管理员调整、`6` 退款；`type=0` 全量首页会被消费日志占满——必须分类型拉；后台直接改库不产生任何日志

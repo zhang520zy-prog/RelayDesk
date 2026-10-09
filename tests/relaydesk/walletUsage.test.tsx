@@ -52,7 +52,7 @@ beforeEach(async () => {
   vi.spyOn(relayApi, "getTopupInfo").mockRejectedValue(
     new Error("relay.topup_not_ready"),
   );
-  vi.spyOn(relayApi, "listTopupHistory").mockRejectedValue(
+  vi.spyOn(relayApi, "listRechargeHistory").mockRejectedValue(
     new Error("relay.topup_not_ready"),
   );
   vi.spyOn(relayApi, "calculateTopupAmount").mockRejectedValue(
@@ -123,9 +123,8 @@ describe("wallet and usage UI", () => {
       amount: 10,
       payAmount: 10,
     });
-    vi.mocked(relayApi.listTopupHistory).mockResolvedValue({
+    vi.mocked(relayApi.listRechargeHistory).mockResolvedValue({
       items: [],
-      isComplete: true,
     });
     const create = vi
       .spyOn(relayApi, "createTopupPayment")
@@ -140,12 +139,11 @@ describe("wallet and usage UI", () => {
       }),
     );
     await screen.findByText(/订单已创建，收银台已打开/);
-    vi.mocked(relayApi.listTopupHistory).mockResolvedValue({
+    vi.mocked(relayApi.listRechargeHistory).mockResolvedValue({
       items: [
-        { tradeNo: "other-order", status: "pending" },
-        { tradeNo: "my-order", status: "credited" },
+        { refId: "other-order", source: "order", status: "pending" },
+        { refId: "my-order", source: "order", status: "credited" },
       ],
-      isComplete: true,
     });
     await user.click(screen.getByRole("button", { name: "查询到账状态" }));
     expect(
@@ -167,9 +165,8 @@ describe("wallet and usage UI", () => {
       amount: 10,
       payAmount: 10,
     });
-    vi.mocked(relayApi.listTopupHistory).mockResolvedValue({
+    vi.mocked(relayApi.listRechargeHistory).mockResolvedValue({
       items: [],
-      isComplete: true,
     });
     vi.spyOn(relayApi, "createTopupPayment").mockResolvedValue({
       tradeNo: "pending-order",
@@ -184,9 +181,8 @@ describe("wallet and usage UI", () => {
       }),
     );
     await screen.findByText(/订单已创建，收银台已打开/);
-    vi.mocked(relayApi.listTopupHistory).mockResolvedValue({
-      items: [{ tradeNo: "unrelated", status: "credited" }],
-      isComplete: true,
+    vi.mocked(relayApi.listRechargeHistory).mockResolvedValue({
+      items: [{ refId: "unrelated", source: "order", status: "credited" }],
     });
     await user.click(screen.getByRole("button", { name: "查询到账状态" }));
     expect(
@@ -220,7 +216,7 @@ describe("wallet and usage UI", () => {
       isComplete: true,
     });
     const user = userEvent.setup();
-    wrap(<UsagePage />);
+    wrap(<UsagePage account={account} />);
     const table = await screen.findByRole("table");
     const names = () =>
       within(table)
@@ -265,10 +261,9 @@ describe("wallet and usage UI", () => {
       ],
       message: "测试环境",
     });
-    vi.mocked(relayApi.listTopupHistory).mockResolvedValue({
+    vi.mocked(relayApi.listRechargeHistory).mockResolvedValue({
       items: [],
       total: 0,
-      isComplete: true,
     });
     const user = userEvent.setup();
     wrap(<WalletPage account={account} />);
@@ -363,18 +358,23 @@ describe("wallet and usage UI", () => {
       enabled: false,
       message: "站点关闭在线充值",
     });
-    vi.mocked(relayApi.listTopupHistory).mockResolvedValue({
-      isComplete: true,
+    vi.mocked(relayApi.listRechargeHistory).mockResolvedValue({
       items: [
         {
-          tradeNo: "paid-1",
+          refId: "paid-1",
+          source: "order",
           status: "credited",
           payAmount: 20,
           creditAmount: 20,
           currency: "CNY",
           currencySymbol: "¥",
         },
-        { tradeNo: "pending-1", status: "crediting", creditAmount: 30 },
+        {
+          refId: "pending-1",
+          source: "order",
+          status: "crediting",
+          creditAmount: 30,
+        },
       ],
     });
     wrap(<WalletPage account={account} />);
@@ -419,7 +419,7 @@ describe("wallet and usage UI", () => {
       timezone: "Asia/Shanghai",
       unavailableFields: ["cache_read_tokens", "charged_amount"],
     });
-    wrap(<UsagePage />);
+    wrap(<UsagePage account={account} />);
     const table = await screen.findByRole("table");
     expect(within(table).getByText("model-a")).toBeInTheDocument();
     expect(within(table).getByText("model-b")).toBeInTheDocument();
@@ -445,7 +445,7 @@ describe("wallet and usage UI", () => {
         isComplete: false,
         detailsStatus,
       });
-      wrap(<UsagePage />);
+      wrap(<UsagePage account={account} />);
       expect(await screen.findByText(new RegExp(message))).toBeInTheDocument();
       expect(
         within(screen.getByRole("table")).getByText("12,345"),
@@ -454,7 +454,7 @@ describe("wallet and usage UI", () => {
   );
 
   it("does not downgrade a missing aggregation endpoint into local billing data", async () => {
-    wrap(<UsagePage />);
+    wrap(<UsagePage account={account} />);
     expect(
       await screen.findByRole("heading", { name: "模型用量加载失败" }),
     ).toBeInTheDocument();
@@ -553,7 +553,6 @@ describe("workspace navigation", () => {
       <Sidebar
         page="models"
         navigate={navigate}
-        account={account}
         collapsed={false}
         onCollapse={() => {}}
       />,

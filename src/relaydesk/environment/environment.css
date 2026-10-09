@@ -59,8 +59,11 @@
   padding: 0;
   margin: 0;
 }
+/* 图标 | 内容 | 状态 | 操作 —— 四列网格定死，状态胶囊在有/无按钮的
+   行间保持同一 x 位置；按钮永不折到第二行 */
 .rd-env-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   padding: 13px 0;
@@ -101,26 +104,24 @@
 .rd-env-status {
   color: var(--rd-muted);
   font-size: var(--rd-font-caption);
-  flex-shrink: 0;
+  white-space: nowrap;
+  min-width: 52px;
+  text-align: right;
 }
 .rd-env-row-actions,
 .rd-env-actions {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
   gap: 8px;
+}
+.rd-env-row-actions {
+  min-width: 96px;
 }
 .rd-env-row-actions .rd-button {
   font-size: var(--rd-font-caption);
   padding: 0 10px;
-}
-.rd-env-tool-guide {
-  background: var(--rd-raised);
-  padding: 14px;
-  border-radius: 8px;
-}
-.rd-env-tool-guide h4 {
-  font-size: var(--rd-font-control);
 }
 .rd-env-diagnostics {
   display: flex;
@@ -210,16 +211,49 @@
 }
 @media (max-width: 1000px) {
   .rd-env-row {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .rd-env-item {
-    flex-basis: 50%;
+    /* 窄断点：状态胶囊仍在内容行内右对齐，按钮移到第二行 */
+    grid-template-columns: 20px minmax(0, 1fr) auto;
   }
   .rd-env-row-actions {
-    margin-left: 26px;
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+    min-width: 0;
   }
   .rd-env-heading {
     align-items: flex-start;
   }
+}
+
+/* 安装指引内联展开：紧跟点击行，不再跳到底部 */
+.rd-env-guide-row {
+  list-style: none;
+  margin: -2px 0 6px;
+  padding: 12px 16px 14px 38px;
+  border: 1px solid var(--rd-line);
+  border-top: 0;
+  border-radius: 0 0 var(--rd-control-radius) var(--rd-control-radius);
+  background: var(--rd-raised);
+  animation: rd-env-guide-in 0.2s ease;
+}
+@keyframes rd-env-guide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-env-guide-row {
+    animation: none;
+  }
+}
+.rd-env-hint {
+  display: block;
+  color: var(--rd-muted);
+  font-size: var(--rd-font-caption);
+  margin-top: 2px;
+  word-break: break-all;
 }

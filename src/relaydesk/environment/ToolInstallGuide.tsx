@@ -4,6 +4,7 @@ import { Copy, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { relayApi, type RelayTarget } from "@/lib/api/relay";
 import { settingsApi } from "@/lib/api/settings";
+import { copyText } from "@/lib/clipboard";
 import { Action } from "../ui";
 import "./environment.css";
 
@@ -49,7 +50,7 @@ export function ToolInstallGuide({ app }: { app: RelayTarget }) {
       <div className="rd-env-actions">
         <Action
           onClick={() =>
-            void navigator.clipboard.writeText(guide.command).then(
+            void copyText(guide.command).then(
               () => setStatus("commandCopied"),
               () => setStatus("commandCopyFailed"),
             )

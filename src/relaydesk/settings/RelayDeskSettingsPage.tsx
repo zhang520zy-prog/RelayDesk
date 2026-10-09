@@ -7,14 +7,12 @@ import {
   Folder,
   LogOut,
   Moon,
-  RefreshCw,
   Sun,
   Monitor,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { relayApi, type RelayAccountInfo } from "@/lib/api/relay";
 import { settingsApi } from "@/lib/api/settings";
-import { version } from "../../../package.json";
 import { Action } from "../ui";
 import { relayErrorKey } from "../state/relayErrors";
 export function RelayDeskSettingsPage({
@@ -22,23 +20,18 @@ export function RelayDeskSettingsPage({
   busy,
   refresh,
   logout,
+  resetOnboarding,
 }: {
   account: RelayAccountInfo;
   busy: boolean;
   refresh: () => void;
   logout: () => void;
+  resetOnboarding: () => void;
 }) {
   const { t, i18n } = useTranslation("relaydesk");
   const { theme, setTheme } = useTheme();
   const [exporting, setExporting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const [installingUpdate, setInstallingUpdate] = useState(false);
-  const [updateResult, setUpdateResult] = useState<
-    | { kind: "not_configured" | "latest" | "check_failed" | "install_failed" }
-    | { kind: "available"; version: string }
-    | null
-  >(null);
   const path = useQuery({
     queryKey: ["relaydesk", "dataPath"],
     queryFn: settingsApi.getAppConfigPath,
@@ -61,34 +54,6 @@ export function RelayDeskSettingsPage({
       setStatus(relayErrorKey(e));
     } finally {
       setExporting(false);
-    }
-  }
-  async function checkUpdate() {
-    if (checkingUpdate) return;
-    setCheckingUpdate(true);
-    try {
-      const result = await relayApi.checkUpdate();
-      setUpdateResult(
-        !result.configured
-          ? { kind: "not_configured" }
-          : result.version
-            ? { kind: "available", version: result.version }
-            : { kind: "latest" },
-      );
-    } catch {
-      setUpdateResult({ kind: "check_failed" });
-    } finally {
-      setCheckingUpdate(false);
-    }
-  }
-  async function installUpdate() {
-    if (installingUpdate) return;
-    setInstallingUpdate(true);
-    try {
-      await settingsApi.installUpdateAndRestart();
-    } catch {
-      setUpdateResult({ kind: "install_failed" });
-      setInstallingUpdate(false);
     }
   }
   return (
@@ -140,6 +105,9 @@ export function RelayDeskSettingsPage({
             ))}
           </div>
         </div>
+      </section>
+      <section className="rd-setting-section">
+        <h2>{t("general")}</h2>
         <div className="rd-setting-row">
           <label htmlFor="rd-language">{t("language")}</label>
           <select
@@ -158,6 +126,10 @@ export function RelayDeskSettingsPage({
             <option value="zh">简体中文</option>
             <option value="en">English</option>
           </select>
+        </div>
+        <div className="rd-setting-row">
+          <span>{t("onboardingTitle")}</span>
+          <Action onClick={resetOnboarding}>{t("onboardingReopen")}</Action>
         </div>
       </section>
       <section className="rd-setting-section">
@@ -197,54 +169,6 @@ export function RelayDeskSettingsPage({
           >
             {t(status)}
           </p>
-        )}
-        <div className="rd-setting-row rd-version">
-          <span>RelayDesk</span>
-          <span>
-            {t("version")} {version}
-          </span>
-        </div>
-      </section>
-      <section className="rd-setting-section">
-        <h2>{t("appUpdate")}</h2>
-        <p className="rd-muted rd-small">{t("appUpdateHint")}</p>
-        {updateResult?.kind === "available" ? (
-          <div className="rd-setting-actions">
-            <p role="status" className="rd-alert success">
-              {t("updateAvailable", { version: updateResult.version })}
-            </p>
-            <Action
-              primary
-              disabled={installingUpdate || busy}
-              onClick={() => void installUpdate()}
-            >
-              <Download size={15} />
-              {t(installingUpdate ? "updating" : "updateAndRestart")}
-            </Action>
-          </div>
-        ) : (
-          <div className="rd-setting-actions">
-            {updateResult && (
-              <p
-                role="status"
-                className={`rd-alert ${
-                  updateResult.kind === "latest" ? "success" : "error"
-                }`}
-              >
-                {t(`update_${updateResult.kind}`)}
-              </p>
-            )}
-            <Action
-              disabled={checkingUpdate || installingUpdate || busy}
-              onClick={() => void checkUpdate()}
-            >
-              <RefreshCw
-                size={15}
-                className={checkingUpdate ? "rd-spin" : ""}
-              />
-              {t(checkingUpdate ? "checkingUpdate" : "checkUpdate")}
-            </Action>
-          </div>
         )}
       </section>
     </div>

@@ -88,7 +88,7 @@ code {
 .rd-sidebar {
   width: 220px;
   flex-shrink: 0;
-  padding: 28px 16px 12px;
+  padding: 20px 16px 10px;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--rd-line);
@@ -114,7 +114,7 @@ code {
   border-radius: 10px;
 }
 .rd-sidebar .rd-brand {
-  margin: 0 8px 32px;
+  margin: 0 8px 20px;
 }
 .rd-nav-label {
   color: var(--rd-muted);
@@ -126,15 +126,15 @@ code {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 42px;
+  min-height: 38px;
   width: 100%;
   border: 0;
   border-radius: 10px;
   background: transparent;
   color: var(--rd-muted);
   text-align: left;
-  padding: 10px 12px;
-  margin-bottom: 6px;
+  padding: 9px 12px;
+  margin-bottom: 3px;
   white-space: nowrap;
   transition: none;
 }
@@ -150,62 +150,28 @@ code {
 .rd-sidebar-bottom {
   margin-top: auto;
   width: 100%;
+  flex: none;
 }
+/* 导航区按内容自然高度展开，不再内部单独滚动；
+   极矮窗口由侧栏整体滚动兜底，避免半截条目 */
 .rd-sidebar nav {
   width: 100%;
+  flex: none;
 }
-.rd-sidebar .rd-account-card {
-  width: 100%;
-  text-align: left;
-  border: 1px solid var(--rd-line);
-  border-radius: 12px;
-  padding: 14px;
-  margin: 16px 0 10px;
-  background: var(--rd-raised);
-  color: var(--rd-text);
+/* 默认窗口尺寸下侧栏整列完整显示；不做内部滚动，
+   后续功能增多时再引入分区滚动 */
+.rd-sidebar {
+  min-height: 0;
+  overflow-y: hidden;
 }
-.rd-sidebar .rd-account-card > div {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 17px;
+/* 间距收敛：默认 740 高窗口下侧栏整列完整显示，无需滚动 */
+.rd-nav-label {
+  margin-bottom: 8px !important;
 }
-.rd-account-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-}
-.rd-avatar {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
-  background: var(--rd-soft);
-  color: var(--rd-teal);
-  font-size: var(--rd-font-caption);
-  font-weight: var(--rd-weight-strong);
-}
-.rd-sidebar .rd-account-card small {
-  display: block;
-  font-size: var(--rd-font-caption);
-  color: var(--rd-muted);
-}
-.rd-sidebar .rd-account-card strong {
-  display: block;
-  font-size: 25px;
-  font-weight: var(--rd-weight-strong);
-  letter-spacing: -1px;
-  margin-top: 3px;
-  font-variant-numeric: tabular-nums;
-}
-.rd-account-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--rd-font-caption);
-  margin-top: 8px;
+.rd-sidebar-divider {
+  height: 1px;
+  background: var(--rd-line);
+  margin: 4px 0 6px;
 }
 .rd-dot {
   display: inline-block;
@@ -546,118 +512,25 @@ code {
   border: 0;
   background: none;
 }
-.rd-model-toolbar .rd-select {
-  max-width: 170px;
-  font-size: var(--rd-font-caption);
-}
-.rd-model-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-.rd-model-table th {
-  background: var(--rd-raised);
-  color: var(--rd-muted);
-  text-align: left;
-  padding: 10px 16px;
-  font-size: var(--rd-font-caption);
-  font-weight: var(--rd-weight-medium);
-  border-block: 1px solid var(--rd-line);
-}
-.rd-model-table th:first-child {
-  width: 40%;
-}
-.rd-capability-col {
-  width: 17%;
-}
-.rd-price-col {
-  width: 15%;
-}
-.rd-action-col {
-  width: 95px;
-  text-align: right !important;
-}
-.rd-model-table td {
-  height: 68px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--rd-line);
-  vertical-align: middle;
-}
-.rd-model-table tr:last-child td {
-  border-bottom: 0;
-}
-.rd-model-table tbody tr:hover {
-  background: var(--rd-hover);
-}
-.rd-model-table .is-current {
-  background: color-mix(in srgb, var(--rd-soft) 50%, transparent);
-}
-.rd-model-table .is-current td:first-child {
-  box-shadow: inset 3px 0 var(--rd-brand);
-}
-.rd-model-name {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.rd-model-name > div {
-  min-width: 0;
-  flex: 1;
-}
-.rd-model-symbol {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: var(--rd-raised);
-  color: var(--rd-muted);
-  display: grid;
-  place-items: center;
-  font-family: var(--rd-font-code);
-  flex-shrink: 0;
-  font-size: var(--rd-font-caption);
-}
-.rd-model-id {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--rd-font-caption);
-  letter-spacing: -0.2px;
-}
-.rd-model-description {
-  color: var(--rd-muted);
-  font-size: var(--rd-font-caption);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-top: 4px !important;
-}
 .rd-copy {
   background: transparent;
   border: 0;
   color: var(--rd-muted);
-  opacity: 0;
-  padding: 3px;
+  padding: 5px;
+  border-radius: 6px;
+  cursor: pointer;
 }
-tr:hover .rd-copy,
+.rd-copy:hover {
+  color: var(--rd-text);
+  background: var(--rd-hover);
+}
 .rd-copy:focus-visible {
-  opacity: 1;
+  outline: 2px solid var(--rd-focus);
+  outline-offset: 2px;
 }
-.rd-tags {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-.rd-tag {
-  color: var(--rd-muted);
-  font-size: var(--rd-font-caption);
-  background: var(--rd-raised);
-  border-radius: 4px;
-  padding: 2px 5px;
-  max-width: 80px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.rd-copy:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .rd-rate {
   font-family: var(--rd-font-code);
@@ -668,13 +541,6 @@ tr:hover .rd-copy,
   color: var(--rd-muted);
   font-size: var(--rd-font-caption);
   margin-top: 3px;
-}
-.rd-group {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: var(--rd-font-caption);
 }
 .rd-button.rd-use {
   font-size: var(--rd-font-caption);
@@ -1518,15 +1384,6 @@ tr:hover .rd-copy,
   }
 }
 @media (max-width: 1100px) {
-  .rd-capability-col {
-    display: none;
-  }
-  .rd-model-table th:first-child {
-    width: 48%;
-  }
-  .rd-price-col {
-    width: 18%;
-  }
   .rd-page-header,
   .rd-content {
     padding-inline: 24px;
@@ -1548,12 +1405,6 @@ tr:hover .rd-copy,
 @media (max-width: 950px) {
   .rd-sidebar {
     width: 208px;
-  }
-  .rd-price-col {
-    display: none;
-  }
-  .rd-model-table th:first-child {
-    width: 59%;
   }
   .rd-metric {
     padding-inline: 14px;
@@ -1643,10 +1494,6 @@ tr:hover .rd-copy,
 .rd-search > button {
   top: 11px;
 }
-.rd-model-table td {
-  height: 56px;
-  padding-block: 9px;
-}
 @media (max-height: 680px) {
   .rd-login-top {
     padding-block: 14px;
@@ -1707,15 +1554,6 @@ tr:hover .rd-copy,
   padding-bottom: 12px;
 }
 
-.rd-row-phase {
-  max-width: 122px;
-  height: auto;
-  min-height: 34px;
-  white-space: normal;
-  line-height: 1.3;
-  padding: 6px 8px;
-}
-
 .rd-skip-link {
   position: fixed;
   top: 40px;
@@ -1748,11 +1586,9 @@ tr:hover .rd-copy,
   .rd-sidebar .rd-brand {
     margin-bottom: 20px;
   }
-  .rd-sidebar-bottom .rd-account-card {
-    margin-top: 8px;
-    padding: 10px;
-  }
-  .rd-sidebar-bottom .rd-account-card > div {
-    margin-bottom: 8px;
-  }
+}
+
+/* 侧栏分割线与底部项：导航内容与设置/关于分区 */
+.rd-sidebar.is-collapsed .rd-sidebar-divider {
+  margin: 4px 4px;
 }

@@ -12,9 +12,14 @@ import {
   MonitorX,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { relayApi, type RelayTarget } from "@/lib/api/relay";
+import {
+  relayApi,
+  type RelayAccountInfo,
+  type RelayTarget,
+} from "@/lib/api/relay";
 import { settingsApi } from "@/lib/api/settings";
 import { Action } from "../ui";
+import { OnboardingChecklist } from "../onboarding/OnboardingChecklist";
 import { targetIds, targetLabels } from "../state/useRelayApply";
 import { relayErrorKey } from "../state/relayErrors";
 import { InstallToolDialog } from "./InstallToolDialog";
@@ -53,6 +58,7 @@ export function EnvironmentCheckRow({
       <div className="rd-env-item">
         <strong>{check.label}</strong>
         <span>{check.detail}</span>
+        {check.hint && <small className="rd-env-hint">{check.hint}</small>}
       </div>
       <span className={`rd-env-status ${check.status}`}>
         {t(`envStatus_${check.status}`)}
@@ -66,10 +72,18 @@ export function EnvironmentPage({
   onBack,
   platform = getRuntimePlatform(),
   busy = false,
+  account,
+  applied = false,
+  openTargets,
+  openModels,
 }: {
   onBack: () => void;
   platform?: EnvironmentPlatform;
   busy?: boolean;
+  account?: RelayAccountInfo;
+  applied?: boolean;
+  openTargets?: () => void;
+  openModels?: () => void;
 }) {
   const { t } = useTranslation("relaydesk");
   const [install, setInstall] = useState<RelayTarget | null>(null);
@@ -133,13 +147,22 @@ export function EnvironmentPage({
     }
   }
   function toolCheck(app: RelayTarget): EnvironmentCheck {
-    const base = { id: `${app}-cli`, label: targetLabels[app] };
+    // CLI 行显式带 CLI 后缀，避免与下方"桌面端"行混淆（如 OpenAI Codex CLI vs ChatGPT 桌面端）
+    const cliName = targetLabels[app].replace(/\s*CLI\s*$/i, "");
+    const base = { id: `${app}-cli`, label: `${cliName} CLI` };
     if (loading)
       return { ...base, status: "loading", detail: t("envCheckingTool") };
     const found = installations.data?.find((item) => item.app === app);
     const version = versions.data?.find((item) => item.name === app);
     if (!versions.isError && version?.installed_but_broken)
-      return { ...base, status: "warn", detail: t("envToolBroken") };
+      return {
+        ...base,
+        status: "warn",
+        detail: t("envToolBroken"),
+        // 原始探测错误可能含路径等内部细节，不上屏；给通用排查提示
+        hint: t("envToolBrokenHint"),
+        repairable: true,
+      };
     if (!versions.isError && version?.version)
       return {
         ...base,
@@ -225,6 +248,14 @@ export function EnvironmentPage({
   }
   return (
     <div className="rd-environment">
+      {account && openTargets && openModels && (
+        <OnboardingChecklist
+          account={account}
+          applied={applied}
+          openTargets={openTargets}
+          openModels={openModels}
+        />
+      )}
       <div className="rd-env-heading">
         <div>
           <h2>
@@ -256,7 +287,17 @@ export function EnvironmentPage({
                     {t("installCli")}
                   </Action>
                 )}
-                {check.status !== "loading" && (
+                {check.repairable && (
+                  <Action
+                    disabled={installing || busy}
+                    onClick={() => {
+                      if (!busy && !installing) setInstall(app);
+                    }}
+                  >
+                    {t("envToolRepair")}
+                  </Action>
+                )}
+                {check.status !== "loading" && check.status !== "ok" && (
                   <Action
                     aria-expanded={guide === app}
                     onClick={() => setGuide(guide === app ? null : app)}
@@ -265,6 +306,14 @@ export function EnvironmentPage({
                   </Action>
                 )}
               </EnvironmentCheckRow>,
+              // 指引紧跟点击行内联展开，不再跳到列表底部
+              ...(guide === app
+                ? [
+                    <li key={`${app}-guide`} className="rd-env-guide-row">
+                      <ToolInstallGuide app={app} />
+                    </li>,
+                  ]
+                : []),
               ...(desktop
                 ? [
                     <EnvironmentCheckRow key={desktop.id} check={desktop}>
@@ -287,12 +336,6 @@ export function EnvironmentPage({
             ];
           })}
         </ul>
-        {guide && (
-          <div className="rd-env-tool-guide">
-            <h4>{targetLabels[guide]}</h4>
-            <ToolInstallGuide app={guide} />
-          </div>
-        )}
       </section>
       <h2 className="rd-environment-health-title">{t("environmentHealth")}</h2>
       <p className="rd-alert rd-env-scope">
@@ -391,6 +434,12 @@ export function EnvironmentPage({
       </div>
       <InstallToolDialog
         app={install}
+        repair={Boolean(
+          install &&
+            versions.data?.find(
+              (item) => item.name === install && item.installed_but_broken,
+            ),
+        )}
         onClose={() => setInstall(null)}
         onInstalled={recheck}
       />

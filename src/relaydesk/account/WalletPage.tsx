@@ -16,6 +16,7 @@ import {
   type RelayAccountInfo,
   type RelayTopupAmountOption,
   type RelayTopupOrder,
+  type RelayRechargeRecord,
   type RelayTopupPaymentMethod,
 } from "@/lib/api/relay";
 import { Action } from "../ui";
@@ -48,18 +49,24 @@ function normalizeAmount(
   return typeof option === "number" ? { amount: option } : option;
 }
 
-function orderLabel(order: RelayTopupOrder) {
-  const value = order.tradeNo ?? order.orderId;
-  if (!value) return "—";
-  if (value.length <= 16) return value;
-  return `${value.slice(0, 7)}…${value.slice(-5)}`;
+function orderLabel(refId: string) {
+  if (!refId) return "—";
+  if (refId.length <= 16) return refId;
+  return `${refId.slice(0, 7)}…${refId.slice(-5)}`;
 }
 
 function statusLabel(
-  status: RelayTopupOrder["status"],
+  status: RelayRechargeRecord["status"],
   t: (key: string) => string,
 ) {
   return t(`topupStatus_${status}`);
+}
+
+/** 充值方式：已知 id 走本地化，未知原样显示 */
+function methodLabel(method: string | undefined, t: (key: string) => string) {
+  if (!method) return "—";
+  const known = ["wxpay", "alipay", "redeem", "admin", "stripe", "epay"];
+  return known.includes(method) ? t(`topupMethod_${method}`) : method;
 }
 
 export function WalletPage({
@@ -123,8 +130,8 @@ export function WalletPage({
     staleTime: 60_000,
   });
   const history = useQuery({
-    queryKey: ["relaydesk", "topup-history", historyPage],
-    queryFn: () => relayApi.listTopupHistory(historyPage, 20),
+    queryKey: ["relaydesk", "recharge-history", historyPage],
+    queryFn: () => relayApi.listRechargeHistory(historyPage, 20),
     retry: false,
     staleTime: 15_000,
   });
@@ -163,16 +170,11 @@ export function WalletPage({
     setBalanceStatus("idle");
     try {
       const results = await Promise.allSettled([
-        historyPage === 1
-          ? history.refetch().then((result) => {
-              if (result.isError) throw result.error;
-              return result.data ?? null;
-            })
-          : createdOrder
-            ? relayApi.listTopupHistory(1, 20)
-            : Promise.resolve(null),
+        history.refetch().then((result) => {
+          if (result.isError) throw result.error;
+          return result.data ?? null;
+        }),
         refreshAccount ? refreshAccount() : Promise.resolve(false),
-        historyPage !== 1 ? history.refetch() : Promise.resolve(),
         info.refetch(),
         activeAmount !== null && activeMethod
           ? quote.refetch()
@@ -198,12 +200,19 @@ export function WalletPage({
       if (createdOrder) {
         if (orders.status === "fulfilled" && orders.value) {
           const matched = orders.value.items.find(
-            (order) =>
-              (createdOrder.tradeNo &&
-                order.tradeNo === createdOrder.tradeNo) ||
-              (createdOrder.orderId && order.orderId === createdOrder.orderId),
+            (record) =>
+              record.source === "order" &&
+              ((createdOrder.tradeNo &&
+                record.refId === createdOrder.tradeNo) ||
+                (createdOrder.orderId &&
+                  record.refId === createdOrder.orderId)),
           );
-          if (matched) setCreatedOrder(matched);
+          if (matched)
+            setCreatedOrder({
+              ...createdOrder,
+              status: matched.status,
+              creditAmount: matched.creditAmount ?? createdOrder.creditAmount,
+            });
           else setOrderCheckFailed(true);
         } else setOrderCheckFailed(true);
       }
@@ -446,14 +455,6 @@ export function WalletPage({
                 aria-label={t("topupSummary")}
               >
                 <div className="rd-wallet-quote" aria-live="polite">
-                  <div className="rd-wallet-quote-item">
-                    <span>{t("topupSelectedAmount")}</span>
-                    <strong>
-                      {activeAmount === null
-                        ? "—"
-                        : `${info.data.currencySymbol ?? account.currencySymbol ?? ""}${activeAmount}`}
-                    </strong>
-                  </div>
                   <div className="rd-wallet-quote-item is-payable">
                     <span>{t("topupPayAmount")}</span>
                     <strong>
@@ -524,7 +525,10 @@ export function WalletPage({
                         : statusLabel(createdOrder.status, t)}
                   </strong>
                   <span>
-                    {t("topupOrder")}: {orderLabel(createdOrder)}
+                    {t("topupOrder")}:{" "}
+                    {orderLabel(
+                      createdOrder.tradeNo ?? createdOrder.orderId ?? "",
+                    )}
                   </span>
                   {orderCheckFailed && <p>{t("topupOrderRefreshFailed")}</p>}
                 </div>
@@ -569,7 +573,7 @@ export function WalletPage({
             <table className="rd-account-table">
               <thead>
                 <tr>
-                  <th>{t("topupOrder")}</th>
+                  <th>{t("topupDetail")}</th>
                   <th>{t("topupCreatedAt")}</th>
                   <th>{t("topupPayAmount")}</th>
                   <th>{t("topupCreditAmount")}</th>
@@ -578,42 +582,69 @@ export function WalletPage({
                 </tr>
               </thead>
               <tbody>
-                {history.data.items.map((order, index) => (
-                  <tr key={order.orderId ?? order.tradeNo ?? index}>
+                {history.data.items.map((record) => (
+                  <tr key={`${record.source}-${record.refId}`}>
                     <td
-                      className="rd-mono"
-                      title={order.tradeNo ?? order.orderId}
+                      className={record.source === "order" ? "rd-mono" : ""}
+                      title={record.note ?? record.refId}
                     >
-                      {orderLabel(order)}
+                      {record.source === "order"
+                        ? orderLabel(record.refId)
+                        : (record.note ?? "—")}
                     </td>
-                    <td>{formatDate(order.createdAt, i18n.language)}</td>
                     <td>
-                      {order.payAmount === undefined
+                      {record.createdAtMs === undefined
                         ? "—"
-                        : formatRelayMoney(order.payAmount, {
+                        : formatDate(
+                            new Date(record.createdAtMs).toISOString(),
+                            i18n.language,
+                          )}
+                    </td>
+                    <td>
+                      {record.payAmount === undefined
+                        ? "—"
+                        : formatRelayMoney(record.payAmount, {
                             currencySymbol:
-                              order.currencySymbol ??
+                              record.currencySymbol ??
                               info.data?.currencySymbol ??
                               account.currencySymbol,
-                            currencyCode: order.currency ?? info.data?.currency,
+                            currencyCode:
+                              record.currency ?? info.data?.currency,
                           })}
                     </td>
                     <td>
-                      {order.creditAmount === undefined
+                      {record.creditAmount === undefined
                         ? "—"
-                        : formatRelayMoney(order.creditAmount, {
-                            currencySymbol:
-                              order.currencySymbol ??
-                              info.data?.currencySymbol ??
-                              account.currencySymbol,
-                            currencyCode: order.currency ?? info.data?.currency,
-                          })}
+                        : record.source === "log"
+                          ? formatRelayQuota(record.creditAmount, account)
+                          : formatRelayMoney(record.creditAmount, {
+                              currencySymbol:
+                                record.currencySymbol ??
+                                info.data?.currencySymbol ??
+                                account.currencySymbol,
+                              currencyCode:
+                                record.currency ?? info.data?.currency,
+                            })}
                     </td>
-                    <td>{order.method ?? "—"}</td>
+                    <td>{methodLabel(record.method, t)}</td>
                     <td>
-                      <span className={`rd-order-status ${order.status}`}>
-                        {statusLabel(order.status, t)}
+                      <span className={`rd-order-status ${record.status}`}>
+                        {statusLabel(record.status, t)}
                       </span>
+                      {record.source === "order" &&
+                        ["pending", "created"].includes(record.status) &&
+                        record.expiresAtMs !== undefined && (
+                          <small className="rd-order-expiry">
+                            {t("topupPayDeadline", {
+                              time: new Date(
+                                record.expiresAtMs,
+                              ).toLocaleTimeString(i18n.language, {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }),
+                            })}
+                          </small>
+                        )}
                     </td>
                   </tr>
                 ))}
@@ -623,6 +654,11 @@ export function WalletPage({
         ) : (
           <p className="rd-account-empty">{t("topupNoOrders")}</p>
         )}
+        {history.data?.items.length ? (
+          <p className="rd-muted rd-small rd-topup-scope">
+            {t("topupHistoryScope")}
+          </p>
+        ) : null}
         {(history.data?.total ?? 0) > 20 && (
           <div className="rd-usage-toolbar">
             <Action

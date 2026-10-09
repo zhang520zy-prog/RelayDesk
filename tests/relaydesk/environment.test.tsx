@@ -158,7 +158,7 @@ describe("environment health", () => {
     expect(screen.getByText("Installed, but cannot run")).toBeInTheDocument();
     expect(screen.queryByText("secret raw error")).not.toBeInTheDocument();
     expect(
-      within(screen.getByText("OpenAI Codex").closest("li")!).getByRole(
+      within(screen.getByText("OpenAI Codex CLI").closest("li")!).getByRole(
         "button",
         { name: "Install CLI" },
       ),
@@ -379,7 +379,7 @@ describe("explicit installation confirmation", () => {
     view.rerender(wrap(<EnvironmentPage onBack={() => {}} />));
     expect(await screen.findByText("2.0.0")).toBeInTheDocument();
     expect(
-      within(screen.getByText("OpenAI Codex").closest("li")!).queryByRole(
+      within(screen.getByText("OpenAI Codex CLI").closest("li")!).queryByRole(
         "button",
         { name: "Install CLI" },
       ),

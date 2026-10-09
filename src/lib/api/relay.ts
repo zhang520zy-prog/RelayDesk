@@ -112,6 +112,8 @@ export interface RelayToolInstallPlan {
 export interface RelayUpdateCheck {
   configured: boolean;
   version?: string;
+  notes?: string;
+  date?: string;
 }
 
 export type RelayEnvCheckStatus = "ok" | "warn" | "error" | "unavailable";
@@ -214,6 +216,27 @@ export interface RelayTopupHistory {
   total?: number;
   isComplete?: boolean;
   nextCursor?: string;
+}
+
+/** 统一充值记录：source="log" 为到账日志（与站点充值记录同源），"order" 为支付订单 */
+export interface RelayRechargeRecord {
+  refId: string;
+  source: "order" | "log" | string;
+  createdAtMs?: number;
+  payAmount?: number;
+  creditAmount?: number;
+  currency?: string;
+  currencySymbol?: string;
+  method?: string;
+  status: RelayTopupOrderStatus;
+  note?: string;
+  /** 支付截止（毫秒）；待付订单超时后 status 自动变为 expired */
+  expiresAtMs?: number;
+}
+
+export interface RelayRechargeHistory {
+  items: RelayRechargeRecord[];
+  total?: number;
 }
 
 export interface RelayUsageModelRow {
@@ -412,6 +435,14 @@ export const relayApi = {
 
   async listTopupHistory(page = 1, pageSize = 20): Promise<RelayTopupHistory> {
     return await invoke("relay_list_topup_history", { page, pageSize });
+  },
+
+  /** 与站点网页端"充值记录"同源：到账日志(type=1) ∪ 未完结支付订单 */
+  async listRechargeHistory(
+    page = 1,
+    pageSize = 20,
+  ): Promise<RelayRechargeHistory> {
+    return await invoke("relay_list_recharge_history", { page, pageSize });
   },
 
   async getUsageModels(query: RelayUsageQuery): Promise<RelayUsageModels> {
