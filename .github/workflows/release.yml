@@ -242,11 +242,10 @@ jobs:
         shell: bash
         timeout-minutes: 60
         env:
-          # 证书就绪时用真签名；否则传 '-' 让 tauri 走 ad-hoc 签名（无签名构建）
+          # 证书就绪时用真签名；否则传 '-' 让 tauri 走 ad-hoc 签名（无签名构建）。
+          # 不传 APPLE_ID/APPLE_TEAM_ID/APPLE_PASSWORD：bundler 检测到它们会自动公证，
+          # 而公证由单独的 Notarize 步骤负责。
           APPLE_SIGNING_IDENTITY: ${{ env.APPLE_SIGNING_IDENTITY || '-' }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
           max_attempts=3
@@ -315,10 +314,10 @@ jobs:
             exit 1
           fi
 
-          # Staple notarization ticket only when a real signing identity exists
+          # Staple notarization ticket only when a real signing identity exists.
+          # .app 未在 build 内公证（公证在 dmg 层完成），staple 失败降级为警告。
           if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
-            xcrun stapler staple "$APP_PATH"
-            echo "✅ .app stapled"
+            xcrun stapler staple "$APP_PATH" || echo "⚠️ .app staple skipped (notarized at dmg level)"
           else
             echo "⚠️ unsigned build — skipping .app stapling"
           fi
