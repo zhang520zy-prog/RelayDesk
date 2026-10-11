@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_updater::UpdaterExt;
 
@@ -254,13 +255,30 @@ pub struct RelayUpdateCheck {
     pub date: Option<String>,
 }
 
+static INSTALL_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
+
 /// 下载并安装应用更新，然后由后端直接重启应用。
 ///
+/// 「关于」页与全局更新横幅是两个独立入口：并发触发时必须去重——
+/// 两次 download+install 会互相覆盖安装目标。在途调用期间，
+/// 后续调用直接按成功受理返回（由在途流程完成安装与重启）。
+#[tauri::command]
+pub async fn install_update_and_restart(app: AppHandle) -> Result<bool, String> {
+    if INSTALL_IN_PROGRESS.swap(true, Ordering::SeqCst) {
+        return Ok(true);
+    }
+    let result = install_update_and_restart_inner(app).await;
+    if result.is_err() {
+        // 失败可重试；成功则进程随即重启，标志位无需复位
+        INSTALL_IN_PROGRESS.store(false, Ordering::SeqCst);
+    }
+    result
+}
+
 /// macOS 更新会原地替换 `.app` bundle。如果先返回前端、再让旧 WebView 调
 /// `process.relaunch()`，旧进程可能已经处在 bundle 被替换后的不稳定窗口期。
 /// 这里把退出清理、安装和重启串在同一个后端流程中，避免依赖旧前端继续执行。
-#[tauri::command]
-pub async fn install_update_and_restart(app: AppHandle) -> Result<bool, String> {
+async fn install_update_and_restart_inner(app: AppHandle) -> Result<bool, String> {
     let updater = build_updater(&app)?;
 
     let Some(update) = updater

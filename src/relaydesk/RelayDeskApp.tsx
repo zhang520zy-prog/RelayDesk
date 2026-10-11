@@ -4,6 +4,11 @@ import { useTranslation } from "react-i18next";
 import "./i18n";
 import { relayApi, type RelayTarget } from "@/lib/api/relay";
 import { settingsApi } from "@/lib/api/settings";
+import {
+  beginUpdateInstall,
+  endUpdateInstall,
+  onUpdateInstallStart,
+} from "@/lib/api/updateInstall";
 import { Brand } from "./layout/Brand";
 import { Titlebar } from "./layout/Titlebar";
 import { AppShell } from "./layout/AppShell";
@@ -185,13 +190,31 @@ export default function RelayDeskApp() {
       return { kind: "idle" };
     });
   const installUpdate = () => {
+    if (!beginUpdateInstall()) {
+      // 「关于」页已发起安装：横幅同步为安装中即可，避免第二次下载/安装
+      setUpdateStatus((current) =>
+        current.kind === "idle" ? current : { kind: "installing" },
+      );
+      return;
+    }
     setUpdateStatus({ kind: "installing" });
     void settingsApi.installUpdateAndRestart().catch(() => {
+      endUpdateInstall();
       setUpdateStatus((current) =>
         current.kind === "idle" ? current : { kind: "install_failed" },
       );
     });
   };
+  // 「关于」页发起安装时，横幅同步显示安装中
+  useEffect(
+    () =>
+      onUpdateInstallStart(() =>
+        setUpdateStatus((current) =>
+          current.kind === "idle" ? current : { kind: "installing" },
+        ),
+      ),
+    [],
+  );
   // 首次登录（本机未见过的账号）落地环境部署页；老账号回模型中心。
   useEffect(() => {
     const acct = session.account;

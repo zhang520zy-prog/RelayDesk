@@ -10,6 +10,11 @@ import {
 } from "lucide-react";
 import { relayApi } from "@/lib/api/relay";
 import { settingsApi } from "@/lib/api/settings";
+import {
+  beginUpdateInstall,
+  endUpdateInstall,
+  updateInstallInFlight,
+} from "@/lib/api/updateInstall";
 import { version } from "../../../package.json";
 import { Action } from "../ui";
 
@@ -100,7 +105,8 @@ type UpdateResult =
 export function AboutPage() {
   const { t } = useTranslation("relaydesk");
   const [checking, setChecking] = useState(false);
-  const [installing, setInstalling] = useState(false);
+  // 横幅入口可能已发起安装：进入本页时同步在途状态
+  const [installing, setInstalling] = useState(updateInstallInFlight);
   const [result, setResult] = useState<UpdateResult | null>(null);
   const [progress, setProgress] = useState<{
     downloaded: number;
@@ -143,11 +149,17 @@ export function AboutPage() {
 
   async function installUpdate() {
     if (installing) return;
+    if (!beginUpdateInstall()) {
+      // 更新横幅已发起安装：本页仅同步显示安装中
+      setInstalling(true);
+      return;
+    }
     setProgress(null);
     setInstalling(true);
     try {
       await settingsApi.installUpdateAndRestart();
     } catch {
+      endUpdateInstall();
       setResult({ kind: "install_failed" });
       setInstalling(false);
     }
