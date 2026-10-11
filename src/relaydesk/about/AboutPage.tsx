@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { listen } from "@tauri-apps/api/event";
 import {
   ArrowUpRight,
   Download,
@@ -14,6 +15,59 @@ import { Action } from "../ui";
 
 const PROJECT_URL = "https://github.com/zhang520zy-prog/RelayDesk";
 const ISSUES_URL = `${PROJECT_URL}/issues`;
+
+function renderInline(text: string): ReactNode[] {
+  return text
+    .split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
+    .map((part, i) =>
+      part.startsWith("**") && part.endsWith("**") ? (
+        <strong key={i}>{part.slice(2, -2)}</strong>
+      ) : part.startsWith("`") && part.endsWith("`") ? (
+        <code key={i}>{part.slice(1, -1)}</code>
+      ) : (
+        part
+      ),
+    );
+}
+
+function renderNotes(notes: string): ReactNode[] {
+  return notes.split("\n").map((line, i) => {
+    const heading = line.match(/^(#{1,4})\s+(.*)/);
+    if (heading) {
+      const level = Math.min(heading[1].length, 2);
+      return (
+        <div key={i} className={`rd-notes-h rd-notes-h${level}`}>
+          {renderInline(heading[2])}
+        </div>
+      );
+    }
+    const bullet = line.match(/^\s*[-*]\s+(.*)/);
+    if (bullet) {
+      return (
+        <div key={i} className="rd-notes-li">
+          <span className="rd-notes-bullet" aria-hidden="true">
+            •
+          </span>
+          <span>{renderInline(bullet[1])}</span>
+        </div>
+      );
+    }
+    const quote = line.match(/^>\s?(.*)/);
+    if (quote) {
+      return (
+        <div key={i} className="rd-notes-quote">
+          {renderInline(quote[1])}
+        </div>
+      );
+    }
+    if (!line.trim()) return <div key={i} className="rd-notes-gap" />;
+    return <div key={i}>{renderInline(line)}</div>;
+  });
+}
+
+function notesDate(date?: string): string | undefined {
+  return date?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? date;
+}
 
 type UpdateResult =
   | {
@@ -31,6 +85,20 @@ export function AboutPage() {
   const [checking, setChecking] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [result, setResult] = useState<UpdateResult | null>(null);
+  const [progress, setProgress] = useState<{
+    downloaded: number;
+    total?: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const unlisten = listen<{ downloaded: number; total?: number }>(
+      "update-download-progress",
+      (e) => setProgress(e.payload),
+    );
+    return () => {
+      void unlisten.then((u) => u());
+    };
+  }, []);
 
   async function checkUpdate() {
     if (checking || installing) return;
@@ -58,6 +126,7 @@ export function AboutPage() {
 
   async function installUpdate() {
     if (installing) return;
+    setProgress(null);
     setInstalling(true);
     try {
       await settingsApi.installUpdateAndRestart();
@@ -129,13 +198,35 @@ export function AboutPage() {
         {result?.kind === "available" && result.date && (
           <div className="rd-setting-row">
             <span>{t("releaseDate")}</span>
-            <span>{result.date.split("T")[0]}</span>
+            <span>{notesDate(result.date)}</span>
           </div>
         )}
-        {result?.kind === "available" && result.notes && (
-          <pre className="rd-about-notes" aria-label={t("releaseNotes")}>
-            {result.notes}
-          </pre>
+        {result?.kind === "available" && result.notes && !installing && (
+          <div className="rd-about-notes" aria-label={t("releaseNotes")}>
+            {renderNotes(result.notes)}
+          </div>
+        )}
+        {installing && (
+          <div className="rd-update-progress" role="progressbar">
+            <div className="rd-update-progress-bar">
+              <i
+                style={{
+                  width:
+                    progress?.total && progress.total > 0
+                      ? `${Math.min(100, Math.round((progress.downloaded / progress.total) * 100))}%`
+                      : undefined,
+                }}
+                className={progress?.total ? "" : "rd-update-progress--indet"}
+              />
+            </div>
+            <span className="rd-update-progress-text">
+              {progress?.total
+                ? `${Math.min(100, Math.round((progress.downloaded / progress.total) * 100))}%`
+                : progress
+                  ? `${(progress.downloaded / 1024 / 1024).toFixed(1)} MB`
+                  : t("updating")}
+            </span>
+          </div>
         )}
         <div className="rd-setting-actions">
           {result?.kind === "available" ? (
