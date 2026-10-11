@@ -10,6 +10,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { version } from "../../../package.json";
 import { Brand } from "../layout/Brand";
 import { Titlebar } from "../layout/Titlebar";
 import { Action, Field } from "../ui";
@@ -322,7 +323,10 @@ export function LoginPage({
         </section>
       </main>
       <footer className="rd-login-footer">
-        RelayDesk<span>{t("ready")}</span>
+        RelayDesk
+        <span>
+          v{version} · {t("ready")}
+        </span>
         {openEnvironment && (
           <button
             type="button"
