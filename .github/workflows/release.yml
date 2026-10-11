@@ -246,6 +246,8 @@ jobs:
           # 不传 APPLE_ID/APPLE_TEAM_ID/APPLE_PASSWORD：bundler 检测到它们会自动公证，
           # 而公证由单独的 Notarize 步骤负责。
           APPLE_SIGNING_IDENTITY: ${{ env.APPLE_SIGNING_IDENTITY || '-' }}
+          # 热更新端点：latest 别名永远解析到最新正式 release，不随 tag 删除失效
+          RELAYDESK_UPDATE_ENDPOINT: https://github.com/zhang520zy-prog/RelayDesk/releases/latest/download/latest.json
         run: |
           set -euo pipefail
           max_attempts=3
@@ -271,6 +273,7 @@ jobs:
         shell: pwsh
         env:
           WINDOWS_RELEASE_ARCH: ${{ matrix.arch || 'x86_64' }}
+          RELAYDESK_UPDATE_ENDPOINT: https://github.com/zhang520zy-prog/RelayDesk/releases/latest/download/latest.json
         run: |
           $ErrorActionPreference = 'Stop'
           if ($env:WINDOWS_RELEASE_ARCH -eq 'arm64') {
@@ -282,6 +285,8 @@ jobs:
 
       - name: Build Tauri App (Linux)
         if: runner.os == 'Linux'
+        env:
+          RELAYDESK_UPDATE_ENDPOINT: https://github.com/zhang520zy-prog/RelayDesk/releases/latest/download/latest.json
         run: pnpm tauri build --bundles appimage,deb,rpm
 
       - name: Prepare macOS Assets
