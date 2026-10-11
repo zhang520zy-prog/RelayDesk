@@ -30,6 +30,23 @@ function renderInline(text: string): ReactNode[] {
     );
 }
 
+const INTERNAL_SECTION = /^\s*(工程|下载|安装|engineering|download|install)/i;
+
+// 应用内更新日志只展示用户可感知的内容：剥掉版本标题行与工程/下载/安装类段落，
+// 完整版本仍以 GitHub Release 页为准。
+function filterAppNotes(notes: string): string {
+  const withoutTitle = notes.replace(/^\s*#{1,2}\s+[^\n]*\n+/, "");
+  const sections = withoutTitle.split(/(?=^#{2,4}\s)/m);
+  return sections
+    .filter((s) => {
+      const heading = s.match(/^#{2,4}\s+(.*)/);
+      return !heading || !INTERNAL_SECTION.test(heading[1]);
+    })
+    .join("")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function renderNotes(notes: string): ReactNode[] {
   return notes.split("\n").map((line, i) => {
     const heading = line.match(/^(#{1,4})\s+(.*)/);
@@ -203,7 +220,7 @@ export function AboutPage() {
         )}
         {result?.kind === "available" && result.notes && !installing && (
           <div className="rd-about-notes" aria-label={t("releaseNotes")}>
-            {renderNotes(result.notes)}
+            {renderNotes(filterAppNotes(result.notes))}
           </div>
         )}
         {installing && (
