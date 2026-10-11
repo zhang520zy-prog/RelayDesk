@@ -707,7 +707,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: RelayDesk ${{ github.ref_name }}
-          prerelease: true
+          prerelease: false
           body_path: release-body.md
           files: release-assets/*
         env:
