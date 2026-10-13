@@ -444,6 +444,7 @@ export default function RelayDeskApp() {
             <TargetsPage
               focusTarget={focusTarget}
               apps={account.applyApps}
+              baseUrl={account.baseUrl}
               groups={session.groupsQuery.data ?? []}
               groupTargets={account.groupTargets ?? {}}
               groupsLoading={session.groupsQuery.isPending}

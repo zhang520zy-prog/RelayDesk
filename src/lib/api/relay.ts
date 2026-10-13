@@ -144,6 +144,14 @@ export interface RelayToken {
   usedQuota: number;
 }
 
+/** 新建令牌结果：完整 key 仅此一次返回 */
+export interface RelayCreatedToken {
+  id: number;
+  name: string;
+  group: string;
+  key: string;
+}
+
 // ── 钱包、充值与中转站账单用量 ─────────────────────────────────────────────
 // 这些 DTO 只描述 Rust 适配层可以安全返回给 renderer 的字段。金额、订单
 // 状态与 Token 口径由中转站提供，renderer 不自行换算或推断。
@@ -503,6 +511,17 @@ export const relayApi = {
     return await invoke("relay_list_tokens");
   },
 
+  async createApiToken(
+    name: string,
+    group: string,
+  ): Promise<RelayCreatedToken> {
+    return await invoke("relay_create_api_token", { name, group });
+  },
+
+  async deleteApiToken(id: number): Promise<void> {
+    return await invoke("relay_delete_api_token", { id });
+  },
+
   async detectTargetInstallations(): Promise<RelayTargetInstall[]> {
     return await invoke("relay_detect_target_installations");
   },
@@ -553,10 +572,18 @@ export const relayApi = {
 };
 
 /** 给尚未配置的中转站分组生成一次性建议；模型名不参与路由。 */
-export function inferRelayTargets(group: string): RelayTarget[] {
-  const normalized = group.toLowerCase();
-  if (normalized.includes("claude")) return ["claude"];
-  if (normalized.includes("gemini")) return ["gemini"];
+export function inferRelayTargets(
+  group: string,
+  model?: string,
+): RelayTarget[] {
+  // 先看模型名（opus/sonnet/haiku 组的模型名常带 claude- 前缀；
+  // 组名 "opus" 本身不含 claude，按组名猜会错发去 codex）。
+  const text = `${model ?? ""} ${group}`.toLowerCase();
+  if (/(claude|opus|sonnet|haiku)/.test(text)) return ["claude"];
+  if (/gemini/.test(text)) return ["gemini"];
+  if (/(gpt|chatgpt|codex|\bo[0-9])/.test(text)) return ["codex"];
+  // 无法推断：中转站 OpenAI 兼容端点最通用，沿用 codex 默认；
+  // 盲发全部会把模型名写进语义不匹配的工具（如 ANTHROPIC_MODEL=gpt-4o）
   return ["codex"];
 }
 

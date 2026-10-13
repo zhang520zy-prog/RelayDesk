@@ -208,7 +208,15 @@ describe("inferRelayTargets", () => {
     expect(inferRelayTargets("default")).toEqual(["codex"]);
     expect(inferRelayTargets("deepseek")).toEqual(["codex"]);
   });
-  it("never routes from a model name inside an ambiguous group", () => {
+  it("routes by model name first, so claude models never hit ChatGPT", () => {
+    // 回归：组名 "opus" 不含 claude，但模型名 claude-opus-5.5 必须去 claude
+    expect(inferRelayTargets("opus", "claude-opus-5.5")).toEqual(["claude"]);
+    expect(inferRelayTargets("default", "claude-sonnet-5")).toEqual(["claude"]);
+    expect(inferRelayTargets("mixed", "gemini-2.5-pro")).toEqual(["gemini"]);
+    expect(inferRelayTargets("default", "gpt-4o")).toEqual(["codex"]);
+  });
+  it("falls back to codex when neither model nor group is recognizable", () => {
     expect(inferRelayTargets("0元购")).toEqual(["codex"]);
+    expect(inferRelayTargets("0元购", "deepseek-v3")).toEqual(["codex"]);
   });
 });

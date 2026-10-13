@@ -16,8 +16,8 @@ pub use restart::{RelayRestartCapability, RelayRestartProgress, RelayRestartResu
 pub use service::RelayService;
 pub use types::{
     RelayAccount, RelayAccountInfo, RelayAppliedModel, RelayApplyApps, RelayApplyProgress,
-    RelayApplyResult, RelayCurrencyConfig, RelayGroup, RelayGroupModels, RelayGroupToken,
-    RelayModelInfo, RelayRechargeHistory, RelayRechargeRecord, RelayToken, RelayTopupAmountOption,
+    RelayApplyResult, RelayCreatedToken, RelayCurrencyConfig, RelayGroup, RelayGroupModels,
+    RelayGroupToken, RelayModelInfo, RelayRechargeHistory, RelayRechargeRecord, RelayToken, RelayTopupAmountOption,
     RelayTopupHistory, RelayTopupInfo, RelayTopupOrder, RelayTopupPaymentMethod, RelayTopupQuote,
     RelayUsageModelRow, RelayUsageModels, RelayUsageOverview, RelayUsageQuery,
 };

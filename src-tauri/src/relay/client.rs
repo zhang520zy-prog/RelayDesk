@@ -511,7 +511,6 @@ impl RelayClient {
     }
 
     /// `DELETE /api/token/{id}` 吊销令牌
-    #[allow(dead_code)]
     pub async fn delete_token(&self, id: i64) -> Result<(), AppError> {
         self.delete(&format!("/api/token/{id}")).await?;
         Ok(())

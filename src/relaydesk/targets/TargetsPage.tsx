@@ -25,6 +25,7 @@ import {
   targetLabels,
 } from "../state/useRelayApply";
 import { GroupRouting } from "./GroupRouting";
+import { ApiKeysSection } from "./ApiKeysSection";
 
 const targetIcons: Record<RelayTarget, typeof Bot> = {
   claude: Bot,
@@ -158,6 +159,7 @@ function TargetCard({
 }
 export function TargetsPage({
   apps,
+  baseUrl,
   groups,
   groupTargets,
   groupsLoading,
@@ -172,6 +174,7 @@ export function TargetsPage({
 }: {
   focusTarget?: RelayTarget | null;
   apps: RelayApplyApps;
+  baseUrl: string;
   groups: RelayGroup[];
   groupTargets: Record<string, RelayTarget>;
   groupsLoading: boolean;
@@ -212,6 +215,7 @@ export function TargetsPage({
         loadingError={groupsError}
         refresh={refreshGroups}
       />
+      <ApiKeysSection baseUrl={baseUrl} groups={groups} />
       <p className="rd-info-note">
         <Info size={17} />
         {t("targetNotice")}

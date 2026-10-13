@@ -589,5 +589,21 @@
   "releaseDate": "Released",
   "releaseNotes": "Release notes",
   "viewReleases": "All Releases",
-  "aboutSubtitle": "Version, updates & project info"
+  "aboutSubtitle": "Version, updates & project info",
+  "copy": "Copy",
+  "copyKey": "Copy key",
+  "loading": "Loading…",
+  "apiKeysTitle": "API Credentials",
+  "apiKeysTagline": "For apps that only need a Base URL + API key (CherryStudio, WorkBuddy, etc.)",
+  "apiKeysBaseUrl": "Base URL",
+  "apiKeysCreatedOnce": "Credential created — the full key is shown only once. Copy it now.",
+  "apiKeysEmpty": "No credentials yet",
+  "apiKeyDisabled": "Disabled",
+  "apiKeyRevoke": "Revoke",
+  "apiKeyNew": "New credential",
+  "apiKeyCreate": "Create",
+  "apiKeyNamePlaceholder": "Credential name (e.g. CherryStudio)",
+  "apiKeyGroup": "Group",
+  "apiKeyCreateFailed": "Failed to create credential",
+  "apiKeyRevokeFailed": "Failed to revoke credential"
 }

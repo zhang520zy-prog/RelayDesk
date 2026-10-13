@@ -69,7 +69,7 @@ export function useRelayApply(
       ? [targetApp]
       : mapped
         ? [mapped]
-        : inferRelayTargets(group);
+        : inferRelayTargets(group, model);
     const anyEnabled = targetIds.some((id) => account.applyApps[id]);
     const selected = wanted.filter((id) => account.applyApps[id]);
     if (!selected.length) {

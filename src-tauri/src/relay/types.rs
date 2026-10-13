@@ -223,6 +223,16 @@ pub struct RelayModelInfo {
     pub completion_ratio: Option<f64>,
 }
 
+/// 新建令牌结果：id + 完整 key（创建后仅此一次返回给前端展示/复制）
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelayCreatedToken {
+    pub id: i64,
+    pub name: String,
+    pub group: String,
+    pub key: String,
+}
+
 /// 中转站令牌条目（列表视图，key 为掩码）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

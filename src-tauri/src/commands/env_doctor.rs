@@ -429,10 +429,13 @@ fn probe_version(binary: &str, arg: &str) -> Probe {
 /// 的搜索目录来源一致），保证探测与安装看到同一组目录。
 #[cfg(target_os = "windows")]
 fn probe_version(binary: &str, arg: &str) -> Probe {
+    use std::os::windows::process::CommandExt;
     use std::process::{Command, Stdio};
     let mut cmd = Command::new("cmd");
     cmd.args(["/c", binary, arg])
         .stdin(Stdio::null())
+        // 环境探测必须静默——CREATE_NO_WINDOW，否则每个工具弹一次控制台窗口
+        .creation_flags(0x08000000)
         .env("PATH", super::effective_path_string());
     let result = cmd.output();
     match result {

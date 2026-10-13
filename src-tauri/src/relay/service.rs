@@ -14,8 +14,9 @@ use super::client::RelayClient;
 use super::credentials::{SavedLogin, SavedLoginInfo};
 use super::types::{
     RelayAccount, RelayAccountInfo, RelayAppliedModel, RelayApplyApps, RelayApplyResult,
-    RelayGroup, RelayGroupModels, RelayGroupToken, RelayRechargeHistory, RelayRechargeRecord,
-    RelayToken, RelayTopupAmountOption, RelayTopupHistory, RelayTopupInfo, RelayTopupOrder,
+    RelayCreatedToken, RelayGroup, RelayGroupModels, RelayGroupToken, RelayRechargeHistory,
+    RelayRechargeRecord, RelayToken, RelayTopupAmountOption, RelayTopupHistory, RelayTopupInfo,
+    RelayTopupOrder,
     RelayTopupPaymentMethod, RelayTopupQuote, RelayUsageModelRow, RelayUsageModels,
     RelayUsageOverview, RelayUsageQuery, TOKEN_NAME_PREFIX, UNIVERSAL_ID_PREFIX,
 };
@@ -554,6 +555,55 @@ impl RelayService {
         let client = RelayClient::new(&account.base_url, &account.access_token);
         client
             .list_tokens()
+            .await
+            .map_err(|error| authenticated_error(state, &account, error))
+    }
+
+    /// 为第三方应用（CherryStudio、WorkBuddy 等只需 base_url + key 的客户端）
+    /// 创建绑定分组的令牌，创建后立即取回完整 key 一次性展示。
+    /// 与 ensure_group_token 不同：名字由用户自定义、可多把、不写入 group_tokens 缓存。
+    pub async fn create_api_token(
+        state: &AppState,
+        name: &str,
+        group: &str,
+    ) -> Result<RelayCreatedToken, AppError> {
+        let account = require_account(state)?;
+        let name = name.trim();
+        if name.is_empty() || name.chars().count() > 64 {
+            return Err(AppError::Message("relay.token_name_invalid".into()));
+        }
+        let client = RelayClient::new(&account.base_url, &account.access_token);
+        client
+            .create_token(name, group)
+            .await
+            .map_err(|error| authenticated_error(state, &account, error))?;
+        let token_id = client
+            .list_tokens()
+            .await
+            .map_err(|error| authenticated_error(state, &account, error))?
+            .into_iter()
+            .filter(|t| t.name == name && t.group == group)
+            .max_by_key(|t| t.created_time)
+            .map(|t| t.id)
+            .ok_or_else(|| AppError::Message(format!("创建令牌 {name} 后未找到")))?;
+        let key = client
+            .get_token_key(token_id)
+            .await
+            .map_err(|error| authenticated_error(state, &account, error))?;
+        Ok(RelayCreatedToken {
+            id: token_id,
+            name: name.to_string(),
+            group: group.to_string(),
+            key,
+        })
+    }
+
+    /// 吊销一把令牌（第三方应用接入用）。
+    pub async fn delete_api_token(state: &AppState, id: i64) -> Result<(), AppError> {
+        let account = require_account(state)?;
+        let client = RelayClient::new(&account.base_url, &account.access_token);
+        client
+            .delete_token(id)
             .await
             .map_err(|error| authenticated_error(state, &account, error))
     }

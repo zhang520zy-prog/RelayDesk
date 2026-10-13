@@ -1,0 +1,111 @@
+.rd-apikeys {
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-card, 12px);
+  background: var(--rd-raised);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.rd-apikeys-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.rd-apikeys-head svg {
+  color: var(--rd-teal);
+  margin-top: 2px;
+}
+.rd-apikeys-head h2 {
+  margin: 0 0 3px;
+  font-size: var(--rd-font-body);
+  font-weight: var(--rd-weight-strong);
+}
+.rd-apikeys-url {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--rd-font-caption);
+  color: var(--rd-muted);
+}
+.rd-apikeys-url code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--rd-font-code);
+  color: var(--rd-text);
+  background: var(--rd-hover);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.rd-apikeys-created {
+  border: 1px solid var(--rd-teal);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rd-apikeys-created-label {
+  font-size: var(--rd-font-caption);
+  color: var(--rd-teal);
+  font-weight: var(--rd-weight-strong);
+}
+.rd-apikeys-created-key {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rd-apikeys-created-key code {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--rd-font-code);
+  font-size: var(--rd-font-caption);
+}
+.rd-apikeys-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rd-apikeys-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--rd-line);
+  font-size: var(--rd-font-caption);
+}
+.rd-apikeys-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rd-apikeys-item-main strong {
+  font-size: var(--rd-font-control);
+}
+.rd-apikeys-revoke {
+  color: var(--rd-muted);
+}
+.rd-apikeys-revoke:hover {
+  color: var(--rd-danger, #e05656);
+}
+.rd-apikeys-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rd-apikeys-form .rd-input {
+  flex: 1;
+  min-width: 0;
+}
+.rd-apikeys-group {
+  flex: 0 0 auto;
+  width: 150px;
+}

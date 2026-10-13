@@ -589,5 +589,21 @@
   "releaseDate": "发布日期",
   "releaseNotes": "更新说明",
   "viewReleases": "查看全部版本",
-  "aboutSubtitle": "版本、更新与项目信息"
+  "aboutSubtitle": "版本、更新与项目信息",
+  "copy": "复制",
+  "copyKey": "复制 Key",
+  "loading": "加载中…",
+  "apiKeysTitle": "通用接入凭据",
+  "apiKeysTagline": "供只需 Base URL + API Key 的应用接入（CherryStudio、WorkBuddy 等）",
+  "apiKeysBaseUrl": "Base URL",
+  "apiKeysCreatedOnce": "新凭据已创建 —— 完整 Key 仅此一次显示，请立即复制保存",
+  "apiKeysEmpty": "尚未创建接入凭据",
+  "apiKeyDisabled": "已禁用",
+  "apiKeyRevoke": "吊销",
+  "apiKeyNew": "新建凭据",
+  "apiKeyCreate": "创建",
+  "apiKeyNamePlaceholder": "凭据名称（如 CherryStudio）",
+  "apiKeyGroup": "分组",
+  "apiKeyCreateFailed": "创建凭据失败",
+  "apiKeyRevokeFailed": "吊销凭据失败"
 }

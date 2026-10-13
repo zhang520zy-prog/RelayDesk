@@ -37,6 +37,8 @@ function GroupRoutingRow({
   const [failedSelection, setFailedSelection] = useState<Selection | null>(
     null,
   );
+  // 建议值必须与 apply 的推断一致：显示推断目标本身，
+  // 未启用时由「推荐的目标未启用」警告提示，而不是改建议到别的目标
   const suggestion = inferRelayTargets(group.name)[0];
   const selected = draft ?? target ?? "auto";
   const effectiveTarget = selected === "auto" ? suggestion : selected;

@@ -49,11 +49,7 @@ function wrapper({ children }: { children: ReactNode }) {
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
   return (
-    <QueryClientProvider
-      client={testClient}
-    >
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={testClient}>{children}</QueryClientProvider>
   );
 }
 function Harness() {
@@ -62,6 +58,7 @@ function Harness() {
   return (
     <TargetsPage
       apps={session.account.applyApps}
+      baseUrl={session.account.baseUrl}
       groups={session.groupsQuery.data ?? []}
       groupTargets={session.account.groupTargets}
       groupsLoading={session.groupsQuery.isPending}

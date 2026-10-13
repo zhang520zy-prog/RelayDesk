@@ -8,7 +8,8 @@ use crate::relay::{
     restart::{self, RelayRestartCapability, RelayRestartProgress, RelayRestartResult},
     tool_registry::{self, DesktopToolDefinition, ToolRegistry},
     RelayAccountInfo, RelayApplyApps, RelayApplyProgress, RelayApplyResult, RelayGroup,
-    RelayGroupModels, RelayService, RelayToken, RelayTopupHistory, RelayTopupInfo, RelayTopupOrder,
+    RelayCreatedToken, RelayGroupModels, RelayService, RelayToken, RelayTopupHistory,
+    RelayTopupInfo, RelayTopupOrder,
     RelayTopupQuote, RelayUsageModels, RelayUsageOverview, RelayUsageQuery,
 };
 use crate::store::AppState;
@@ -740,6 +741,26 @@ pub fn relay_set_group_target(
 #[tauri::command]
 pub async fn relay_list_tokens(state: State<'_, AppState>) -> Result<Vec<RelayToken>, String> {
     RelayService::tokens(state.inner())
+        .await
+        .map_err(|e| safe_relay_error(&e, false))
+}
+
+/// 为仅需 base_url + key 的第三方应用创建绑定分组的令牌；完整 key 仅此一次返回。
+#[tauri::command]
+pub async fn relay_create_api_token(
+    state: State<'_, AppState>,
+    name: String,
+    group: String,
+) -> Result<RelayCreatedToken, String> {
+    RelayService::create_api_token(state.inner(), &name, &group)
+        .await
+        .map_err(|e| safe_relay_error(&e, false))
+}
+
+/// 吊销第三方应用令牌。
+#[tauri::command]
+pub async fn relay_delete_api_token(state: State<'_, AppState>, id: i64) -> Result<(), String> {
+    RelayService::delete_api_token(state.inner(), id)
         .await
         .map_err(|e| safe_relay_error(&e, false))
 }

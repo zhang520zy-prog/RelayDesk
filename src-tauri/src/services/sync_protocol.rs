@@ -408,7 +408,13 @@ pub(crate) fn detect_system_device_name() -> Option<String> {
         return env_name;
     }
 
-    let output = Command::new("hostname").output().ok()?;
+    let mut hostname_cmd = Command::new("hostname");
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        hostname_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    let output = hostname_cmd.output().ok()?;
     if !output.status.success() {
         return None;
     }
