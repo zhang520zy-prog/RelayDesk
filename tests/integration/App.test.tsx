@@ -242,6 +242,27 @@ describe("RelayDesk user flows", () => {
     // 环境页顶部展示新手引导卡
     expect(await screen.findByText("登录中转站账号")).toBeInTheDocument();
   });
+  it("opens the onboarding wizard for unseen accounts and persists skip", async () => {
+    // 未被 seenAccounts 记录的账号：登录后主动弹出新手向导
+    account = { ...account!, username: "newbie" };
+    localStorage.removeItem("relaydesk.onboarding.dismissed");
+    const user = userEvent.setup();
+    mount();
+    expect(
+      await screen.findByRole("heading", { name: "欢迎使用 RelayDesk" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "跳过引导" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "欢迎使用 RelayDesk" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(localStorage.getItem("relaydesk.onboarding.dismissed")).toBe("1");
+    // 跳过后落在模型中心
+    expect(
+      await screen.findByRole("heading", { name: "模型中心", level: 1 }),
+    ).toBeInTheDocument();
+  });
   it("preserves model search when navigating away and back", async () => {
     mount();
     const user = userEvent.setup();
@@ -399,8 +420,8 @@ describe("RelayDesk user flows", () => {
           await screen.findByRole("button", { name: "登录 RelayDesk" }),
         ).toBeInTheDocument();
         expect(
-        await screen.findByText("登录已过期，请重新登录"),
-      ).toBeInTheDocument();
+          await screen.findByText("登录已过期，请重新登录"),
+        ).toBeInTheDocument();
       } else {
         expect(
           await within(screen.getByRole("dialog")).findByRole("alert"),
@@ -1159,7 +1180,7 @@ describe("RelayDesk user flows", () => {
       await screen.findByRole("button", { name: "登录 RelayDesk" }),
     ).toBeInTheDocument();
     expect(
-        await screen.findByText("登录已过期，请重新登录"),
-      ).toBeInTheDocument();
+      await screen.findByText("登录已过期，请重新登录"),
+    ).toBeInTheDocument();
   });
 });

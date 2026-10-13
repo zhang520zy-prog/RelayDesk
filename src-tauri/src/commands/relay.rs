@@ -666,11 +666,15 @@ fn launch_target_cli(app: &str) -> Result<(), String> {
 
 #[cfg(target_os = "windows")]
 fn launch_target_cli(app: &str) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
     let path =
         crate::commands::locate_tool_executable(app).ok_or("relay.cli_not_found".to_string())?;
+    // 外层 cmd 只负责 start 转交，其自身控制台会闪——CREATE_NO_WINDOW 抑制；
+    // start 出来的目标终端窗口不受影响
     std::process::Command::new("cmd")
         .args(["/c", "start", "RelayDesk", "cmd", "/k"])
         .arg(&path)
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
         .spawn()
         .map(|_| ())
         .map_err(|e| format!("relay.launch_failed: {e}"))

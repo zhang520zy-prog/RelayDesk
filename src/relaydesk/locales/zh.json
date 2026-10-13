@@ -605,5 +605,21 @@
   "apiKeyNamePlaceholder": "凭据名称（如 CherryStudio）",
   "apiKeyGroup": "分组",
   "apiKeyCreateFailed": "创建凭据失败",
-  "apiKeyRevokeFailed": "吊销凭据失败"
+  "apiKeyRevokeFailed": "吊销凭据失败",
+  "back": "上一步",
+  "onboardWizardTitle": "欢迎使用 RelayDesk",
+  "onboardWizardHint": "两步就绪：检测本机工具 → 选择同步目标",
+  "onboardDetectHint": "正在检测本机已安装的客户端与基础环境，缺失项可一键补装",
+  "onboardInstalled": "已安装",
+  "onboardInstall": "一键安装",
+  "onboardAutoFix": "自动补装",
+  "onboardEnvMissing": "基础环境缺失",
+  "onboardDetectSummary": "检测到 {{count}} 个可用客户端",
+  "onboardNext": "下一步",
+  "onboardSyncHint": "选好的模型将自动写入以下客户端的配置",
+  "onboardDoneTitle": "一切就绪",
+  "onboardDoneHint": "在模型中心点选一个模型，即可同步到所选客户端",
+  "onboardEnterModels": "进入模型中心",
+  "onboardInstallOk": "安装完成",
+  "onboardInstallFailed": "安装失败，可在环境部署页查看详细指引"
 }

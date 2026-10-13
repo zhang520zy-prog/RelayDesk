@@ -605,5 +605,21 @@
   "apiKeyNamePlaceholder": "Credential name (e.g. CherryStudio)",
   "apiKeyGroup": "Group",
   "apiKeyCreateFailed": "Failed to create credential",
-  "apiKeyRevokeFailed": "Failed to revoke credential"
+  "apiKeyRevokeFailed": "Failed to revoke credential",
+  "back": "Back",
+  "onboardWizardTitle": "Welcome to RelayDesk",
+  "onboardWizardHint": "Two steps: detect local tools → pick sync targets",
+  "onboardDetectHint": "Detecting installed clients and base environment; missing items can be installed in one click",
+  "onboardInstalled": "Installed",
+  "onboardInstall": "Install",
+  "onboardAutoFix": "Auto-install",
+  "onboardEnvMissing": "Missing base dependency",
+  "onboardDetectSummary": "{{count}} clients detected",
+  "onboardNext": "Next",
+  "onboardSyncHint": "Selected models will be written into these clients' configs",
+  "onboardDoneTitle": "All set",
+  "onboardDoneHint": "Pick a model in the Model Center and it syncs to the selected clients",
+  "onboardEnterModels": "Open Model Center",
+  "onboardInstallOk": "Installed",
+  "onboardInstallFailed": "Install failed — see the Environment page for detailed guidance"
 }

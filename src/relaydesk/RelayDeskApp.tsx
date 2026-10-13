@@ -20,6 +20,7 @@ import {
   accountSeenBefore,
   markAccountSeen,
 } from "./onboarding/OnboardingChecklist";
+import { OnboardingWizard } from "./onboarding/OnboardingWizard";
 import { LoginPage } from "./auth/LoginPage";
 import { ApplyProgressDialog } from "./models/ApplyProgressDialog";
 import { useRelaySession } from "./state/useRelaySession";
@@ -137,6 +138,7 @@ export default function RelayDeskApp() {
   const [page, setPage] = useState<Page>(() =>
     isOnboardingDismissed() ? "models" : "deployment",
   );
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [modelFilters, setModelFilters] = useState({
     epoch: -1,
     search: "",
@@ -215,12 +217,14 @@ export default function RelayDeskApp() {
       ),
     [],
   );
-  // 首次登录（本机未见过的账号）落地环境部署页；老账号回模型中心。
+  // 首次登录（本机未见过的账号）落环境部署页并主动弹出新手向导；
+  // 老账号回模型中心。跳过/完成后不再自动出现。
   useEffect(() => {
     const acct = session.account;
     if (!acct || accountSeenBefore(acct)) return;
     markAccountSeen(acct);
     setPage("deployment");
+    if (!isOnboardingDismissed()) setOnboardingOpen(true);
   }, [session.account]);
   const updateCheckedFor = useRef<string | null>(null);
   useEffect(() => {
@@ -474,8 +478,9 @@ export default function RelayDeskApp() {
               logout={() => void session.logout()}
               resetOnboarding={() => {
                 resetOnboardingDismissal();
-                // 引导卡在环境部署页
+                // 重新打开主动引导向导（原引导卡仍在环境部署页）
                 setPage("deployment");
+                setOnboardingOpen(true);
               }}
             />
           )}
@@ -510,6 +515,15 @@ export default function RelayDeskApp() {
               operation.report.model,
               app,
             );
+        }}
+      />
+      <OnboardingWizard
+        account={account}
+        open={onboardingOpen}
+        setApps={(apps) => session.setApps(apps)}
+        onFinish={() => {
+          setOnboardingOpen(false);
+          setPage("models");
         }}
       />
     </>
