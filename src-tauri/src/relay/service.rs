@@ -598,6 +598,16 @@ impl RelayService {
         })
     }
 
+    /// 取回某把令牌的完整 key（供复制到第三方应用）。
+    pub async fn api_token_key(state: &AppState, id: i64) -> Result<String, AppError> {
+        let account = require_account(state)?;
+        let client = RelayClient::new(&account.base_url, &account.access_token);
+        client
+            .get_token_key(id)
+            .await
+            .map_err(|error| authenticated_error(state, &account, error))
+    }
+
     /// 吊销一把令牌（第三方应用接入用）。
     pub async fn delete_api_token(state: &AppState, id: i64) -> Result<(), AppError> {
         let account = require_account(state)?;

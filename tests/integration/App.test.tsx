@@ -578,10 +578,11 @@ describe("RelayDesk user flows", () => {
   );
 
   it("blocks failed-tool retry until an account refresh finishes", async () => {
-    results = [{ app: "codex", ok: false }];
+    // claude 模型只发 claude 单目标，聚焦"刷新期间禁止重试"的行为
+    results = [{ app: "claude", ok: false }];
     const user = userEvent.setup();
     mount();
-    const row = await pickModel(user, "new-model");
+    const row = await pickModel(user, "claude-sonnet-4");
     await user.click(within(row).getByRole("button", { name: "使用" }));
     await within(await screen.findByRole("dialog")).findByText("应用失败");
     await user.keyboard("{Escape}");
@@ -873,22 +874,24 @@ describe("RelayDesk user flows", () => {
     ]);
   });
   it("shows a persistent failure and retries only the failed tool", async () => {
-    results = [{ app: "codex", ok: false, error: "secret raw backend detail" }];
+    results = [
+      { app: "claude", ok: false, error: "secret raw backend detail" },
+    ];
     const user = userEvent.setup();
     mount();
-    const row = await pickModel(user, "new-model");
+    const row = await pickModel(user, "claude-sonnet-4");
     await user.click(within(row).getByRole("button", { name: "使用" }));
     const dialog = await screen.findByRole("dialog");
     expect(await within(dialog).findByText("应用失败")).toBeInTheDocument();
     expect(
       screen.queryByText("secret raw backend detail"),
     ).not.toBeInTheDocument();
-    results = [{ app: "codex", ok: true }];
+    results = [{ app: "claude", ok: true }];
     await user.click(
       within(dialog).getByRole("button", { name: "重试该工具" }),
     );
     await waitFor(() => expect(calls).toHaveLength(2));
-    expect(calls[1].targetApps).toEqual(["codex"]);
+    expect(calls[1].targetApps).toEqual(["claude"]);
     expect(account!.applyApps).toEqual(initial.applyApps);
     expect(await within(dialog).findByText("已应用")).toBeInTheDocument();
   });
@@ -933,13 +936,29 @@ describe("RelayDesk user flows", () => {
     expect(calls).toHaveLength(0);
   });
   it("warns instead of applying when the inferred target is disabled", async () => {
-    account!.applyApps = { claude: true, codex: false, gemini: false };
+    // claude 家族模型 → 推断 claude；claude 已禁用则告警而不应用
+    account!.applyApps = { claude: false, codex: true, gemini: false };
+    const user = userEvent.setup();
+    mount();
+    const row = await pickModel(user, "claude-sonnet-4");
+    await user.click(within(row).getByRole("button", { name: "使用" }));
+    expect(await screen.findByText(/推荐的目标未启用/)).toBeInTheDocument();
+    expect(calls).toHaveLength(0);
+  });
+  it("applies unrecognized models to every enabled target", async () => {
+    // 无家族特征的模型（如 Grok/SWE 特惠组）落到全部已启用目标，
+    // 不再默认某个具体客户端（regression: opus 组误发 ChatGPT）
+    results = [
+      { app: "claude", ok: true },
+      { app: "codex", ok: true },
+    ];
     const user = userEvent.setup();
     mount();
     const row = await pickModel(user, "new-model");
     await user.click(within(row).getByRole("button", { name: "使用" }));
-    expect(await screen.findByText(/推荐的目标未启用/)).toBeInTheDocument();
-    expect(calls).toHaveLength(0);
+    await waitFor(() => expect(calls).toHaveLength(1));
+    // fixture 中 gemini 未启用 → 只发 claude + codex
+    expect(calls[0].targetApps).toEqual(["claude", "codex"]);
   });
   it("saves target switches without applying a model", async () => {
     const user = userEvent.setup();

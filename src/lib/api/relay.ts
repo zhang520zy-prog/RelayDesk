@@ -522,6 +522,10 @@ export const relayApi = {
     return await invoke("relay_delete_api_token", { id });
   },
 
+  async getApiTokenKey(id: number): Promise<string> {
+    return await invoke("relay_get_api_token_key", { id });
+  },
+
   async detectTargetInstallations(): Promise<RelayTargetInstall[]> {
     return await invoke("relay_detect_target_installations");
   },
@@ -576,15 +580,14 @@ export function inferRelayTargets(
   group: string,
   model?: string,
 ): RelayTarget[] {
-  // 先看模型名（opus/sonnet/haiku 组的模型名常带 claude- 前缀；
-  // 组名 "opus" 本身不含 claude，按组名猜会错发去 codex）。
+  // 模型名/组名可识别其家族才精确路由（claude-opus-5.5 在 opus 组也归 claude）。
+  // 无法识别返回空：中转站协议自适应，未知模型应落到"全部已启用目标"，
+  // 由调用方用 applyApps 过滤——不再瞎猜某个具体客户端。
   const text = `${model ?? ""} ${group}`.toLowerCase();
   if (/(claude|opus|sonnet|haiku)/.test(text)) return ["claude"];
   if (/gemini/.test(text)) return ["gemini"];
   if (/(gpt|chatgpt|codex|\bo[0-9])/.test(text)) return ["codex"];
-  // 无法推断：中转站 OpenAI 兼容端点最通用，沿用 codex 默认；
-  // 盲发全部会把模型名写进语义不匹配的工具（如 ANTHROPIC_MODEL=gpt-4o）
-  return ["codex"];
+  return [];
 }
 
 /**

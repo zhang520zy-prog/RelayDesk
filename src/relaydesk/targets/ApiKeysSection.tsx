@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Check, Copy, KeyRound, Plus, Trash2 } from "lucide-react";
+import { Check, Copy, KeyRound, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   relayApi,
@@ -36,6 +36,32 @@ function CopyButton({ text, label }: { text: string; label: string }) {
       }}
     >
       {copied ? <Check size={14} /> : <Copy size={14} />}
+    </button>
+  );
+}
+
+/** 列表里只有掩码 key；复制时先按需取全量再写剪贴板 */
+function CopyTokenKey({ id }: { id: number }) {
+  const { t } = useTranslation("relaydesk");
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      className="rd-path-action"
+      title={t("copyKey")}
+      aria-label={t("copyKey")}
+      disabled={busy}
+      onClick={() => {
+        setBusy(true);
+        relayApi
+          .getApiTokenKey(id)
+          .then((key) => copyText(key))
+          .then(() => toast.success(t("copied")))
+          .catch(() => toast.error(t("apiKeyCopyFailed")))
+          .finally(() => setBusy(false));
+      }}
+    >
+      {busy ? <Loader2 size={14} className="rd-spin" /> : <Copy size={14} />}
     </button>
   );
 }
@@ -126,6 +152,7 @@ export function ApiKeysSection({
             {token.status !== 1 && (
               <span className="rd-muted">{t("apiKeyDisabled")}</span>
             )}
+            <CopyTokenKey id={token.id} />
             <button
               type="button"
               className="rd-path-action rd-apikeys-revoke"

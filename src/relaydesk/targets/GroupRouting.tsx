@@ -37,12 +37,15 @@ function GroupRoutingRow({
   const [failedSelection, setFailedSelection] = useState<Selection | null>(
     null,
   );
-  // 建议值必须与 apply 的推断一致：显示推断目标本身，
-  // 未启用时由「推荐的目标未启用」警告提示，而不是改建议到别的目标
-  const suggestion = inferRelayTargets(group.name)[0];
+  // 建议值必须与 apply 的推断一致：显示推断目标本身；
+  // 推断不出的组（如 Grok/特惠组）落到"全部已启用"，不再假装猜中某客户端。
+  const suggestion = inferRelayTargets(group.name)[0] ?? null;
   const selected = draft ?? target ?? "auto";
-  const effectiveTarget = selected === "auto" ? suggestion : selected;
-  const disabledTarget = !apps[effectiveTarget];
+  const effectiveTarget =
+    selected === "auto" ? (suggestion ?? undefined) : selected;
+  const disabledTarget = effectiveTarget
+    ? !apps[effectiveTarget]
+    : !targetIds.some((id) => apps[id]);
 
   async function save(next: Selection) {
     if (busy || saving.current) return;
@@ -84,7 +87,9 @@ function GroupRoutingRow({
           onChange={(event) => void save(event.target.value as Selection)}
         >
           <option value="auto">
-            {t("followSuggestion", { target: targetLabels[suggestion] })}
+            {suggestion
+              ? t("followSuggestion", { target: targetLabels[suggestion] })
+              : t("followAllEnabled")}
           </option>
           {targetIds.map((id) => (
             <option key={id} value={id}>

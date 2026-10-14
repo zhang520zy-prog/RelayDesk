@@ -82,7 +82,7 @@
   "targetsCount": "已启用 {{count}} 个工具",
   "targetNotice": "工具开关决定是否允许写入；分组映射决定选择该组模型时实际写入哪个工具。",
   "groupRouting": "分组应用路由",
-  "groupRoutingHint": "分组来自中转站。为每个分组指定目标工具；自动建议只看分组名，不读取模型名。",
+  "groupRoutingHint": "分组来自中转站。为每个分组指定目标工具；自动建议按组内模型家族推断，无法识别时同步到全部已启用工具。",
   "groupRoutingCount": "{{count}} 个中转站分组",
   "groupTarget": "目标工具",
   "followSuggestion": "自动建议 · {{target}}",
@@ -621,5 +621,7 @@
   "onboardDoneHint": "在模型中心点选一个模型，即可同步到所选客户端",
   "onboardEnterModels": "进入模型中心",
   "onboardInstallOk": "安装完成",
-  "onboardInstallFailed": "安装失败，可在环境部署页查看详细指引"
+  "onboardInstallFailed": "安装失败，可在环境部署页查看详细指引",
+  "followAllEnabled": "自动建议 · 全部已启用",
+  "apiKeyCopyFailed": "复制失败，请重试"
 }

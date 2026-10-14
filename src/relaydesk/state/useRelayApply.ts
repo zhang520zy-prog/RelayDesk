@@ -64,12 +64,17 @@ export function useRelayApply(
   async function apply(group: string, model: string, targetApp?: RelayTarget) {
     if (active.current || !account) return;
     // 重试只跑单目标；首次应用优先读取用户保存的分组映射。
+    // 推断不出家族时落到全部已启用目标——中转站协议自适应，
+    // "点模型生效到所有 agent"是产品本意，不再默认某个具体客户端。
     const mapped = account.groupTargets?.[group];
+    const inferred = inferRelayTargets(group, model);
     const wanted: RelayTarget[] = targetApp
       ? [targetApp]
       : mapped
         ? [mapped]
-        : inferRelayTargets(group, model);
+        : inferred.length
+          ? inferred
+          : [...targetIds];
     const anyEnabled = targetIds.some((id) => account.applyApps[id]);
     const selected = wanted.filter((id) => account.applyApps[id]);
     if (!selected.length) {

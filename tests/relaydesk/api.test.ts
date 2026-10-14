@@ -202,11 +202,18 @@ describe("inferRelayTargets", () => {
     expect(inferRelayTargets("Claude-Cursor")).toEqual(["claude"]);
     expect(inferRelayTargets("Gemini_Pro")).toEqual(["gemini"]);
   });
-  it("suggests codex for OpenAI-compatible and unknown groups", () => {
-    expect(inferRelayTargets("0元购")).toEqual(["codex"]);
-    expect(inferRelayTargets("grok")).toEqual(["codex"]);
-    expect(inferRelayTargets("default")).toEqual(["codex"]);
-    expect(inferRelayTargets("deepseek")).toEqual(["codex"]);
+  it("suggests codex only for OpenAI-family names", () => {
+    expect(inferRelayTargets("gpt")).toEqual(["codex"]);
+    expect(inferRelayTargets("default", "gpt-4o")).toEqual(["codex"]);
+    expect(inferRelayTargets("default", "o4-mini")).toEqual(["codex"]);
+  });
+  it("returns empty for unrecognized groups so callers apply to all enabled", () => {
+    // Grok/特惠/杂项组没有可识别家族——不再假装猜中某个客户端
+    expect(inferRelayTargets("0元购")).toEqual([]);
+    expect(inferRelayTargets("grok")).toEqual([]);
+    expect(inferRelayTargets("Grok Heavy")).toEqual([]);
+    expect(inferRelayTargets("default", "deepseek-v3")).toEqual([]);
+    expect(inferRelayTargets("限时特惠 devin-swe-2", "swe-2")).toEqual([]);
   });
   it("routes by model name first, so claude models never hit ChatGPT", () => {
     // 回归：组名 "opus" 不含 claude，但模型名 claude-opus-5.5 必须去 claude
@@ -214,9 +221,5 @@ describe("inferRelayTargets", () => {
     expect(inferRelayTargets("default", "claude-sonnet-5")).toEqual(["claude"]);
     expect(inferRelayTargets("mixed", "gemini-2.5-pro")).toEqual(["gemini"]);
     expect(inferRelayTargets("default", "gpt-4o")).toEqual(["codex"]);
-  });
-  it("falls back to codex when neither model nor group is recognizable", () => {
-    expect(inferRelayTargets("0元购")).toEqual(["codex"]);
-    expect(inferRelayTargets("0元购", "deepseek-v3")).toEqual(["codex"]);
   });
 });

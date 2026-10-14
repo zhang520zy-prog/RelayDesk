@@ -82,7 +82,7 @@
   "targetsCount": "{{count}} tools enabled",
   "targetNotice": "Tool toggles permit writes; group routing decides which tool is changed when a model in that group is selected.",
   "groupRouting": "Group routing",
-  "groupRoutingHint": "Groups come from the relay. Choose a target tool for each group; automatic suggestions use the group name only, never the model name.",
+  "groupRoutingHint": "Groups come from the relay. Assign a target tool per group; the suggestion infers from the model family, falling back to all enabled tools.",
   "groupRoutingCount": "{{count}} relay groups",
   "groupTarget": "Target tool",
   "followSuggestion": "Suggested · {{target}}",
@@ -621,5 +621,7 @@
   "onboardDoneHint": "Pick a model in the Model Center and it syncs to the selected clients",
   "onboardEnterModels": "Open Model Center",
   "onboardInstallOk": "Installed",
-  "onboardInstallFailed": "Install failed — see the Environment page for detailed guidance"
+  "onboardInstallFailed": "Install failed — see the Environment page for detailed guidance",
+  "followAllEnabled": "Suggested · all enabled",
+  "apiKeyCopyFailed": "Copy failed, try again"
 }

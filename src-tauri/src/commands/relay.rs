@@ -761,6 +761,17 @@ pub async fn relay_create_api_token(
         .map_err(|e| safe_relay_error(&e, false))
 }
 
+/// 取回某把令牌的完整 key（列表只回掩码，复制时按需取全量）。
+#[tauri::command]
+pub async fn relay_get_api_token_key(
+    state: State<'_, AppState>,
+    id: i64,
+) -> Result<String, String> {
+    RelayService::api_token_key(state.inner(), id)
+        .await
+        .map_err(|e| safe_relay_error(&e, false))
+}
+
 /// 吊销第三方应用令牌。
 #[tauri::command]
 pub async fn relay_delete_api_token(state: State<'_, AppState>, id: i64) -> Result<(), String> {
