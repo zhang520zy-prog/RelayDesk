@@ -453,7 +453,12 @@ pub fn get_codex_config_dir() -> PathBuf {
         return env_dir;
     }
 
-    get_home_dir().join(".codex")
+    let default = get_home_dir().join(".codex");
+    if default.is_dir() {
+        return default;
+    }
+    let [xdg, dot_config] = crate::config::xdg_style_dirs("codex");
+    crate::config::first_existing_dir(&[xdg, dot_config]).unwrap_or(default)
 }
 
 /// 获取 Codex auth.json 路径

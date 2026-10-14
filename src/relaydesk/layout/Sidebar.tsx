@@ -9,6 +9,7 @@ import {
   WalletCards,
   BarChart3,
   MessageSquare,
+  KeyRound,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Brand } from "./Brand";
@@ -17,6 +18,7 @@ export type Page =
   | "models"
   | "deployment"
   | "targets"
+  | "credentials"
   | "sessions"
   | "wallet"
   | "usage"
@@ -38,6 +40,7 @@ export function Sidebar({
     { id: "deployment" as const, Icon: Download },
     { id: "models" as const, Icon: Boxes },
     { id: "targets" as const, Icon: SlidersHorizontal },
+    { id: "credentials" as const, Icon: KeyRound },
     { id: "sessions" as const, Icon: MessageSquare },
     { id: "wallet" as const, Icon: WalletCards },
     { id: "usage" as const, Icon: BarChart3 },

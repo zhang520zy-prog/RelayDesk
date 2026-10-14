@@ -642,5 +642,11 @@
   "codexImageFix": "One-click fix",
   "codexImageFixFailed": "Fix failed, retry",
   "codexImageNeedModel": "Apply a Codex model in the Model Center first",
-  "codexImageNeedModelHint": "The fix reuses the relay credential already written to Codex"
+  "codexImageNeedModelHint": "The fix reuses the relay credential already written to Codex",
+  "credentials": "Credentials",
+  "credentialsNotice": "Keys here are for clients that only need Base URL + API Key (CherryStudio, WorkBuddy, ChatBox, etc.). To switch models per group, use Model Center.",
+  "credentialsGroupsFailed": "Failed to load groups · Retry",
+  "envStatus_info": "Optional",
+  "pathAuto": "Auto-detected",
+  "pathCustom": "Custom"
 }

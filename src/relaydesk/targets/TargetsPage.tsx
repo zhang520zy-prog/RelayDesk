@@ -27,7 +27,6 @@ import {
   toAppId,
 } from "../state/useRelayApply";
 import { GroupRouting } from "./GroupRouting";
-import { ApiKeysSection } from "./ApiKeysSection";
 
 const targetIcons: Record<RelayTarget, typeof Bot> = {
   claude: Bot,
@@ -55,7 +54,7 @@ function TargetCard({
   const queryClient = useQueryClient();
   const path = useQuery({
     queryKey: ["relaydesk", "targetPath", app],
-    queryFn: () => settingsApi.getConfigDir(toAppId(app)),
+    queryFn: () => settingsApi.getConfigDirInfo(toAppId(app)),
     staleTime: Infinity,
     retry: false,
   });
@@ -65,7 +64,7 @@ function TargetCard({
     });
   const browsePath = async () => {
     try {
-      const picked = await settingsApi.selectConfigDirectory(path.data);
+      const picked = await settingsApi.selectConfigDirectory(path.data?.path);
       if (!picked) return;
       await settingsApi.setTargetConfigDir(toAppId(app), picked);
       await refreshPath();
@@ -118,8 +117,13 @@ function TargetCard({
       </div>
       <div className="rd-target-path">
         <span>{t("configPath")}</span>
-        <code title={path.data}>
-          {path.data ?? (path.isPending ? "…" : t("pathUnavailable"))}
+        {path.data && (
+          <span className="rd-path-source" data-source={path.data.source}>
+            {t(path.data.source === "custom" ? "pathCustom" : "pathAuto")}
+          </span>
+        )}
+        <code title={path.data?.path}>
+          {path.data?.path ?? (path.isPending ? "…" : t("pathUnavailable"))}
         </code>
         <button
           type="button"
@@ -162,7 +166,6 @@ function TargetCard({
 }
 export function TargetsPage({
   apps,
-  baseUrl,
   groups,
   groupTargets,
   groupsLoading,
@@ -177,7 +180,6 @@ export function TargetsPage({
 }: {
   focusTarget?: RelayTarget | null;
   apps: RelayApplyApps;
-  baseUrl: string;
   groups: RelayGroup[];
   groupTargets: Record<string, RelayTarget>;
   groupsLoading: boolean;
@@ -218,7 +220,6 @@ export function TargetsPage({
         loadingError={groupsError}
         refresh={refreshGroups}
       />
-      <ApiKeysSection baseUrl={baseUrl} groups={groups} />
       <p className="rd-info-note">
         <Info size={17} />
         {t("targetNotice")}

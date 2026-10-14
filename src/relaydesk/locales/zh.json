@@ -642,5 +642,11 @@
   "codexImageFix": "一键修复",
   "codexImageFixFailed": "修复失败，请重试",
   "codexImageNeedModel": "先在模型中心应用一个 Codex 模型",
-  "codexImageNeedModelHint": "修复依赖已写入 Codex 的中转站凭据"
+  "codexImageNeedModelHint": "修复依赖已写入 Codex 的中转站凭据",
+  "credentials": "接入凭据",
+  "credentialsNotice": "此页的 Key 适用于只需填 Base URL + API Key 的客户端（CherryStudio、WorkBuddy、ChatBox 等）。要按分组切换模型，请到「模型中心」。",
+  "credentialsGroupsFailed": "分组加载失败 · 重试",
+  "envStatus_info": "可选",
+  "pathAuto": "自动检测",
+  "pathCustom": "自定义"
 }

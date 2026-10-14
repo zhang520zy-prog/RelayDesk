@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Download,
   MonitorX,
+  Info,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { relayApi, type RelayAccountInfo } from "@/lib/api/relay";
@@ -43,6 +44,7 @@ const statusIcons = {
   warn: AlertTriangle,
   error: AlertCircle,
   fixable: Download,
+  info: Info,
   loading: Loader2,
   unavailable: CircleHelp,
   unsupported: MonitorX,
@@ -343,7 +345,7 @@ export function EnvironmentPage({
       };
     return {
       ...base,
-      status: "warn",
+      status: "info",
       detail: t("envDesktopMissingOptional"),
     };
   }
@@ -463,7 +465,8 @@ export function EnvironmentPage({
                 {desktop && (
                   <EnvironmentCheckRow key={desktop.id} check={desktop}>
                     {found?.desktopUrl &&
-                      (desktop.status === "warn" ||
+                      (desktop.status === "info" ||
+                        desktop.status === "warn" ||
                         desktop.status === "unsupported") && (
                         <Action
                           onClick={() =>

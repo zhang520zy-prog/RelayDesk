@@ -172,6 +172,7 @@ pub async fn set_target_config_dir(app: String, path: Option<String>) -> Result<
         AppType::Claude => settings.claude_config_dir = value,
         AppType::Codex => settings.codex_config_dir = value,
         AppType::Gemini => settings.gemini_config_dir = value,
+        AppType::GrokBuild => settings.grok_config_dir = value,
         _ => return Err("该工具不支持自定义配置目录".to_string()),
     }
     settings::update_settings(settings).map_err(|e| e.to_string())
@@ -198,6 +199,33 @@ pub async fn get_config_dir(app: String) -> Result<String, String> {
     };
 
     Ok(dir.to_string_lossy().to_string())
+}
+
+/// 配置目录 + 来源标记：custom=用户手动设置，auto=自动定位（env/探测/默认）。
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfigDirInfo {
+    pub path: String,
+    pub source: String,
+}
+
+#[tauri::command]
+pub async fn get_config_dir_info(app: String) -> Result<ConfigDirInfo, String> {
+    let app_type = AppType::from_str(&app).map_err(|e| e.to_string())?;
+    let settings = settings::get_settings();
+    let custom = match app_type {
+        AppType::Claude => settings.claude_config_dir.as_ref(),
+        AppType::Codex => settings.codex_config_dir.as_ref(),
+        AppType::Gemini => settings.gemini_config_dir.as_ref(),
+        AppType::GrokBuild => settings.grok_config_dir.as_ref(),
+        _ => None,
+    }
+    .filter(|v| !v.trim().is_empty());
+    let path = get_config_dir(app).await?;
+    Ok(ConfigDirInfo {
+        path,
+        source: if custom.is_some() { "custom" } else { "auto" }.to_string(),
+    })
 }
 
 #[tauri::command]

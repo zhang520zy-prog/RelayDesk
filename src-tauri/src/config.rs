@@ -55,7 +55,27 @@ pub fn get_claude_config_dir() -> PathBuf {
         return env_dir;
     }
 
-    get_home_dir().join(".claude")
+    let default = get_home_dir().join(".claude");
+    if default.is_dir() {
+        return default;
+    }
+    let [xdg, dot_config] = xdg_style_dirs("claude");
+    first_existing_dir(&[xdg, dot_config]).unwrap_or(default)
+}
+
+/// 备选目录自动定位：按优先级返回第一个已存在的路径。
+/// 仅在"用户配置已在非常规位置"时偏离默认值——默认目录存在则永远命中它，
+/// 避免把既有安装的配置写错位置。
+pub(crate) fn first_existing_dir(candidates: &[PathBuf]) -> Option<PathBuf> {
+    candidates.iter().find(|p| p.is_dir()).cloned()
+}
+
+/// 各工具共享的 XDG/`.config` 备选（$XDG_CONFIG_HOME 未设置时回落 ~/.config）
+pub(crate) fn xdg_style_dirs(name: &str) -> [PathBuf; 2] {
+    let xdg = std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| get_home_dir().join(".config"));
+    [xdg.join(name), get_home_dir().join(".config").join(name)]
 }
 
 /// 默认 Claude MCP 配置文件路径 (~/.claude.json)

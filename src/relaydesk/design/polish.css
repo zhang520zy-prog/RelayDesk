@@ -1032,3 +1032,20 @@ code {
     scroll-behavior: auto !important;
   }
 }
+
+/* 配置位置来源徽标：自动检测=中性，自定义=主题色提示 */
+.rd-path-source {
+  flex-shrink: 0;
+  font-size: var(--rd-font-caption, 0.75rem);
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--rd-border, #e2e8f0);
+  color: var(--rd-muted);
+  background: transparent;
+  white-space: nowrap;
+}
+.rd-path-source[data-source="custom"] {
+  color: var(--rd-primary, #0f766e);
+  border-color: var(--rd-primary-soft, #99d5ce);
+  background: var(--rd-primary-faint, #f0fdfa);
+}

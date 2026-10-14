@@ -24,7 +24,15 @@ pub struct GrokModelConfig {
 
 /// Grok Build configuration directory (`~/.grok`).
 pub fn get_grok_config_dir() -> PathBuf {
-    crate::settings::get_grok_override_dir().unwrap_or_else(|| get_home_dir().join(".grok"))
+    if let Some(custom) = crate::settings::get_grok_override_dir() {
+        return custom;
+    }
+    let default = get_home_dir().join(".grok");
+    if default.is_dir() {
+        return default;
+    }
+    let [xdg, dot_config] = crate::config::xdg_style_dirs("grok");
+    crate::config::first_existing_dir(&[xdg, dot_config]).unwrap_or(default)
 }
 
 /// Grok Build live configuration path (`~/.grok/config.toml`).

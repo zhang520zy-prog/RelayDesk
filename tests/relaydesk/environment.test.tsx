@@ -230,7 +230,7 @@ describe("environment health", () => {
         "Not installed (optional; the CLI works without it)",
       ),
     ).toBeInTheDocument();
-    expect(within(desktop).getByText("Needs attention")).toBeInTheDocument();
+    expect(within(desktop).getByText("Optional")).toBeInTheDocument();
     expect(
       within(desktop).getByRole("button", { name: "Download desktop app" }),
     ).toBeEnabled();

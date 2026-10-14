@@ -14,7 +14,12 @@ pub fn get_gemini_dir() -> PathBuf {
         return env_dir;
     }
 
-    get_home_dir().join(".gemini")
+    let default = get_home_dir().join(".gemini");
+    if default.is_dir() {
+        return default;
+    }
+    let [xdg, dot_config] = crate::config::xdg_style_dirs("gemini");
+    crate::config::first_existing_dir(&[xdg, dot_config]).unwrap_or(default)
 }
 
 /// 获取 Gemini .env 文件路径

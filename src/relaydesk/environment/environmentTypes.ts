@@ -3,6 +3,7 @@ export type EnvironmentStatus =
   | "warn"
   | "error"
   | "fixable"
+  | "info"
   | "loading"
   | "unavailable"
   | "unsupported";

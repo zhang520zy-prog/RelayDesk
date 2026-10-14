@@ -68,6 +68,12 @@ export const settingsApi = {
   async getConfigDir(appId: AppId): Promise<string> {
     return await invoke("get_config_dir", { app: appId });
   },
+  /** 配置目录 + 来源：custom=用户手动设置，auto=自动定位 */
+  async getConfigDirInfo(
+    appId: AppId,
+  ): Promise<{ path: string; source: "custom" | "auto" }> {
+    return await invoke("get_config_dir_info", { app: appId });
+  },
 
   async setTargetConfigDir(appId: AppId, path?: string): Promise<void> {
     await invoke("set_target_config_dir", { app: appId, path: path ?? null });

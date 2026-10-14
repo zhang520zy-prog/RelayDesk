@@ -107,6 +107,9 @@
 .rd-env-chip[data-status="warn"] {
   color: var(--rd-warning, #b45309);
 }
+.rd-env-chip[data-status="info"] {
+  color: var(--rd-muted);
+}
 .rd-env-chip[data-status="error"] {
   color: var(--rd-danger, #dc2626);
 }

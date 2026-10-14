@@ -58,7 +58,6 @@ function Harness() {
   return (
     <TargetsPage
       apps={session.account.applyApps}
-      baseUrl={session.account.baseUrl}
       groups={session.groupsQuery.data ?? []}
       groupTargets={session.account.groupTargets}
       groupsLoading={session.groupsQuery.isPending}

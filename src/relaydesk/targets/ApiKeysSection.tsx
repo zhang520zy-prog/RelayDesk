@@ -198,9 +198,11 @@ function TokenEditForm({
 export function ApiKeysSection({
   baseUrl,
   groups,
+  loading,
 }: {
   baseUrl: string;
   groups: RelayGroup[];
+  loading?: boolean;
 }) {
   const { t } = useTranslation("relaydesk");
   const queryClient = useQueryClient();
@@ -335,6 +337,7 @@ export function ApiKeysSection({
             value={group || groups[0]?.name || ""}
             onChange={(e) => setGroup(e.target.value)}
             aria-label={t("apiKeyGroup")}
+            disabled={loading}
           >
             {groups.map((g) => (
               <option key={g.name} value={g.name}>

@@ -40,6 +40,11 @@ const ModelCenterPage = lazy(() =>
 const TargetsPage = lazy(() =>
   import("./targets/TargetsPage").then((m) => ({ default: m.TargetsPage })),
 );
+const CredentialsPage = lazy(() =>
+  import("./targets/CredentialsPage").then((m) => ({
+    default: m.CredentialsPage,
+  })),
+);
 const SessionsPage = lazy(() =>
   import("./sessions/SessionsPage").then((m) => ({ default: m.SessionsPage })),
 );
@@ -448,7 +453,6 @@ export default function RelayDeskApp() {
             <TargetsPage
               focusTarget={focusTarget}
               apps={account.applyApps}
-              baseUrl={account.baseUrl}
               groups={session.groupsQuery.data ?? []}
               groupTargets={account.groupTargets ?? {}}
               groupsLoading={session.groupsQuery.isPending}
@@ -459,6 +463,15 @@ export default function RelayDeskApp() {
               report={operation.report}
               change={(apps) => void session.setApps(apps)}
               changeGroupTarget={session.setGroupTarget}
+            />
+          )}
+          {page === "credentials" && (
+            <CredentialsPage
+              baseUrl={account.baseUrl}
+              groups={session.groupsQuery.data ?? []}
+              loading={session.groupsQuery.isPending}
+              loadError={session.groupsQuery.isError}
+              refresh={() => void session.groupsQuery.refetch()}
             />
           )}
           {page === "sessions" && <SessionsPage />}
