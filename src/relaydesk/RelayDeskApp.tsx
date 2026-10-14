@@ -15,11 +15,6 @@ import {
 } from "./onboarding/OnboardingChecklist";
 import { OnboardingWizard } from "./onboarding/OnboardingWizard";
 import { LoginPage } from "./auth/LoginPage";
-import { DeclarationGate } from "./legal/DeclarationGate";
-import {
-  isDeclarationAccepted,
-  markDeclarationAccepted,
-} from "./legal/declaration";
 import { ApplyProgressDialog } from "./models/ApplyProgressDialog";
 import { useRelaySession } from "./state/useRelaySession";
 import { useRelayApply, targetLabels } from "./state/useRelayApply";
@@ -147,7 +142,6 @@ export default function RelayDeskApp() {
   const [showEnvironmentIntro, setShowEnvironmentIntro] = useState(false);
   const [focusTarget, setFocusTarget] = useState<RelayTarget | null>(null);
   const [guestEnvironment, setGuestEnvironment] = useState(false);
-  const [legalAccepted, setLegalAccepted] = useState(isDeclarationAccepted);
   // 首次登录（本机未见过的账号）落环境部署页并主动弹出新手向导；
   // 老账号回模型中心。跳过/完成后不再自动出现。
   useEffect(() => {
@@ -169,22 +163,6 @@ export default function RelayDeskApp() {
     setPage("deployment");
     setShowEnvironmentIntro(false);
   };
-  // 使用与风险声明：未同意前挡住一切界面（登录/游客环境页/主应用），
-  // 放在账号恢复查询之前——声明优先于启动闪屏。
-  if (!legalAccepted) {
-    return (
-      <div className="rd-boot">
-        <Titlebar />
-        <DeclarationGate
-          open
-          onAccept={() => {
-            markDeclarationAccepted();
-            setLegalAccepted(true);
-          }}
-        />
-      </div>
-    );
-  }
   if (session.accountQuery.isPending && !session.expired)
     return (
       <div className="rd-boot">
@@ -202,18 +180,6 @@ export default function RelayDeskApp() {
       </div>
     );
   if (session.accountQuery.isError && !session.expired) {
-    return (
-      <div className="rd-boot">
-        <Titlebar />
-        <DeclarationGate
-          open
-          onAccept={() => {
-            markDeclarationAccepted();
-            setLegalAccepted(true);
-          }}
-        />
-      </div>
-    );
   }
   if (session.accountQuery.isError && !session.expired) {
     const restoreError = relayErrorKey(session.accountQuery.error);

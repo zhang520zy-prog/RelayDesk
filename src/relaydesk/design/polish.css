@@ -1119,3 +1119,22 @@ code {
   align-self: stretch;
   justify-content: center;
 }
+.rd-legal-close {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--rd-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.rd-legal-scroll-hint {
+  margin: 0;
+  font-size: var(--rd-font-caption);
+  color: var(--rd-warning, #b45309);
+}
+.rd-legal-confirm.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

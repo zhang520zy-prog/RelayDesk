@@ -16,6 +16,11 @@ import { Titlebar } from "../layout/Titlebar";
 import { Action, Field } from "../ui";
 import { useTheme } from "@/components/theme-provider";
 import type { RelaySavedLogin } from "@/lib/api/relay";
+import { DeclarationGate } from "../legal/DeclarationGate";
+import {
+  isDeclarationAccepted,
+  markDeclarationAccepted,
+} from "../legal/declaration";
 
 const RELAY_BASE_URL = "https://www.shenlanqaq.com/";
 // The relay now serves its management API and website routes from the same
@@ -57,14 +62,25 @@ export function LoginPage({
   const [remember, setRemember] = useState(false);
   const [selectedSavedId, setSelectedSavedId] = useState<string | null>(null);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  // 首次使用：点「连接」先弹使用与风险声明（滚到底+勾选后才放行）
+  const [pendingLogin, setPendingLogin] = useState<
+    (() => Promise<void>) | null
+  >(null);
   const hasSavedLogins = savedLogins.length > 0;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
-    await login(RELAY_BASE_URL, username.trim(), password, remember);
-    setPassword("");
-    setVisible(false);
+    const doLogin = async () => {
+      await login(RELAY_BASE_URL, username.trim(), password, remember);
+      setPassword("");
+      setVisible(false);
+    };
+    if (!isDeclarationAccepted()) {
+      setPendingLogin(() => doLogin);
+      return;
+    }
+    await doLogin();
   }
   return (
     <div className="rd-login">
@@ -148,12 +164,20 @@ export function LoginPage({
                       disabled={busy || selectedSavedId !== null}
                       onClick={async () => {
                         if (!loginSaved || busy) return;
-                        setSelectedSavedId(saved.id);
-                        try {
-                          await loginSaved(saved.id);
-                        } finally {
-                          setSelectedSavedId(null);
+                        const connect = async () => {
+                          setSelectedSavedId(saved.id);
+                          try {
+                            await loginSaved(saved.id);
+                          } finally {
+                            setSelectedSavedId(null);
+                          }
+                        };
+                        // 恢复已登录账号也属于"接入"动作：同样先过声明
+                        if (!isDeclarationAccepted()) {
+                          setPendingLogin(() => connect);
+                          return;
                         }
+                        await connect();
                       }}
                     >
                       <span
@@ -337,6 +361,16 @@ export function LoginPage({
           </button>
         )}
       </footer>
+      <DeclarationGate
+        open={pendingLogin !== null}
+        requireScroll
+        onAccept={() => {
+          markDeclarationAccepted();
+          const action = pendingLogin;
+          setPendingLogin(null);
+          void action?.();
+        }}
+      />
     </div>
   );
 }

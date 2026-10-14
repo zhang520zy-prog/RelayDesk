@@ -32,7 +32,7 @@ export function ModelTargetQuickBar({
       <div className="rd-target-quick-bar__icons">
         {targetIds.map((app) => {
           const Icon = targetIcons[app];
-          const enabled = apps[app];
+          const enabled = apps?.[app];
           const result = report?.results.find((r) => r.app === app);
           const state = !enabled
             ? "disabled"

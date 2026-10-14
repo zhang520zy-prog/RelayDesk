@@ -8,7 +8,6 @@ export interface DeclarationSection {
 }
 
 export const DECLARATION_TITLE = "RelayDesk 应用使用与风险声明";
-export const DECLARATION_VERSION = "版本：2026-10-10 · 中文审阅稿";
 
 export const DECLARATION_INTRO: string =
   "首次使用 RelayDesk 前，请完整阅读本声明，特别留意禁止行为、本地配置与密钥风险、部署运营义务以及责任限制。请仅在已阅读、理解并同意全部内容后继续使用；如不同意，请停止使用本软件。";

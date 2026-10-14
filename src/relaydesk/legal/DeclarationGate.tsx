@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ScrollText } from "lucide-react";
 import {
   Dialog,
@@ -13,30 +13,52 @@ import {
   DECLARATION_INTRO,
   DECLARATION_SECTIONS,
   DECLARATION_TITLE,
-  DECLARATION_VERSION,
 } from "./declaration";
 
-/** 首次使用强制阅读门：完整声明 + 勾选同意 + 继续。
- *  readOnly 时作为关于页的只读重读弹窗。 */
+/** 使用与风险声明弹窗。
+ *  - requireScroll：勾选框在正文滚动到底前禁用（注册/登录拦截路径）。
+ *  - readOnly：关于页重读，无勾选区。 */
 export function DeclarationGate({
   open,
   readOnly = false,
+  requireScroll = false,
   onAccept,
   onClose,
 }: {
   open: boolean;
   readOnly?: boolean;
+  requireScroll?: boolean;
   onAccept?: () => void;
   onClose?: () => void;
 }) {
   const [checked, setChecked] = useState(false);
+  const [reachedEnd, setReachedEnd] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  function onScroll() {
+    const el = bodyRef.current;
+    if (!el || reachedEnd) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 8)
+      setReachedEnd(true);
+  }
+
+  const checkboxDisabled = requireScroll && !reachedEnd;
+  const canAccept = checked && !checkboxDisabled;
+
   return (
-    <Dialog open={open}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        // 只读弹窗允许点遮罩/ESC 关闭；强制阅读时锁死
+        if (!o && readOnly && onClose) onClose();
+      }}
+    >
       <DialogContent
         className="rd-dialog rd-legal"
-        // 未勾选前不允许点击遮罩/ESC 跳过——强制路径
         onPointerDownOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => {
+          if (!readOnly) e.preventDefault();
+        }}
       >
         <div className="rd-legal-head">
           <ScrollText
@@ -44,12 +66,27 @@ export function DeclarationGate({
             aria-hidden
             style={{ color: "var(--rd-teal)" }}
           />
-          <div>
-            <DialogTitle>{DECLARATION_TITLE}</DialogTitle>
-            <DialogDescription>{DECLARATION_VERSION}</DialogDescription>
-          </div>
+          <DialogTitle>{DECLARATION_TITLE}</DialogTitle>
+          {readOnly && onClose && (
+            <button
+              type="button"
+              className="rd-legal-close"
+              onClick={onClose}
+              aria-label="关闭"
+            >
+              ×
+            </button>
+          )}
         </div>
-        <div className="rd-legal-body" tabIndex={0}>
+        <DialogDescription className="sr-only">
+          {DECLARATION_TITLE}
+        </DialogDescription>
+        <div
+          className="rd-legal-body"
+          tabIndex={0}
+          ref={bodyRef}
+          onScroll={onScroll}
+        >
           <p className="rd-legal-intro">{DECLARATION_INTRO}</p>
           {DECLARATION_SECTIONS.map((sec) => (
             <section key={sec.title}>
@@ -69,22 +106,20 @@ export function DeclarationGate({
           ))}
           <p className="rd-legal-end">{DECLARATION_END}</p>
         </div>
-        {readOnly ? (
+        {readOnly ? null : (
           <div className="rd-legal-foot">
-            <button
-              type="button"
-              className="rd-button rd-primary"
-              onClick={onClose}
+            {requireScroll && !reachedEnd && (
+              <p className="rd-legal-scroll-hint" role="status">
+                请先滚动阅读至声明底部
+              </p>
+            )}
+            <label
+              className={`rd-legal-confirm ${checkboxDisabled ? "is-disabled" : ""}`}
             >
-              关闭
-            </button>
-          </div>
-        ) : (
-          <div className="rd-legal-foot">
-            <label className="rd-legal-confirm">
               <input
                 type="checkbox"
                 checked={checked}
+                disabled={checkboxDisabled}
                 onChange={(e) => setChecked(e.target.checked)}
                 aria-label={DECLARATION_CONFIRM_LABEL}
               />
@@ -93,7 +128,7 @@ export function DeclarationGate({
             <button
               type="button"
               className="rd-button rd-primary"
-              disabled={!checked}
+              disabled={!canAccept}
               onClick={onAccept}
             >
               {DECLARATION_ACCEPT}

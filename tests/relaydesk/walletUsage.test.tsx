@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "i18next";
@@ -534,14 +540,25 @@ describe("login entry points", () => {
     await user.type(screen.getByLabelText("邮箱或用户名"), "demo");
     await user.type(screen.getByLabelText("密码"), "secret");
     await user.click(screen.getByRole("button", { name: /登录/ }));
+    // 首次接入先弹使用与风险声明：滚到底 + 勾选后才真正发起登录
+    const dialog = await screen.findByRole("dialog", {
+      name: "RelayDesk 应用使用与风险声明",
+    });
+    expect(login).not.toHaveBeenCalled();
+    fireEvent.scroll(dialog.querySelector(".rd-legal-body")!);
+    await user.click(screen.getByRole("checkbox", { name: /我已完整阅读/ }));
+    await user.click(screen.getByRole("button", { name: "同意并继续" }));
     expect(login).toHaveBeenCalledWith(
       "https://www.shenlanqaq.com/",
       "demo",
       "secret",
       true,
     );
-    expect(localStorage.length).toBe(1);
-    expect(localStorage.key(0)).toBe("relaydesk-theme");
+    // 除声明同意标记与主题外，不持久化任何凭据/密码
+    const keys = Array.from({ length: localStorage.length }, (_, i) =>
+      localStorage.key(i),
+    ).filter((k) => k !== "relaydesk.legal.accepted.v1");
+    expect(keys).toEqual(["relaydesk-theme"]);
     expect(localStorage.getItem("relaydesk-theme")).toBe("system");
   });
 });
