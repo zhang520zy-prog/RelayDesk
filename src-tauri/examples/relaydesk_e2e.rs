@@ -71,6 +71,7 @@ async fn run() -> Result<(), String> {
             claude: true,
             codex: true,
             gemini: true,
+            grok: false,
         },
     )
     .map_err(|e| format!("set_apply_apps: {e}"))?;
