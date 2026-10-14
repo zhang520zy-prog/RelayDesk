@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { AppId } from "@/lib/api/types";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
   inferRelayTargets,
@@ -11,12 +12,22 @@ import {
 } from "@/lib/api/relay";
 import { relayErrorKey } from "./relayErrors";
 
+/** 部署页可检测/安装但不接中转站写入的工具（Devin 走自有账号体系） */
+export const deployOnlyIds = ["devin"] as const;
+export const deployOnlyLabels: Record<string, string> = { devin: "Devin" };
+
 export const targetLabels: Record<RelayTarget, string> = {
   claude: "Claude Code",
   codex: "OpenAI Codex",
   gemini: "Gemini CLI",
+  grok: "Grok Build",
 };
 export const targetIds = Object.keys(targetLabels) as RelayTarget[];
+
+/** relay 目标 id → 后端 AppId（grok 的内部枚举名是 grokbuild） */
+export function toAppId(target: RelayTarget): AppId {
+  return target === "grok" ? "grokbuild" : target;
+}
 export type ApplyPhase =
   | "preparing"
   | "syncing"

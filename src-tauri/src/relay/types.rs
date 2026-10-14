@@ -19,6 +19,9 @@ pub struct RelayApplyApps {
     pub codex: bool,
     #[serde(default = "default_true")]
     pub gemini: bool,
+    /// 新增目标默认关：老账号不该因升级被静默写入一个可能未装的工具
+    #[serde(default)]
+    pub grok: bool,
 }
 
 fn default_true() -> bool {
@@ -31,6 +34,7 @@ impl Default for RelayApplyApps {
             claude: true,
             codex: true,
             gemini: true,
+            grok: false,
         }
     }
 }

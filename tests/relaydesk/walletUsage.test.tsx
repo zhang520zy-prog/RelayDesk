@@ -17,7 +17,7 @@ const account: RelayAccountInfo = {
   quota: 5_000_000,
   usedQuota: 500_000,
   group: "standard",
-  applyApps: { claude: true, codex: true, gemini: false },
+  applyApps: { claude: true, codex: true, gemini: false, grok: false },
   groupTargets: {},
   currencyCode: "CNY",
   currencySymbol: "¥",

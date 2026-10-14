@@ -111,8 +111,8 @@ pub struct ToolVersion {
     wsl_distro: Option<String>,
 }
 
-const VALID_TOOLS: [&str; 8] = [
-    "claude", "codex", "gemini", "grok", "opencode", "openclaw", "hermes", "pi",
+const VALID_TOOLS: [&str; 9] = [
+    "claude", "codex", "gemini", "grok", "opencode", "openclaw", "hermes", "pi", "devin",
 ];
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -450,6 +450,7 @@ fn tool_display_name(tool: &str) -> &'static str {
         "openclaw" => "OpenClaw",
         "hermes" => "Hermes",
         "pi" => "Pi",
+        "devin" => "Devin",
         _ => "Unknown",
     }
 }
@@ -465,6 +466,8 @@ const OPENCODE_INSTALL_UNIX: &str =
     "bash -c 'tmp=$(mktemp) && curl -fsSL https://opencode.ai/install -o $tmp && bash $tmp; status=$?; rm -f $tmp; exit $status'";
 const GROK_INSTALL_UNIX: &str =
     "bash -c 'tmp=$(mktemp) && curl -fsSL https://x.ai/cli/install.sh -o $tmp && bash $tmp; status=$?; rm -f $tmp; exit $status'";
+const DEVIN_INSTALL_UNIX: &str =
+    "bash -c 'tmp=$(mktemp) && curl -fsSL https://cli.devin.ai/install.sh -o $tmp && bash $tmp; status=$?; rm -f $tmp; exit $status'";
 
 /// Hermes 官方安装器会自带/选择合适的 Python 运行时。不要再用
 /// `python3 -m pip ... || python -m pip ...`:Hermes PyPI 包要求 Python >=3.11,
@@ -480,6 +483,8 @@ const HERMES_INSTALL_WINDOWS_SCRIPT: &str =
     "irm https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.ps1 | iex";
 #[cfg(target_os = "windows")]
 const GROK_INSTALL_WINDOWS_SCRIPT: &str = "irm https://x.ai/cli/install.ps1 | iex";
+#[cfg(target_os = "windows")]
+const DEVIN_INSTALL_WINDOWS_SCRIPT: &str = "irm https://static.devin.ai/cli/setup.ps1 | iex";
 
 #[cfg(target_os = "windows")]
 fn powershell_encoded_command(script: &str) -> String {
@@ -509,6 +514,14 @@ fn grok_install_windows_command() -> String {
 }
 
 #[cfg(target_os = "windows")]
+fn devin_install_windows_command() -> String {
+    format!(
+        "powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand {}",
+        powershell_encoded_command(DEVIN_INSTALL_WINDOWS_SCRIPT)
+    )
+}
+
+#[cfg(target_os = "windows")]
 fn hermes_update_windows_command() -> String {
     // fallback 是 powershell.exe，不是 .cmd/.bat；这里不需要 `call`。PowerShell 的
     // `irm | iex` 已被 EncodedCommand 收进单一参数,避免 `cmd.exe` 解析管道符。
@@ -531,6 +544,7 @@ fn npm_install_command_for(tool: &str) -> Option<&'static str> {
         "opencode" => Some("npm i -g opencode-ai@latest"),
         "openclaw" => Some("npm i -g openclaw@latest"),
         "pi" => Some("npm i -g @earendil-works/pi-coding-agent@latest"),
+        "devin" => Some("npm i -g devin@latest"),
         _ => None,
     }
 }
@@ -578,6 +592,19 @@ fn tool_action_shell_command_for_shell(
     {
         return Some(chain_update_commands(
             grok_install_windows_command(),
+            npm_install_command_for(tool)?.to_string(),
+            shell,
+        ));
+    }
+
+    // Devin 同样：官方 PowerShell installer 优先，npm 兜底
+    #[cfg(target_os = "windows")]
+    if tool == "devin"
+        && matches!(action, ToolLifecycleAction::Install)
+        && matches!(shell, LifecycleCommandShell::WindowsBatch)
+    {
+        return Some(chain_update_commands(
+            devin_install_windows_command(),
             npm_install_command_for(tool)?.to_string(),
             shell,
         ));
@@ -2548,6 +2575,7 @@ fn npm_package_for(tool: &str) -> Option<&'static str> {
         "opencode" => Some("opencode-ai"),
         "openclaw" => Some("openclaw"),
         "pi" => Some("@earendil-works/pi-coding-agent"),
+        "devin" => Some("devin"),
         _ => None,
     }
 }
@@ -3635,6 +3663,7 @@ fn posix_install_command_for(tool: &str) -> String {
         // 这是唯一退路，而副作用可自愈——`grok_native_update_command` 的 `||` 官方 installer
         // 会在 npm 路径出问题时把 `installer` 覆写回 `internal`（见该函数 doc 的实测记录）。
         "grok" => installer_with_npm_fallback(GROK_INSTALL_UNIX, tool),
+        "devin" => installer_with_npm_fallback(DEVIN_INSTALL_UNIX, tool),
         "opencode" => installer_with_npm_fallback(OPENCODE_INSTALL_UNIX, tool),
         "hermes" => HERMES_INSTALL_UNIX.to_string(),
         _ => static_fallback_command_for(tool, ToolLifecycleAction::Install),

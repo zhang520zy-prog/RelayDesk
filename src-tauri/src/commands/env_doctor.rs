@@ -6,6 +6,7 @@
 use serde::Serialize;
 use tauri::State;
 
+use crate::error::AppError;
 use crate::relay::RelayService;
 use crate::store::AppState;
 
@@ -556,6 +557,183 @@ fn scutil_value(text: &str, key: &str) -> Option<String> {
         }
     }
     None
+}
+
+// ---------- Codex 图像生成一键修复 ----------
+// 修复链：装 fengfengzhidao/codex-image2-skill → 把中转站 base/key 写进
+// ~/.env → launchctl/setx 同步到用户环境变量。key 复用已写入 Codex 配置的
+// 中转站令牌（auth.json），不新建 token、不落新凭据。
+
+const CODEX_IMAGE_SKILL_REPO: &str = "https://github.com/fengfengzhidao/codex-image2-skill";
+const CODEX_IMAGE_SKILL_DIR: &str = "codex-image2-skill";
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexImageStatus {
+    pub skill_installed: bool,
+    pub env_ready: bool,
+    /// 已应用过 Codex 模型（有 base_url + key 可写入 ~/.env）
+    pub repairable: bool,
+}
+
+fn codex_skills_dir() -> Option<std::path::PathBuf> {
+    Some(crate::codex_config::get_codex_config_dir().join("skills"))
+}
+
+/// 从已应用的 Codex 配置读 base_url + api_key（两者缺一即不可修复）。
+fn codex_relay_credentials() -> Option<(String, String)> {
+    let config_text =
+        std::fs::read_to_string(crate::codex_config::get_codex_config_dir().join("config.toml"))
+            .ok()?;
+    let base_url = crate::codex_config::extract_codex_base_url(&config_text)?;
+    let auth: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(crate::codex_config::get_codex_auth_path()).ok()?,
+    )
+    .ok()?;
+    let key = auth
+        .get("OPENAI_API_KEY")
+        .and_then(|v| v.as_str())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())?;
+    Some((base_url, key))
+}
+
+/// ~/.env 中两个变量是否都已就位
+fn env_file_ready(path: &std::path::Path) -> bool {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return false;
+    };
+    ["OPENAI_BASE_URL=", "OPENAI_API_KEY="]
+        .iter()
+        .all(|k| text.lines().any(|l| l.trim_start().starts_with(k)))
+}
+
+/// upsert 两个 KEY=VALUE 到 ~/.env，不动其他条目
+fn upsert_env_file(path: &std::path::Path, base: &str, key: &str) -> Result<(), AppError> {
+    let mut lines: Vec<String> = std::fs::read_to_string(path)
+        .map(|t| t.lines().map(str::to_string).collect())
+        .unwrap_or_default();
+    for (name, value) in [("OPENAI_BASE_URL", base), ("OPENAI_API_KEY", key)] {
+        let prefix = format!("{name}=");
+        let entry = format!("{name}={value}");
+        if let Some(i) = lines
+            .iter()
+            .position(|l| l.trim_start().starts_with(&prefix))
+        {
+            lines[i] = entry;
+        } else {
+            lines.push(entry);
+        }
+    }
+    std::fs::write(path, lines.join("\n") + "\n")
+        .map_err(|e| AppError::Message(format!("写入 ~/.env 失败: {e}")))
+}
+
+/// 静默跑一个命令（Windows 永不弹窗），输出丢弃
+fn run_quiet(program: &str, args: &[&str]) -> Result<(), String> {
+    #[allow(unused_mut)]
+    let mut cmd = std::process::Command::new(program);
+    cmd.args(args)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped());
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    let out = cmd.output().map_err(|e| format!("{program}: {e}"))?;
+    if out.status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "{program} 退出码 {}: {}",
+            out.status.code().unwrap_or(-1),
+            String::from_utf8_lossy(&out.stderr)
+                .chars()
+                .take(200)
+                .collect::<String>()
+        ))
+    }
+}
+
+#[tauri::command]
+pub async fn relay_codex_image_status() -> Result<CodexImageStatus, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let skills_dir = codex_skills_dir();
+        let skill_installed = skills_dir
+            .as_ref()
+            .map(|d| d.join(CODEX_IMAGE_SKILL_DIR).exists())
+            .unwrap_or(false);
+        let env_ready = env_file_ready(&crate::config::get_home_dir().join(".env"));
+        CodexImageStatus {
+            skill_installed,
+            env_ready,
+            repairable: codex_relay_credentials().is_some(),
+        }
+    })
+    .await
+    .map_err(|e| format!("relay.env_fix_failed: {e}"))
+}
+
+#[tauri::command]
+pub async fn relay_codex_image_fix() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let (base_url, api_key) = codex_relay_credentials()
+            .ok_or_else(|| AppError::Message("relay.codex_image_no_credentials".to_string()))?;
+
+        // 1. 装/更新 skill（git 已是最小依赖，与 env_fix 同约束）
+        let skills_dir = codex_skills_dir()
+            .ok_or_else(|| AppError::Message("relay.codex_image_no_credentials".to_string()))?;
+        std::fs::create_dir_all(&skills_dir)
+            .map_err(|e| AppError::Message(format!("创建 skills 目录失败: {e}")))?;
+        let target = skills_dir.join(CODEX_IMAGE_SKILL_DIR);
+        if target.exists() {
+            run_quiet(
+                "git",
+                &["-C", &target.to_string_lossy(), "pull", "--ff-only"],
+            )
+            .map_err(|e| AppError::Message(format!("更新 skill 失败: {e}")))?;
+        } else {
+            run_quiet(
+                "git",
+                &[
+                    "clone",
+                    "--depth",
+                    "1",
+                    CODEX_IMAGE_SKILL_REPO,
+                    &target.to_string_lossy(),
+                ],
+            )
+            .map_err(|e| AppError::Message(format!("安装 skill 失败: {e}")))?;
+        }
+
+        // 2. 写 ~/.env（key 不透传到日志/返回值）
+        let env_path = crate::config::get_home_dir().join(".env");
+        upsert_env_file(&env_path, &base_url, &api_key)?;
+
+        // 3. 同步到用户级环境变量，让新开终端/进程立即读到
+        #[cfg(target_os = "macos")]
+        {
+            let _ = run_quiet("launchctl", &["setenv", "OPENAI_BASE_URL", &base_url]);
+            let _ = run_quiet("launchctl", &["setenv", "OPENAI_API_KEY", &api_key]);
+        }
+        #[cfg(target_os = "windows")]
+        {
+            // setx 写注册表用户环境变量（新进程生效），静默执行
+            let _ = run_quiet("setx", &["OPENAI_BASE_URL", &base_url]);
+            let _ = run_quiet("setx", &["OPENAI_API_KEY", &api_key]);
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("relay.env_fix_failed: {e}"))?
+    .map_err(|e: AppError| match e {
+        // 本命令不打中转站 API；只向上抛已脱敏的操作错误
+        AppError::Message(m) if m.starts_with("relay.") => m,
+        AppError::Message(m) => m,
+        other => other.to_string(),
+    })
 }
 
 #[cfg(target_os = "windows")]

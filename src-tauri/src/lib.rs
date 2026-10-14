@@ -1675,6 +1675,8 @@ pub fn run() {
             commands::relay_env_check,
             commands::relay_env_fix_plan,
             commands::relay_env_fix,
+            commands::relay_codex_image_status,
+            commands::relay_codex_image_fix,
             commands::relay_get_tool_install_plan,
             commands::relay_launch_target,
             commands::relay_get_restart_capabilities,

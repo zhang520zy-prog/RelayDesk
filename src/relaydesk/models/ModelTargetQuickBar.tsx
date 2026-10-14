@@ -1,4 +1,4 @@
-import { Bot, Code, Sparkles, Settings2 } from "lucide-react";
+import { Bot, Code, Sparkles, Zap, Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { type RelayApplyApps, type RelayTarget } from "@/lib/api/relay";
 import {
@@ -12,6 +12,7 @@ const targetIcons: Record<RelayTarget, typeof Bot> = {
   claude: Bot,
   codex: Code,
   gemini: Sparkles,
+  grok: Zap,
 };
 
 export function ModelTargetQuickBar({

@@ -11,12 +11,19 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { settingsApi } from "@/lib/api/settings";
+import { relayApi, type RelayAccountInfo } from "@/lib/api/relay";
 import {
-  relayApi,
-  type RelayAccountInfo,
-  type RelayTarget,
-} from "@/lib/api/relay";
-import { targetIds, targetLabels } from "../state/useRelayApply";
+  deployOnlyIds,
+  deployOnlyLabels,
+  targetIds,
+  targetLabels,
+} from "../state/useRelayApply";
+
+const detectIds = [...targetIds, ...deployOnlyIds] as string[];
+const allLabels: Record<string, string> = {
+  ...targetLabels,
+  ...deployOnlyLabels,
+};
 import { Action } from "../ui";
 import "./onboarding.css";
 
@@ -77,7 +84,7 @@ export function OnboardingWizard({
     ]);
 
   const installTool = useMutation({
-    mutationFn: (app: RelayTarget) =>
+    mutationFn: (app: string) =>
       settingsApi.runToolLifecycleAction([app], "install"),
     onMutate: (app) => setInstalling(app),
     onSettled: () => setInstalling(null),
@@ -105,7 +112,7 @@ export function OnboardingWizard({
     onError: () => toast.error(t("onboardInstallFailed")),
   });
 
-  const installedCount = targetIds.filter((id) => {
+  const installedCount = detectIds.filter((id) => {
     const item = installations.data?.find((i) => i.app === id);
     return item && (item.cliPath || item.desktopApp);
   }).length;
@@ -160,12 +167,12 @@ export function OnboardingWizard({
           <div className="rd-ow-body">
             <p className="rd-muted rd-small">{t("onboardDetectHint")}</p>
             <ul className="rd-ow-list">
-              {targetIds.map((id) => {
+              {detectIds.map((id) => {
                 const item = installations.data?.find((i) => i.app === id);
                 const installed = !!(item?.cliPath || item?.desktopApp);
                 return (
                   <li key={id} className="rd-ow-row">
-                    <strong>{targetLabels[id]}</strong>
+                    <strong>{allLabels[id] ?? id}</strong>
                     {detecting ? (
                       <Loader2 size={14} className="rd-spin" />
                     ) : installed ? (

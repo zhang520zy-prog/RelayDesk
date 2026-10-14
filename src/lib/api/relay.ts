@@ -8,6 +8,7 @@ export interface RelayApplyApps {
   claude: boolean;
   codex: boolean;
   gemini: boolean;
+  grok: boolean;
 }
 
 export type RelayTarget = keyof RelayApplyApps;
@@ -103,7 +104,7 @@ export interface RelayTargetInstall {
 }
 
 export interface RelayToolInstallPlan {
-  app: RelayTarget;
+  app: string;
   source: string;
   command: string;
   docsUrl: string;
@@ -543,11 +544,11 @@ export const relayApi = {
     return await invoke("relay_detect_target_installations");
   },
 
-  async openDesktopDownload(app: RelayTarget): Promise<void> {
+  async openDesktopDownload(app: string): Promise<void> {
     await invoke("relay_open_desktop_download", { app });
   },
 
-  async getToolInstallPlan(app: RelayTarget): Promise<RelayToolInstallPlan> {
+  async getToolInstallPlan(app: string): Promise<RelayToolInstallPlan> {
     return await invoke("relay_get_tool_install_plan", { app });
   },
 
@@ -557,6 +558,20 @@ export const relayApi = {
 
   async envFixPlan(checkId: string): Promise<RelayEnvFixPlan> {
     return await invoke("relay_env_fix_plan", { checkId });
+  },
+
+  /** Codex 图像生成修复状态：skill 是否已装 + ~/.env 是否就绪 */
+  async codexImageStatus(): Promise<{
+    skillInstalled: boolean;
+    envReady: boolean;
+    repairable: boolean;
+  }> {
+    return await invoke("relay_codex_image_status");
+  },
+
+  /** 一键修复：装 skill → 写 ~/.env → 注入用户级环境变量 */
+  async codexImageFix(): Promise<void> {
+    return await invoke("relay_codex_image_fix");
   },
 
   async envFix(checkId: string): Promise<void> {
@@ -600,6 +615,7 @@ export function inferRelayTargets(
   if (/(claude|opus|sonnet|haiku)/.test(text)) return ["claude"];
   if (/gemini/.test(text)) return ["gemini"];
   if (/(gpt|chatgpt|codex|\bo[0-9])/.test(text)) return ["codex"];
+  if (/(grok|xai)/.test(text)) return ["grok"];
   return [];
 }
 

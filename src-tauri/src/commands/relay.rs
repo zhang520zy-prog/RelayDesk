@@ -7,10 +7,9 @@ use crate::error::AppError;
 use crate::relay::{
     restart::{self, RelayRestartCapability, RelayRestartProgress, RelayRestartResult},
     tool_registry::{self, DesktopToolDefinition, ToolRegistry},
-    RelayAccountInfo, RelayApplyApps, RelayApplyProgress, RelayApplyResult, RelayGroup,
-    RelayCreatedToken, RelayGroupModels, RelayService, RelayToken, RelayTopupHistory,
-    RelayTopupInfo, RelayTopupOrder,
-    RelayTopupQuote, RelayUsageModels, RelayUsageOverview, RelayUsageQuery,
+    RelayAccountInfo, RelayApplyApps, RelayApplyProgress, RelayApplyResult, RelayCreatedToken,
+    RelayGroup, RelayGroupModels, RelayService, RelayToken, RelayTopupHistory, RelayTopupInfo,
+    RelayTopupOrder, RelayTopupQuote, RelayUsageModels, RelayUsageOverview, RelayUsageQuery,
 };
 use crate::store::AppState;
 
@@ -320,7 +319,9 @@ pub struct RelayToolInstallPlan {
     docs_url: String,
 }
 
-const RELAY_TARGET_APPS: [&str; 3] = ["claude", "codex", "gemini"];
+/// 环境页可部署/可检测的工具：前 4 个是可写入中转站配置的 apply 目标，
+/// devin 只可检测+安装（配置由其自身账号体系管理，不接中转站）。
+const RELAY_TARGET_APPS: [&str; 5] = ["claude", "codex", "gemini", "grok", "devin"];
 
 #[tauri::command]
 pub async fn relay_detect_target_installations(
@@ -711,13 +712,14 @@ fn launch_target_cli(app: &str) -> Result<(), String> {
     Err("relay.no_terminal".to_string())
 }
 
-/// 设置"应用到哪些 agent"
+/// 设置"应用到哪些 agent"。grok 缺省按 false——新增目标不自动开。
 #[tauri::command]
 pub fn relay_set_apply_apps(
     state: State<'_, AppState>,
     claude: bool,
     codex: bool,
     gemini: bool,
+    grok: Option<bool>,
 ) -> Result<RelayAccountInfo, String> {
     RelayService::set_apply_apps(
         state.inner(),
@@ -725,6 +727,7 @@ pub fn relay_set_apply_apps(
             claude,
             codex,
             gemini,
+            grok: grok.unwrap_or(false),
         },
     )
     .map_err(|e| safe_relay_error(&e, false))

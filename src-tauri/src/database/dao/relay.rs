@@ -268,6 +268,7 @@ mod tests {
             claude: true,
             codex: false,
             gemini: true,
+            grok: false,
         };
         let mut latest = account("synthetic-session");
         latest.apply_apps = latest_apps.clone();

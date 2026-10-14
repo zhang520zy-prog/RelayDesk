@@ -2,14 +2,14 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Copy, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { relayApi, type RelayTarget } from "@/lib/api/relay";
+import { relayApi } from "@/lib/api/relay";
 import { settingsApi } from "@/lib/api/settings";
 import { copyText } from "@/lib/clipboard";
 import { Action } from "../ui";
 import "./environment.css";
 
 export const toolInstallSources: Record<
-  RelayTarget,
+  string,
   { command: string; url: string; source: string }
 > = {
   claude: {
@@ -27,12 +27,26 @@ export const toolInstallSources: Record<
     source: "npm · @google/gemini-cli",
     url: "https://geminicli.com/docs/get-started/installation/",
   },
+  grok: {
+    command: "npm i -g @xai-official/grok@latest",
+    source: "https://x.ai/cli/install.sh · @xai-official/grok",
+    url: "https://docs.x.ai/docs/grok-code-fast-1",
+  },
+  devin: {
+    command: "npm i -g devin@latest",
+    source: "https://cli.devin.ai/install.sh · devin",
+    url: "https://docs.devin.ai/cli",
+  },
 };
 
-export function ToolInstallGuide({ app }: { app: RelayTarget }) {
+export function ToolInstallGuide({ app }: { app: string }) {
   const { t } = useTranslation("relaydesk");
   const [status, setStatus] = useState<string | null>(null);
-  const fallback = toolInstallSources[app];
+  const fallback = toolInstallSources[app] ?? {
+    command: "",
+    url: "",
+    source: "",
+  };
   const plan = useQuery({
     queryKey: ["relaydesk", "tool-install-plan", app],
     queryFn: () => relayApi.getToolInstallPlan(app),

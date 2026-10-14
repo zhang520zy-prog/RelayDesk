@@ -10,7 +10,11 @@ import {
 import { settingsApi } from "@/lib/api/settings";
 import { type RelayApplyApps, type RelayTarget } from "@/lib/api/relay";
 import { Action } from "../ui";
-import { type ApplyReport, targetLabels } from "../state/useRelayApply";
+import {
+  type ApplyReport,
+  targetLabels,
+  toAppId,
+} from "../state/useRelayApply";
 import { LaunchChoices } from "./LaunchChoices";
 export function ApplyProgressDialog({
   report,
@@ -170,7 +174,7 @@ export function ApplyProgressDialog({
             <Action
               onClick={() =>
                 void settingsApi
-                  .openConfigFolder(help)
+                  .openConfigFolder(toAppId(help))
                   .catch(() => setFolderError(true))
               }
             >

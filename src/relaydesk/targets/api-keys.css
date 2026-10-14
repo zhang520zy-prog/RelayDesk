@@ -116,16 +116,30 @@
   flex: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: 1fr 140px 110px auto;
-  gap: 8px;
-  align-items: center;
+  grid-template-columns: 1fr 140px 120px 110px;
+  gap: 10px;
+  align-items: end;
 }
-.rd-apikeys-toggle {
+.rd-apikeys-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.rd-apikeys-field > span {
+  font-size: var(--rd-font-caption);
+  color: var(--rd-muted);
+}
+.rd-apikeys-toggle-inner {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: var(--rd-font-caption);
   color: var(--rd-muted);
+  padding-bottom: 8px;
+}
+.rd-apikeys-toggle-inner em {
+  font-style: normal;
 }
 .rd-apikeys-edit-actions {
   grid-column: 1 / -1;

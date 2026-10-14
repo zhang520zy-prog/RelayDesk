@@ -13,15 +13,23 @@ import {
   MonitorX,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  relayApi,
-  type RelayAccountInfo,
-  type RelayTarget,
-} from "@/lib/api/relay";
+import { relayApi, type RelayAccountInfo } from "@/lib/api/relay";
 import { settingsApi } from "@/lib/api/settings";
 import { Action } from "../ui";
 import { OnboardingChecklist } from "../onboarding/OnboardingChecklist";
-import { targetIds, targetLabels } from "../state/useRelayApply";
+import {
+  targetIds,
+  targetLabels,
+  deployOnlyIds,
+  deployOnlyLabels,
+} from "../state/useRelayApply";
+
+/** 部署页循环体覆盖的全部工具：apply 目标 + 仅可安装检测的工具 */
+const deployableIds = [...targetIds, ...deployOnlyIds] as string[];
+const allToolLabels: Record<string, string> = {
+  ...targetLabels,
+  ...deployOnlyLabels,
+};
 import { relayErrorKey } from "../state/relayErrors";
 import { InstallToolDialog } from "./InstallToolDialog";
 import { EnvFixDialog } from "./EnvFixDialog";
@@ -66,6 +74,74 @@ export function EnvironmentCheckRow({
       </span>
       {children && <div className="rd-env-row-actions">{children}</div>}
     </li>
+  );
+}
+
+/** Codex 图像生成修复行：skill 未装或 ~/.env 缺配置时给一键修复 */
+function CodexImageRow({
+  status,
+  loading,
+  onFixed,
+}: {
+  status:
+    | { skillInstalled: boolean; envReady: boolean; repairable: boolean }
+    | undefined;
+  loading: boolean;
+  onFixed: () => void;
+}) {
+  const { t } = useTranslation("relaydesk");
+  const [fixing, setFixing] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const ready = !!status?.skillInstalled && !!status?.envReady;
+  const check: EnvironmentCheck = loading
+    ? {
+        id: "codex-image",
+        label: t("codexImageLabel"),
+        status: "loading",
+        detail: t("envCheckingTool"),
+      }
+    : !status?.repairable
+      ? {
+          id: "codex-image",
+          label: t("codexImageLabel"),
+          status: "warn",
+          detail: t("codexImageNeedModel"),
+          hint: t("codexImageNeedModelHint"),
+        }
+      : ready
+        ? {
+            id: "codex-image",
+            label: t("codexImageLabel"),
+            status: "ok",
+            detail: t("codexImageReady"),
+          }
+        : {
+            id: "codex-image",
+            label: t("codexImageLabel"),
+            status: "fixable",
+            detail: t("codexImageMissing"),
+          };
+  return (
+    <EnvironmentCheckRow check={check}>
+      {check.status === "fixable" && (
+        <Action
+          disabled={fixing}
+          onClick={() => {
+            setFixing(true);
+            setFailed(false);
+            relayApi
+              .codexImageFix()
+              .then(onFixed)
+              .catch(() => setFailed(true))
+              .finally(() => setFixing(false));
+          }}
+        >
+          {fixing ? <Loader2 size={13} className="rd-spin" /> : null}
+          {t("codexImageFix")}
+        </Action>
+      )}
+      {failed && <span className="rd-muted">{t("codexImageFixFailed")}</span>}
+    </EnvironmentCheckRow>
   );
 }
 
@@ -139,11 +215,11 @@ export function EnvironmentPage({
   openModels?: () => void;
 }) {
   const { t } = useTranslation("relaydesk");
-  const [install, setInstall] = useState<RelayTarget | null>(null);
+  const [install, setInstall] = useState<string | null>(null);
   const [envFix, setEnvFix] = useState<{ id: string; label: string } | null>(
     null,
   );
-  const [guide, setGuide] = useState<RelayTarget | null>(null);
+  const [guide, setGuide] = useState<string | null>(null);
   const [guidePlatform, setGuidePlatform] =
     useState<EnvironmentPlatform>(platform);
   const [exporting, setExporting] = useState(false);
@@ -164,12 +240,17 @@ export function EnvironmentPage({
   });
   const versions = useQuery({
     queryKey: ["relaydesk", "environment", "versions"],
-    queryFn: () => settingsApi.getToolVersions(targetIds),
+    queryFn: () => settingsApi.getToolVersions(deployableIds),
     ...queryOptions,
   });
   const doctor = useQuery({
     queryKey: ["relaydesk", "environment", "doctor"],
     queryFn: relayApi.envCheck,
+    ...queryOptions,
+  });
+  const codexImage = useQuery({
+    queryKey: ["relaydesk", "codex-image"],
+    queryFn: relayApi.codexImageStatus,
     ...queryOptions,
   });
   const loading =
@@ -199,9 +280,9 @@ export function EnvironmentPage({
       setExporting(false);
     }
   }
-  function toolCheck(app: RelayTarget): EnvironmentCheck {
+  function toolCheck(app: string): EnvironmentCheck {
     // CLI 行显式带 CLI 后缀，避免与下方"桌面端"行混淆（如 OpenAI Codex CLI vs ChatGPT 桌面端）
-    const cliName = targetLabels[app].replace(/\s*CLI\s*$/i, "");
+    const cliName = (allToolLabels[app] ?? app).replace(/\s*CLI\s*$/i, "");
     const base = { id: `${app}-cli`, label: `${cliName} CLI` };
     if (loading)
       return { ...base, status: "loading", detail: t("envCheckingTool") };
@@ -232,7 +313,7 @@ export function EnvironmentPage({
   }
   // 桌面端单独成行：与 CLI 的安装/配置状态互不混淆。
   // 仅在工具注册表提供桌面入口（desktopUrl 或已检测到）时渲染。
-  function desktopCheck(app: RelayTarget): EnvironmentCheck | null {
+  function desktopCheck(app: string): EnvironmentCheck | null {
     if (loading) return null;
     const found = installations.data?.find((item) => item.app === app);
     if (!found || !found.desktopCandidates?.length) return null;
@@ -324,7 +405,7 @@ export function EnvironmentPage({
       </div>
       <section className="rd-setting-section rd-deployment-tools">
         <ul className="rd-env-list">
-          {targetIds.map((app) => {
+          {deployableIds.map((app) => {
             const check = toolCheck(app);
             const desktop = desktopCheck(app);
             const found = installations.data?.find((item) => item.app === app);
@@ -395,6 +476,13 @@ export function EnvironmentPage({
                         </Action>
                       )}
                   </EnvironmentCheckRow>
+                )}
+                {app === "codex" && (
+                  <CodexImageRow
+                    status={codexImage.data}
+                    loading={codexImage.isPending}
+                    onFixed={() => void codexImage.refetch()}
+                  />
                 )}
               </ToolVendorGroup>
             );

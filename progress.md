@@ -93,3 +93,14 @@
 - **时间型测试夹具**：`create_time` 写死日期会随时间过期触发过期逻辑 → 用远期（2999）或相对 `Date.now()`
 - **死代码清理方法**：从 `main.tsx` 沿 import 爬可达图（含 tests/ 作根、副作用 import、`import.meta.glob`），未达文件整批删；`@import` 的 CSS 与 fetch 加载的资源要人工复核白名单
 - **new-api 日志语义**：`type=1` 充值到账（含兑换码）、`3` 管理员调整、`6` 退款；`type=0` 全量首页会被消费日志占满——必须分类型拉；后台直接改库不产生任何日志
+
+## 2026-10-14 审计记录 — 工具池扩容 + Codex 图像修复 + 凭据表单标签
+
+**教训沉淀**
+- `#[serde(default)]` 不能用在 Tauri 命令参数上（只认 derive struct）；命令可选参数用 `Option<T>` + `unwrap_or`。
+- 新增 apply 目标的完整链：RelayApplyApps 字段 → resolve_apply_targets 候选 → relay_app_id 双名映射（工具 id `grok` ≠ AppType `grokbuild`）→ UniversalProvider apps/models → to_X_provider → sync_universal_to_app arm → VALID_TOOLS/npm 表/安装链 → 前端 targetIds/labels/icons/toAppId。漏任一环节编译期拦不住、运行期静默丢目标——本轮靠 E0063 字面量错误扫出全部 fixture 位。
+- 新增工具默认 OFF（grok=false）：老账号升级不应被静默写入未装的工具；已有 claude/codex/gemini 维持 default_true 是历史既定。
+- 环境页"行数断言"测试脆（9→12）：加工具/行必改计数——下轮加工具时先看 environment.test 的 Checking… 断言。
+- Codex 图像修复链：skill git clone → ~/.env upsert（只动 OPENAI_BASE_URL/OPENAI_API_KEY 两行）→ launchctl setenv/setx；key 复用 auth.json 里已写的中转站令牌，不新建 token、不落新凭据。
+- 远端注册表校验放宽为"核心三件套必须在场 + 白名单内增减"，未知工具 id 一律拒收。
+

@@ -109,6 +109,33 @@ pub fn builtin_registry() -> ToolRegistry {
                     }],
                 },
             ),
+            (
+                "grok".to_string(),
+                ToolDefinition {
+                    display_name: "Grok Build".to_string(),
+                    installer_source: "xAI official installer · npm fallback".to_string(),
+                    docs_url: "https://docs.x.ai/docs/grok-code-fast-1".to_string(),
+                    // Grok.app 是独立消费端，不读 ~/.grok/config.toml
+                    desktop_url: Some("https://grok.com/download".to_string()),
+                    desktop_apps: vec![DesktopToolDefinition {
+                        app_name: "Grok.app".to_string(),
+                        display_name: "Grok desktop".to_string(),
+                        reads_cli_config: false,
+                        windows_names: vec!["Grok".to_string()],
+                    }],
+                },
+            ),
+            (
+                "devin".to_string(),
+                ToolDefinition {
+                    display_name: "Devin".to_string(),
+                    installer_source: "Devin official installer · npm fallback".to_string(),
+                    docs_url: "https://docs.devin.ai/cli".to_string(),
+                    // Devin Desktop 属企业版捆绑分发，不提供公开下载页
+                    desktop_url: None,
+                    desktop_apps: vec![],
+                },
+            ),
         ]),
     }
 }
@@ -172,17 +199,19 @@ pub async fn refresh_registry_if_due(state: &AppState) -> ToolRegistry {
 }
 
 fn validate_registry(registry: &ToolRegistry) -> bool {
-    if registry.version != 1 || registry.tools.len() != 3 {
+    // 远端注册表只能在此白名单内增减工具：3 个核心 apply 目标必须在场，
+    // 未知工具 id 一律拒绝（防止远端下发任意可执行探测名）。
+    if registry.version != 1 || registry.tools.len() > 10 {
         return false;
     }
-    let expected: HashSet<&str> = ["claude", "codex", "gemini"].into_iter().collect();
-    if registry
-        .tools
-        .keys()
-        .map(String::as_str)
-        .collect::<HashSet<_>>()
-        != expected
-    {
+    let required: HashSet<&str> = ["claude", "codex", "gemini"].into_iter().collect();
+    let allowed: HashSet<&str> = [
+        "claude", "codex", "gemini", "grok", "devin", "opencode", "openclaw", "hermes", "pi",
+    ]
+    .into_iter()
+    .collect();
+    let keys: HashSet<&str> = registry.tools.keys().map(String::as_str).collect();
+    if !required.is_subset(&keys) || !keys.is_subset(&allowed) {
         return false;
     }
     registry.tools.values().all(|tool| {

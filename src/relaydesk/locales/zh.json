@@ -633,5 +633,14 @@
   "expiry30d": "30 天",
   "expiry7d": "7 天",
   "save": "保存",
-  "desktopChip": "桌面端"
+  "desktopChip": "桌面端",
+  "apiKeyName": "名称",
+  "apiKeyStatus": "状态",
+  "codexImageLabel": "Codex 图像生成",
+  "codexImageReady": "skill 与环境变量已配置",
+  "codexImageMissing": "未安装 skill / 未写环境变量",
+  "codexImageFix": "一键修复",
+  "codexImageFixFailed": "修复失败，请重试",
+  "codexImageNeedModel": "先在模型中心应用一个 Codex 模型",
+  "codexImageNeedModelHint": "修复依赖已写入 Codex 的中转站凭据"
 }

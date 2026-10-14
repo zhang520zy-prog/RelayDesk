@@ -8,6 +8,7 @@ import {
   Bot,
   Code,
   Sparkles,
+  Zap,
   Info,
   Undo2,
 } from "lucide-react";
@@ -23,6 +24,7 @@ import {
   type ApplyReport,
   targetIds,
   targetLabels,
+  toAppId,
 } from "../state/useRelayApply";
 import { GroupRouting } from "./GroupRouting";
 import { ApiKeysSection } from "./ApiKeysSection";
@@ -31,6 +33,7 @@ const targetIcons: Record<RelayTarget, typeof Bot> = {
   claude: Bot,
   codex: Code,
   gemini: Sparkles,
+  grok: Zap,
 };
 
 function TargetCard({
@@ -52,7 +55,7 @@ function TargetCard({
   const queryClient = useQueryClient();
   const path = useQuery({
     queryKey: ["relaydesk", "targetPath", app],
-    queryFn: () => settingsApi.getConfigDir(app),
+    queryFn: () => settingsApi.getConfigDir(toAppId(app)),
     staleTime: Infinity,
     retry: false,
   });
@@ -64,7 +67,7 @@ function TargetCard({
     try {
       const picked = await settingsApi.selectConfigDirectory(path.data);
       if (!picked) return;
-      await settingsApi.setTargetConfigDir(app, picked);
+      await settingsApi.setTargetConfigDir(toAppId(app), picked);
       await refreshPath();
       toast.success(t("pathUpdated"));
     } catch {
@@ -73,7 +76,7 @@ function TargetCard({
   };
   const resetPath = async () => {
     try {
-      await settingsApi.setTargetConfigDir(app, undefined);
+      await settingsApi.setTargetConfigDir(toAppId(app), undefined);
       await refreshPath();
       toast.success(t("pathUpdated"));
     } catch {

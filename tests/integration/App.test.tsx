@@ -22,7 +22,7 @@ const initial: RelayAccountInfo = {
   quotaPerUnit: 500000,
   displayInCurrency: true,
   group: "standard",
-  applyApps: { claude: true, codex: true, gemini: false },
+  applyApps: { claude: true, codex: true, gemini: false, grok: false },
   groupTargets: {},
   updatedAt: 1,
   lastApplied: { group: "standard", model: "old-model" },
@@ -925,7 +925,12 @@ describe("RelayDesk user flows", () => {
     expect(account!.lastApplied?.model).toBe("old-model");
   });
   it("does not apply with zero enabled targets", async () => {
-    account!.applyApps = { claude: false, codex: false, gemini: false };
+    account!.applyApps = {
+      claude: false,
+      codex: false,
+      gemini: false,
+      grok: false,
+    };
     const user = userEvent.setup();
     mount();
     const row = await pickModel(user, "new-model");
@@ -937,7 +942,12 @@ describe("RelayDesk user flows", () => {
   });
   it("warns instead of applying when the inferred target is disabled", async () => {
     // claude 家族模型 → 推断 claude；claude 已禁用则告警而不应用
-    account!.applyApps = { claude: false, codex: true, gemini: false };
+    account!.applyApps = {
+      claude: false,
+      codex: true,
+      gemini: false,
+      grok: false,
+    };
     const user = userEvent.setup();
     mount();
     const row = await pickModel(user, "claude-sonnet-4");

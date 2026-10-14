@@ -633,5 +633,14 @@
   "expiry30d": "30 days",
   "expiry7d": "7 days",
   "save": "Save",
-  "desktopChip": "Desktop"
+  "desktopChip": "Desktop",
+  "apiKeyName": "Name",
+  "apiKeyStatus": "Status",
+  "codexImageLabel": "Codex image generation",
+  "codexImageReady": "Skill and env vars configured",
+  "codexImageMissing": "Skill not installed / env vars missing",
+  "codexImageFix": "One-click fix",
+  "codexImageFixFailed": "Fix failed, retry",
+  "codexImageNeedModel": "Apply a Codex model in the Model Center first",
+  "codexImageNeedModelHint": "The fix reuses the relay credential already written to Codex"
 }

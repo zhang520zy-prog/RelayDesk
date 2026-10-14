@@ -77,6 +77,12 @@ beforeEach(async () => {
     docsUrl: "https://example.test/env",
   }));
   vi.spyOn(relayApi, "envFix").mockResolvedValue();
+  vi.spyOn(relayApi, "codexImageStatus").mockResolvedValue({
+    skillInstalled: false,
+    envReady: false,
+    repairable: true,
+  });
+  vi.spyOn(relayApi, "codexImageFix").mockResolvedValue();
   vi.spyOn(settingsApi, "getToolVersions").mockResolvedValue([
     {
       name: "claude",
@@ -190,7 +196,8 @@ describe("environment health", () => {
     );
     vi.mocked(relayApi.envCheck).mockReturnValue(new Promise(() => {}));
     mount(<EnvironmentPage onBack={() => {}} />);
-    expect(screen.getAllByText("Checking…")).toHaveLength(9);
+    // 6 基础环境项 + 5 工具 CLI（claude/codex/gemini/grok/devin）+ 1 codex 图像修复
+    expect(screen.getAllByText("Checking…")).toHaveLength(12);
     expect(screen.queryByText("Not installed")).not.toBeInTheDocument();
   });
   it("shows a check failure instead of invented results when env check fails", async () => {

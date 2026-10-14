@@ -60,7 +60,7 @@ describe("relay model ingress", () => {
           quota: 1,
           usedQuota: 0,
           group: "standard",
-          applyApps: { claude: true, codex: true, gemini: true },
+          applyApps: { claude: true, codex: true, gemini: true, grok: false },
           groupTargets: {},
           updatedAt: 1,
         });
@@ -208,12 +208,16 @@ describe("inferRelayTargets", () => {
     expect(inferRelayTargets("default", "o4-mini")).toEqual(["codex"]);
   });
   it("returns empty for unrecognized groups so callers apply to all enabled", () => {
-    // Grok/特惠/杂项组没有可识别家族——不再假装猜中某个客户端
+    // 特惠/杂项组没有可识别家族——不再假装猜中某个客户端
     expect(inferRelayTargets("0元购")).toEqual([]);
-    expect(inferRelayTargets("grok")).toEqual([]);
-    expect(inferRelayTargets("Grok Heavy")).toEqual([]);
     expect(inferRelayTargets("default", "deepseek-v3")).toEqual([]);
     expect(inferRelayTargets("限时特惠 devin-swe-2", "swe-2")).toEqual([]);
+  });
+  it("routes grok groups/models to the Grok Build target", () => {
+    // Grok 已是独立 apply 目标——grok 组/模型应精确路由到它
+    expect(inferRelayTargets("grok")).toEqual(["grok"]);
+    expect(inferRelayTargets("Grok Heavy")).toEqual(["grok"]);
+    expect(inferRelayTargets("default", "grok-4-fast")).toEqual(["grok"]);
   });
   it("routes by model name first, so claude models never hit ChatGPT", () => {
     // 回归：组名 "opus" 不含 claude，但模型名 claude-opus-5.5 必须去 claude

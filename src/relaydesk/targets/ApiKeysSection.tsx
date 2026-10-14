@@ -129,39 +129,49 @@ function TokenEditForm({
         update.mutate();
       }}
     >
-      <Field
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder={t("apiKeyNamePlaceholder")}
-        maxLength={64}
-      />
-      <select
-        className="rd-input"
-        value={group}
-        onChange={(e) => setGroup(e.target.value)}
-        aria-label={t("apiKeyGroup")}
-      >
-        {groups.map((g) => (
-          <option key={g.name} value={g.name}>
-            {g.name}
-          </option>
-        ))}
-      </select>
-      <select
-        className="rd-input"
-        value={expiry}
-        onChange={(e) => setExpiry(e.target.value)}
-        aria-label={t("apiKeyExpiry")}
-      >
-        {EXPIRY_OPTIONS.map((o) => (
-          <option key={o.days} value={String(o.days)}>
-            {t(o.key)}
-          </option>
-        ))}
-      </select>
-      <label className="rd-apikeys-toggle">
-        <Switch checked={enabled} onCheckedChange={setEnabled} />
-        <span>{t(enabled ? "enabled" : "apiKeyDisabled")}</span>
+      <label className="rd-apikeys-field">
+        <span>{t("apiKeyName")}</span>
+        <Field
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t("apiKeyNamePlaceholder")}
+          maxLength={64}
+        />
+      </label>
+      <label className="rd-apikeys-field">
+        <span>{t("apiKeyGroup")}</span>
+        <select
+          className="rd-input"
+          value={group}
+          onChange={(e) => setGroup(e.target.value)}
+        >
+          {groups.map((g) => (
+            <option key={g.name} value={g.name}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="rd-apikeys-field">
+        <span>{t("apiKeyExpiry")}</span>
+        <select
+          className="rd-input"
+          value={expiry}
+          onChange={(e) => setExpiry(e.target.value)}
+        >
+          {EXPIRY_OPTIONS.map((o) => (
+            <option key={o.days} value={String(o.days)}>
+              {t(o.key)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="rd-apikeys-field rd-apikeys-toggle">
+        <span>{t("apiKeyStatus")}</span>
+        <span className="rd-apikeys-toggle-inner">
+          <Switch checked={enabled} onCheckedChange={setEnabled} />
+          <em>{t(enabled ? "enabled" : "apiKeyDisabled")}</em>
+        </span>
       </label>
       <div className="rd-apikeys-edit-actions">
         <Action

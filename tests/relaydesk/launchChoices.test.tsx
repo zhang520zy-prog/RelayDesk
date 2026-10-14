@@ -40,7 +40,7 @@ function mount(report = successful, pending = false) {
     onOpenChange,
     pending,
     busy: false,
-    apps: { claude: true, codex: true, gemini: true },
+    apps: { claude: true, codex: true, gemini: true, grok: false },
     retry: vi.fn(),
   };
   const client = new QueryClient({
@@ -275,7 +275,7 @@ describe("model application launch choices", () => {
       group: "standard",
       groupTargets: {},
       updatedAt: 1,
-      applyApps: { claude: true, codex: true, gemini: false },
+      applyApps: { claude: true, codex: true, gemini: false, grok: false },
     };
     vi.spyOn(relayApi, "applyModel")
       .mockResolvedValueOnce([{ app: "codex", ok: true }])

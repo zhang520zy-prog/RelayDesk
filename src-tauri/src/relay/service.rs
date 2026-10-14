@@ -16,13 +16,14 @@ use super::types::{
     RelayAccount, RelayAccountInfo, RelayAppliedModel, RelayApplyApps, RelayApplyResult,
     RelayCreatedToken, RelayGroup, RelayGroupModels, RelayGroupToken, RelayRechargeHistory,
     RelayRechargeRecord, RelayToken, RelayTopupAmountOption, RelayTopupHistory, RelayTopupInfo,
-    RelayTopupOrder,
-    RelayTopupPaymentMethod, RelayTopupQuote, RelayUsageModelRow, RelayUsageModels,
-    RelayUsageOverview, RelayUsageQuery, TOKEN_NAME_PREFIX, UNIVERSAL_ID_PREFIX,
+    RelayTopupOrder, RelayTopupPaymentMethod, RelayTopupQuote, RelayUsageModelRow,
+    RelayUsageModels, RelayUsageOverview, RelayUsageQuery, TOKEN_NAME_PREFIX, UNIVERSAL_ID_PREFIX,
 };
 use crate::app_config::AppType;
 use crate::error::AppError;
-use crate::provider::{ClaudeModelConfig, CodexModelConfig, GeminiModelConfig, UniversalProvider};
+use crate::provider::{
+    ClaudeModelConfig, CodexModelConfig, GeminiModelConfig, GrokRelayModel, UniversalProvider,
+};
 use crate::services::ProviderService;
 use crate::store::AppState;
 
@@ -58,6 +59,18 @@ fn apply_gate() -> &'static ApplyGate {
     GATE.get_or_init(ApplyGate::default)
 }
 
+/// relay 层对外用的目标 id：与工具检测/安装的二进制名一致（grok），
+/// 与 AppType 内部名（grokbuild）解耦。
+fn relay_app_id(app: &AppType) -> &'static str {
+    match app {
+        AppType::Claude => "claude",
+        AppType::Codex => "codex",
+        AppType::Gemini => "gemini",
+        AppType::GrokBuild => "grok",
+        _ => "",
+    }
+}
+
 fn resolve_apply_targets(
     apps: &RelayApplyApps,
     target_apps: Option<&[String]>,
@@ -66,20 +79,23 @@ fn resolve_apply_targets(
         (AppType::Claude, apps.claude),
         (AppType::Codex, apps.codex),
         (AppType::Gemini, apps.gemini),
+        (AppType::GrokBuild, apps.grok),
     ];
     let targets: Vec<AppType> = match target_apps {
         Some(selected) => {
             for target in selected {
                 if !candidates
                     .iter()
-                    .any(|(app, _)| app.as_str() == target.as_str())
+                    .any(|(app, _)| relay_app_id(app) == target.as_str())
                 {
                     return Err(AppError::Message("relay.invalid_target".to_string()));
                 }
             }
             candidates
                 .into_iter()
-                .filter(|(app, enabled)| *enabled && selected.iter().any(|t| t == app.as_str()))
+                .filter(|(app, enabled)| {
+                    *enabled && selected.iter().any(|t| t == relay_app_id(app))
+                })
                 .map(|(app, _)| app)
                 .collect()
         }
@@ -952,6 +968,7 @@ fn apply_model_blocking(
     universal.apps.claude = account.apply_apps.claude;
     universal.apps.codex = account.apply_apps.codex;
     universal.apps.gemini = account.apply_apps.gemini;
+    universal.apps.grok = account.apply_apps.grok;
 
     // Only this request's targets receive the selected model. A targeted retry
     // must not rewrite another app's child on the shared parent.
@@ -976,13 +993,20 @@ fn apply_model_blocking(
             .get_or_insert_with(GeminiModelConfig::default);
         m.model = Some(model.to_string());
     }
+    if targets.contains(&AppType::GrokBuild) {
+        let m = universal
+            .models
+            .grok
+            .get_or_insert_with(GrokRelayModel::default);
+        m.model = Some(model.to_string());
+    }
 
     ProviderService::upsert_universal(state, universal)?;
 
     let expected_session = account.clone();
     let results = run_target_plan(account, targets, group, model, |app_type| {
-        let app = app_type.as_str().to_string();
-        progress("syncing", Some(app_type.as_str()));
+        let app = relay_app_id(&app_type).to_string();
+        progress("syncing", Some(relay_app_id(&app_type)));
         let attempt = (|| {
             let latest = require_account(state)?;
             if !same_active_session(&latest, &expected_session) {
@@ -1776,6 +1800,7 @@ mod tests {
             claude: false,
             codex: false,
             gemini: false,
+            grok: false,
         };
         let calls = AtomicUsize::new(0);
 
@@ -1866,6 +1891,7 @@ mod tests {
             claude: true,
             codex: true,
             gemini: false,
+            grok: false,
         };
         let mut account = account_with_apps(apps.clone());
         let targets = resolve_apply_targets(&apps, Some(&["codex".to_string()])).unwrap();
@@ -1894,6 +1920,7 @@ mod tests {
             claude: true,
             codex: false,
             gemini: true,
+            grok: false,
         };
 
         assert_eq!(
@@ -1910,6 +1937,7 @@ mod tests {
             claude: true,
             codex: true,
             gemini: true,
+            grok: false,
         };
         // 多目标子集：只同步列出的启用目标
         let targets =
@@ -1924,6 +1952,7 @@ mod tests {
             claude: false,
             codex: true,
             gemini: true,
+            grok: false,
         };
         let targets =
             resolve_apply_targets(&apps, Some(&["claude".to_string(), "codex".to_string()]))
@@ -2248,6 +2277,7 @@ mod tests {
             claude: true,
             codex: false,
             gemini: false,
+            grok: false,
         };
         let mut account = account_with_apps(apps);
         account.group_tokens.insert(

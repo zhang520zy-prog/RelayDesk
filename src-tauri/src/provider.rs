@@ -640,6 +640,8 @@ pub struct UniversalProviderApps {
     pub codex: bool,
     #[serde(default)]
     pub gemini: bool,
+    #[serde(default)]
+    pub grok: bool,
 }
 
 /// Claude 模型配置
@@ -682,6 +684,13 @@ pub struct GeminiModelConfig {
     pub model: Option<String>,
 }
 
+/// Grok Build 的模型选择（与 GeminiModelConfig 同形，独立类型避免跨域耦合）
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct GrokRelayModel {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+}
+
 /// 各应用的模型配置
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UniversalProviderModels {
@@ -691,6 +700,8 @@ pub struct UniversalProviderModels {
     pub codex: Option<CodexModelConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gemini: Option<GeminiModelConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub grok: Option<GrokRelayModel>,
 }
 
 /// 统一供应商（跨应用共享配置）
@@ -903,6 +914,44 @@ requires_openai_auth = true"#
             id: format!("universal-gemini-{}", self.id),
             name: self.name.clone(),
             settings_config,
+            website_url: self.website_url.clone(),
+            category: Some("aggregator".to_string()),
+            created_at: self.created_at,
+            sort_index: self.sort_index,
+            notes: self.notes.clone(),
+            meta: self.meta.clone(),
+            icon: self.icon.clone(),
+            icon_color: self.icon_color.clone(),
+            in_failover_queue: false,
+        })
+    }
+
+    /// Grok Build 子供应商：settings_config.config 存 TOML 文本，
+    /// 写 ~/.grok/config.toml。中转站走 OpenAI 兼容端点 → api_backend 用
+    /// chat_completions（responses API 并非所有中转站都支持）。
+    pub fn to_grok_provider(&self) -> Option<Provider> {
+        if !self.apps.grok {
+            return None;
+        }
+        let model = self
+            .models
+            .grok
+            .as_ref()
+            .and_then(|m| m.model.clone())
+            .unwrap_or_else(|| "grok-4".to_string());
+        let base = format!("{}/v1", self.base_url.trim_end_matches('/'));
+        let esc = |s: &str| s.replace('\\', "\\\\").replace('"', "\\\"");
+        let config_toml = format!(
+            "[models]\ndefault = \"relaydesk\"\n\n[model.relaydesk]\nmodel = \"{}\"\nbase_url = \"{}\"\nname = \"{}\"\napi_key = \"{}\"\napi_backend = \"chat_completions\"\ncontext_window = 500000\n",
+            esc(&model),
+            esc(&base),
+            esc(&self.name),
+            esc(&self.api_key),
+        );
+        Some(Provider {
+            id: format!("universal-grok-{}", self.id),
+            name: self.name.clone(),
+            settings_config: serde_json::json!({ "config": config_toml }),
             website_url: self.website_url.clone(),
             category: Some("aggregator".to_string()),
             created_at: self.created_at,

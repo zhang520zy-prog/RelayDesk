@@ -26,7 +26,7 @@ const initial: RelayAccountInfo = {
   usedQuota: 5000,
   group: "standard",
   updatedAt: 1,
-  applyApps: { claude: true, codex: true, gemini: false },
+  applyApps: { claude: true, codex: true, gemini: false, grok: false },
   groupTargets: {},
 };
 let account: RelayAccountInfo;

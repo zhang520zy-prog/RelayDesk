@@ -9,8 +9,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { settingsApi } from "@/lib/api/settings";
-import { relayApi, type RelayTarget } from "@/lib/api/relay";
-import { targetLabels } from "../state/useRelayApply";
+import { relayApi } from "@/lib/api/relay";
+import { deployOnlyLabels, targetLabels } from "../state/useRelayApply";
 import { Action } from "../ui";
 import { ToolInstallGuide } from "./ToolInstallGuide";
 import "./environment.css";
@@ -21,7 +21,7 @@ export function InstallToolDialog({
   onClose,
   onInstalled,
 }: {
-  app: RelayTarget | null;
+  app: string | null;
   /** 已安装但无法运行时以"修复"语境呈现，避免用户以为是全新安装 */
   repair?: boolean;
   onClose: () => void;
@@ -45,7 +45,7 @@ function InstallConfirmation({
   onClose,
   onInstalled,
 }: {
-  app: RelayTarget;
+  app: string;
   repair?: boolean;
   onClose: () => void;
   onInstalled: () => void | Promise<void>;
@@ -104,7 +104,10 @@ function InstallConfirmation({
       >
         <DialogTitle>
           {t(repair ? "confirmToolRepair" : "confirmToolInstall", {
-            tool: targetLabels[app],
+            tool:
+              (targetLabels as Record<string, string>)[app] ??
+              deployOnlyLabels[app] ??
+              app,
           })}
         </DialogTitle>
         <DialogDescription>
@@ -144,7 +147,12 @@ function InstallConfirmation({
         {installation.isPending && (
           <p role="status" className="rd-env-inline">
             <Loader2 size={16} className="rd-spin" />
-            {t("installingTool", { tool: targetLabels[app] })}
+            {t("installingTool", {
+              tool:
+                (targetLabels as Record<string, string>)[app] ??
+                deployOnlyLabels[app] ??
+                app,
+            })}
           </p>
         )}
         {installation.isError && (

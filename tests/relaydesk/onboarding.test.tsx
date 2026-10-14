@@ -17,7 +17,7 @@ import {
 const baseAccount = {
   username: "fixture",
   quota: 0,
-  applyApps: { claude: false, codex: false, gemini: false },
+  applyApps: { claude: false, codex: false, gemini: false, grok: false },
 } as RelayAccountInfo;
 
 function renderChecklist({
@@ -102,7 +102,7 @@ describe("OnboardingChecklist", () => {
   it("celebrates then auto-hides when every step completes", async () => {
     const account = {
       ...baseAccount,
-      applyApps: { claude: true, codex: false, gemini: false },
+      applyApps: { claude: true, codex: false, gemini: false, grok: false },
     } as RelayAccountInfo;
     vi.mocked(relayApi.detectTargetInstallations).mockResolvedValue([
       { app: "claude", cliPath: "/usr/local/bin/claude" } as RelayTargetInstall,

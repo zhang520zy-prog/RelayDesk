@@ -7632,6 +7632,7 @@ impl ProviderService {
             AppType::Claude => universal.to_claude_provider(),
             AppType::Codex => universal.to_codex_provider(),
             AppType::Gemini => universal.to_gemini_provider(),
+            AppType::GrokBuild => universal.to_grok_provider(),
             _ => return Err(AppError::Message("relay.invalid_target".to_string())),
         };
         let mut child = child
