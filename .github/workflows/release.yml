@@ -637,6 +637,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      # checkout 会清空工作目录，必须先 checkout 再下载产物
+      - name: Checkout for release notes
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download built release artifacts
         uses: actions/download-artifact@v8
         with:
@@ -649,11 +655,6 @@ jobs:
         run: |
           set -euo pipefail
           ls -la release-assets
-
-      - name: Checkout for release notes
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Prepare release body
         shell: bash
