@@ -49,7 +49,15 @@ export interface EndpointCandidate {
   isCustom?: boolean;
 }
 
-import type { TemplateType } from "./config/constants";
+// 用量脚本模板标识（后端按字符串解析）
+type TemplateType =
+  | "custom"
+  | "general"
+  | "newapi"
+  | "github_copilot"
+  | "token_plan"
+  | "balance"
+  | "official_subscription";
 
 // 用量查询脚本配置
 export interface UsageScript {

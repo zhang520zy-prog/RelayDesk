@@ -542,59 +542,6 @@
     align-items: flex-start;
   }
 }
-.rd-update-banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--rd-line);
-  border-radius: 10px;
-  margin-bottom: 16px;
-  font-size: var(--rd-font-caption);
-  background: var(--rd-soft);
-}
-.rd-update-banner--error {
-  background: color-mix(in srgb, var(--rd-danger) 8%, var(--rd-soft));
-  border-color: color-mix(in srgb, var(--rd-danger) 25%, var(--rd-line));
-}
-.rd-update-banner--success {
-  background: color-mix(in srgb, var(--rd-success) 8%, var(--rd-soft));
-  border-color: color-mix(in srgb, var(--rd-success) 25%, var(--rd-line));
-}
-.rd-update-banner__message {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  min-width: 180px;
-}
-.rd-update-banner__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.rd-update-banner__dismiss {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border-radius: var(--rd-control-radius);
-  color: var(--rd-muted);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: var(--rd-font-caption);
-  transition: background var(--rd-motion-fast);
-}
-.rd-update-banner__dismiss:hover {
-  background: var(--rd-hover);
-}
-.rd-update-banner__dismiss:focus-visible {
-  outline: 2px solid var(--rd-focus);
-  outline-offset: 2px;
-}
 .rd-sessions-page {
   display: flex;
   flex-direction: column;

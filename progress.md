@@ -104,3 +104,11 @@
 - Codex 图像修复链：skill git clone → ~/.env upsert（只动 OPENAI_BASE_URL/OPENAI_API_KEY 两行）→ launchctl setenv/setx；key 复用 auth.json 里已写的中转站令牌，不新建 token、不落新凭据。
 - 远端注册表校验放宽为"核心三件套必须在场 + 白名单内增减"，未知工具 id 一律拒收。
 
+
+## 2026-10-14 发版前清理审计
+
+**前端死代码（已删）**：73 文件 —— src/config/* 全部旧版 provider 预设、16 个死 api 模块（auth/copilot/config/mcp/openclaw/pi/profiles/prompts/providers/proxy/sessions/skills/subscription/usage/vscode/workspace + barrel index）、src/lib/authBinding|version、src/types/ 子目录、7 个死 utils、26 个死测试、2 个 docs QA 脚本；package.json 删 28 个未用依赖（codemirror/dnd-kit/radix 多数/framer-motion/zod/react-hook-form/cmdk/flexsearch/@tauri-apps/plugin-updater 等）。
+
+**后端死命令（待专项）**：lib.rs 注册 106 条命令中 76 条零前端调用（get_providers/switch_provider/MCP 全家/prompts/profiles/usage scripts/OAuth quotas/copilot optimizer…）。未删原因：与 relay apply 共享 services::provider/settings/dao 基础设施，需按模块逐个拆依赖，发布前做高风险大改不合适；前端已无调用路径，行为上等于休眠。专项建议：commands/{provider,mcp,prompt,profile,usage,copilot,xai_oauth,codex_oauth,coding_plan,subscription,balance,plugin,workspace,pi,hermes,openclaw,omo,deeplink,failover,stream_check,skill,import_export,proxy,global_proxy,auth,lightweight,webdav} 中死命令 + 对应 dao/service 独占部分。
+
+**教训**：pnpm store 版本错配时 `pnpm remove` 会拒；改用编辑 package.json + `pnpm install --lockfile-only` 再 `pnpm install`。
