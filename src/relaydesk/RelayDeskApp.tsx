@@ -3,17 +3,10 @@ import { useIsMutating } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import "./i18n";
 import { relayApi, type RelayTarget } from "@/lib/api/relay";
-import { settingsApi } from "@/lib/api/settings";
-import {
-  beginUpdateInstall,
-  endUpdateInstall,
-  onUpdateInstallStart,
-} from "@/lib/api/updateInstall";
 import { Brand } from "./layout/Brand";
 import { Titlebar } from "./layout/Titlebar";
 import { AppShell } from "./layout/AppShell";
 import type { Page } from "./layout/Sidebar";
-import { UpdateBanner, type UpdateBannerStatus } from "./layout/UpdateBanner";
 import {
   isOnboardingDismissed,
   resetOnboardingDismissal,
@@ -68,7 +61,6 @@ const AboutPage = lazy(() =>
   import("./about/AboutPage").then((m) => ({ default: m.AboutPage })),
 );
 
-const UPDATE_DISMISS_KEY = "relaydesk.update.dismissedVersion";
 
 function PageFallback() {
   return (
@@ -151,77 +143,6 @@ export default function RelayDeskApp() {
   const [showEnvironmentIntro, setShowEnvironmentIntro] = useState(false);
   const [focusTarget, setFocusTarget] = useState<RelayTarget | null>(null);
   const [guestEnvironment, setGuestEnvironment] = useState(false);
-  const [updateStatus, setUpdateStatus] = useState<UpdateBannerStatus>({
-    kind: "idle",
-  });
-  // 用户在检查途中点"忽略"时，晚到的结果不得把横幅重新弹出来。
-  // 自动检查尊重按版本持久化的忽略；手动"重试/检查"总是展示结果。
-  const applyCheckResult = (
-    result: Awaited<ReturnType<typeof relayApi.checkUpdate>>,
-    manual = false,
-  ) =>
-    setUpdateStatus((current) => {
-      if (current.kind === "idle") return current;
-      if (!result.configured) return { kind: "not_configured" };
-      if (!result.version) return { kind: "latest" };
-      if (!manual) {
-        try {
-          if (localStorage.getItem(UPDATE_DISMISS_KEY) === result.version)
-            return { kind: "idle" };
-        } catch {
-          // localStorage 不可用时按未忽略处理
-        }
-      }
-      return { kind: "available", version: result.version };
-    });
-  const applyCheckFailure = () =>
-    setUpdateStatus((current) =>
-      current.kind === "idle" ? current : { kind: "check_failed" },
-    );
-  const checkUpdate = () => {
-    setUpdateStatus({ kind: "checking" });
-    void relayApi
-      .checkUpdate()
-      .then((result) => applyCheckResult(result, true))
-      .catch(applyCheckFailure);
-  };
-  const dismissUpdate = () =>
-    setUpdateStatus((current) => {
-      if (current.kind === "available") {
-        try {
-          localStorage.setItem(UPDATE_DISMISS_KEY, current.version);
-        } catch {
-          // 存储失败不影响本次忽略
-        }
-      }
-      return { kind: "idle" };
-    });
-  const installUpdate = () => {
-    if (!beginUpdateInstall()) {
-      // 「关于」页已发起安装：横幅同步为安装中即可，避免第二次下载/安装
-      setUpdateStatus((current) =>
-        current.kind === "idle" ? current : { kind: "installing" },
-      );
-      return;
-    }
-    setUpdateStatus({ kind: "installing" });
-    void settingsApi.installUpdateAndRestart().catch(() => {
-      endUpdateInstall();
-      setUpdateStatus((current) =>
-        current.kind === "idle" ? current : { kind: "install_failed" },
-      );
-    });
-  };
-  // 「关于」页发起安装时，横幅同步显示安装中
-  useEffect(
-    () =>
-      onUpdateInstallStart(() =>
-        setUpdateStatus((current) =>
-          current.kind === "idle" ? current : { kind: "installing" },
-        ),
-      ),
-    [],
-  );
   // 首次登录（本机未见过的账号）落环境部署页并主动弹出新手向导；
   // 老账号回模型中心。跳过/完成后不再自动出现。
   useEffect(() => {
@@ -230,37 +151,6 @@ export default function RelayDeskApp() {
     markAccountSeen(acct);
     setPage("deployment");
     if (!isOnboardingDismissed()) setOnboardingOpen(true);
-  }, [session.account]);
-  const updateCheckedFor = useRef<string | null>(null);
-  useEffect(() => {
-    const acct = session.account;
-    if (!acct) {
-      updateCheckedFor.current = null;
-      return;
-    }
-    // account 对象每次 refetch 都是新引用；用 username 做登录身份去重，
-    // 保证每个登录会话只自动检查一次。
-    if (updateCheckedFor.current === acct.username) return;
-    updateCheckedFor.current = acct.username;
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      if (cancelled) return;
-      setUpdateStatus({ kind: "checking" });
-      void relayApi
-        .checkUpdate()
-        .then((result) => {
-          if (!cancelled) applyCheckResult(result);
-        })
-        .catch(() => {
-          if (!cancelled) applyCheckFailure();
-        });
-    }, 2000);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-    // 每个登录会话只检查一次，避免页面切换重复打更新端点。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.account]);
   const installing =
     useIsMutating({ mutationKey: ["relaydesk", "tool-install"] }) > 0;
@@ -393,13 +283,6 @@ export default function RelayDeskApp() {
             </button>
           </div>
         )}
-        <UpdateBanner
-          status={updateStatus}
-          onCheck={checkUpdate}
-          onInstall={installUpdate}
-          onDismiss={dismissUpdate}
-          onOpenSettings={() => setPage("settings")}
-        />
         {session.error && session.error !== "expired" && (
           <div
             role="alert"
