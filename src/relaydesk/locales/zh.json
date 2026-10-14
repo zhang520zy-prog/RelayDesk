@@ -623,5 +623,15 @@
   "onboardInstallOk": "安装完成",
   "onboardInstallFailed": "安装失败，可在环境部署页查看详细指引",
   "followAllEnabled": "自动建议 · 全部已启用",
-  "apiKeyCopyFailed": "复制失败，请重试"
+  "apiKeyCopyFailed": "复制失败，请重试",
+  "apiKeyEdit": "编辑",
+  "apiKeyExpiry": "有效期",
+  "apiKeyUpdated": "凭据已更新",
+  "apiKeyUpdateFailed": "更新凭据失败",
+  "expiryForever": "永不过期",
+  "expiry90d": "90 天",
+  "expiry30d": "30 天",
+  "expiry7d": "7 天",
+  "save": "保存",
+  "desktopChip": "桌面端"
 }

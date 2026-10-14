@@ -608,6 +608,47 @@ impl RelayService {
             .map_err(|error| authenticated_error(state, &account, error))
     }
 
+    /// 更新令牌：先 GET 完整对象，再叠加用户改的字段后整体 PUT——
+    /// new-api 的更新接口是整对象覆盖，字段缺失会被清零。
+    pub async fn update_api_token(
+        state: &AppState,
+        id: i64,
+        patch: crate::relay::RelayTokenUpdate,
+    ) -> Result<(), AppError> {
+        let account = require_account(state)?;
+        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let mut token = client
+            .get_token(id)
+            .await
+            .map_err(|error| authenticated_error(state, &account, error))?;
+        let obj = token
+            .as_object_mut()
+            .ok_or_else(|| AppError::Message("令牌响应格式异常".to_string()))?;
+        if let Some(name) = patch.name {
+            let name = name.trim().to_string();
+            if name.is_empty() || name.chars().count() > 64 {
+                return Err(AppError::Message("relay.token_name_invalid".into()));
+            }
+            obj.insert("name".into(), Value::String(name));
+        }
+        if let Some(group) = patch.group {
+            obj.insert("group".into(), Value::String(group));
+        }
+        if let Some(expired_time) = patch.expired_time {
+            obj.insert("expired_time".into(), Value::from(expired_time));
+        }
+        if let Some(unlimited) = patch.unlimited_quota {
+            obj.insert("unlimited_quota".into(), Value::Bool(unlimited));
+        }
+        if let Some(status) = patch.status {
+            obj.insert("status".into(), Value::from(status));
+        }
+        client
+            .update_token(token)
+            .await
+            .map_err(|error| authenticated_error(state, &account, error))
+    }
+
     /// 吊销一把令牌（第三方应用接入用）。
     pub async fn delete_api_token(state: &AppState, id: i64) -> Result<(), AppError> {
         let account = require_account(state)?;

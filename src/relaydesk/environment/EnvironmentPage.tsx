@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   AlertTriangle,
+  ChevronDown,
   CircleHelp,
   AlertCircle,
   Loader2,
@@ -64,6 +65,58 @@ export function EnvironmentCheckRow({
         {t(`envStatus_${check.status}`)}
       </span>
       {children && <div className="rd-env-row-actions">{children}</div>}
+    </li>
+  );
+}
+
+/** 厂商分组行：AI 工具按厂商折叠（如 OpenAI Codex = CLI + ChatGPT 桌面端），
+ *  摘要行直接给各子项状态 chips；有待办项时默认展开，用户可再收起。 */
+function ToolVendorGroup({
+  name,
+  checks,
+  children,
+}: {
+  name: string;
+  checks: { id: string; status: EnvironmentCheck["status"]; label: string }[];
+  children: React.ReactNode;
+}) {
+  const { t } = useTranslation("relaydesk");
+  const needsAction = checks.some((c) =>
+    ["fixable", "warn", "error"].includes(c.status),
+  );
+  const [open, setOpen] = useState<boolean | null>(null);
+  const expanded = open ?? needsAction;
+  return (
+    <li className="rd-env-group" data-open={expanded}>
+      <button
+        type="button"
+        className="rd-env-group-head"
+        aria-expanded={expanded}
+        onClick={() => setOpen(!expanded)}
+      >
+        <strong>{name}</strong>
+        <span className="rd-env-group-chips">
+          {checks.map((c) => (
+            <span
+              key={c.id}
+              className={`rd-env-chip ${c.status}`}
+              data-status={c.status}
+            >
+              {c.label} · {t(`envStatus_${c.status}`)}
+            </span>
+          ))}
+        </span>
+        <ChevronDown
+          size={16}
+          aria-hidden
+          className={expanded ? "rd-flip" : undefined}
+        />
+      </button>
+      {/* 子行始终挂载、折叠时 hidden：检测即插即用，
+          状态徽标与屏幕阅读器由 hidden 属性正确隐藏 */}
+      <ul className="rd-env-group-body" hidden={!expanded}>
+        {children}
+      </ul>
     </li>
   );
 }
@@ -271,69 +324,80 @@ export function EnvironmentPage({
       </div>
       <section className="rd-setting-section rd-deployment-tools">
         <ul className="rd-env-list">
-          {targetIds.flatMap((app) => {
+          {targetIds.map((app) => {
             const check = toolCheck(app);
             const desktop = desktopCheck(app);
             const found = installations.data?.find((item) => item.app === app);
-            return [
-              <EnvironmentCheckRow key={check.id} check={check}>
-                {check.status === "fixable" && (
-                  <Action
-                    disabled={installing || busy}
-                    onClick={() => {
-                      if (!busy && !installing) setInstall(app);
-                    }}
-                  >
-                    {t("installCli")}
-                  </Action>
-                )}
-                {check.repairable && (
-                  <Action
-                    disabled={installing || busy}
-                    onClick={() => {
-                      if (!busy && !installing) setInstall(app);
-                    }}
-                  >
-                    {t("envToolRepair")}
-                  </Action>
-                )}
-                {check.status !== "loading" && check.status !== "ok" && (
-                  <Action
-                    aria-expanded={guide === app}
-                    onClick={() => setGuide(guide === app ? null : app)}
-                  >
-                    {t("viewInstallGuide")}
-                  </Action>
-                )}
-              </EnvironmentCheckRow>,
-              // 指引紧跟点击行内联展开，不再跳到列表底部
-              ...(guide === app
-                ? [
-                    <li key={`${app}-guide`} className="rd-env-guide-row">
-                      <ToolInstallGuide app={app} />
-                    </li>,
-                  ]
-                : []),
+            const vendor = check.label.replace(/\s*CLI\s*$/i, "");
+            const groupChecks = [
+              { id: `${app}-cli`, status: check.status, label: "CLI" },
               ...(desktop
                 ? [
-                    <EnvironmentCheckRow key={desktop.id} check={desktop}>
-                      {found?.desktopUrl &&
-                        (desktop.status === "warn" ||
-                          desktop.status === "unsupported") && (
-                          <Action
-                            onClick={() =>
-                              void relayApi
-                                .openDesktopDownload(app)
-                                .catch((e) => setStatus(relayErrorKey(e)))
-                            }
-                          >
-                            {t("downloadDesktop")}
-                          </Action>
-                        )}
-                    </EnvironmentCheckRow>,
+                    {
+                      id: desktop.id,
+                      status: desktop.status,
+                      label: t("desktopChip"),
+                    },
                   ]
                 : []),
             ];
+            return (
+              <ToolVendorGroup key={app} name={vendor} checks={groupChecks}>
+                <EnvironmentCheckRow key={check.id} check={check}>
+                  {check.status === "fixable" && (
+                    <Action
+                      disabled={installing || busy}
+                      onClick={() => {
+                        if (!busy && !installing) setInstall(app);
+                      }}
+                    >
+                      {t("installCli")}
+                    </Action>
+                  )}
+                  {check.repairable && (
+                    <Action
+                      disabled={installing || busy}
+                      onClick={() => {
+                        if (!busy && !installing) setInstall(app);
+                      }}
+                    >
+                      {t("envToolRepair")}
+                    </Action>
+                  )}
+                  {check.status !== "loading" && check.status !== "ok" && (
+                    <Action
+                      aria-expanded={guide === app}
+                      onClick={() => setGuide(guide === app ? null : app)}
+                    >
+                      {t("viewInstallGuide")}
+                    </Action>
+                  )}
+                </EnvironmentCheckRow>
+                {/* 指引紧跟点击行内联展开，不再跳到列表底部 */}
+                {guide === app && (
+                  <li className="rd-env-guide-row">
+                    <ToolInstallGuide app={app} />
+                  </li>
+                )}
+                {desktop && (
+                  <EnvironmentCheckRow key={desktop.id} check={desktop}>
+                    {found?.desktopUrl &&
+                      (desktop.status === "warn" ||
+                        desktop.status === "unsupported") && (
+                        <Action
+                          onClick={() =>
+                            void relayApi
+                              .openDesktopDownload(app)
+                              .catch((e) => setStatus(relayErrorKey(e)))
+                          }
+                        >
+                          {t("downloadDesktop")}
+                        </Action>
+                      )}
+                  </EnvironmentCheckRow>
+                )}
+              </ToolVendorGroup>
+            );
           })}
         </ul>
       </section>

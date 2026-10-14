@@ -109,3 +109,27 @@
   flex: 0 0 auto;
   width: 150px;
 }
+.rd-apikeys-item.is-editing {
+  align-items: stretch;
+}
+.rd-apikeys-edit {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr 140px 110px auto;
+  gap: 8px;
+  align-items: center;
+}
+.rd-apikeys-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--rd-font-caption);
+  color: var(--rd-muted);
+}
+.rd-apikeys-edit-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

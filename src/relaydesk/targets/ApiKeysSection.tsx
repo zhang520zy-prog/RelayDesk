@@ -1,13 +1,23 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Check, Copy, KeyRound, Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+  KeyRound,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   relayApi,
   type RelayCreatedToken,
   type RelayGroup,
+  type RelayToken,
 } from "@/lib/api/relay";
+import { Switch } from "@/components/ui/switch";
 import { copyText } from "@/lib/clipboard";
 import { Action, Field } from "../ui";
 import "./api-keys.css";
@@ -66,6 +76,110 @@ function CopyTokenKey({ id }: { id: number }) {
   );
 }
 
+const EXPIRY_OPTIONS = [
+  { days: -1, key: "expiryForever" },
+  { days: 90, key: "expiry90d" },
+  { days: 30, key: "expiry30d" },
+  { days: 7, key: "expiry7d" },
+] as const;
+
+function TokenEditForm({
+  token,
+  groups,
+  onDone,
+}: {
+  token: RelayToken;
+  groups: RelayGroup[];
+  onDone: () => void;
+}) {
+  const { t } = useTranslation("relaydesk");
+  const queryClient = useQueryClient();
+  const [name, setName] = useState(token.name);
+  const [group, setGroup] = useState(token.group);
+  const [enabled, setEnabled] = useState(token.status === 1);
+  const [expiry, setExpiry] = useState("-1");
+
+  const update = useMutation({
+    mutationFn: () =>
+      relayApi.updateApiToken(token.id, {
+        name: name.trim(),
+        group,
+        expiredTime:
+          expiry === "-1"
+            ? -1
+            : Math.floor(Date.now() / 1000) + Number(expiry) * 86400,
+        status: enabled ? 1 : 2,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["relaydesk", "apiTokens"],
+      });
+      toast.success(t("apiKeyUpdated"));
+      onDone();
+    },
+    onError: () => toast.error(t("apiKeyUpdateFailed")),
+  });
+
+  return (
+    <form
+      className="rd-apikeys-edit"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!name.trim() || update.isPending) return;
+        update.mutate();
+      }}
+    >
+      <Field
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder={t("apiKeyNamePlaceholder")}
+        maxLength={64}
+      />
+      <select
+        className="rd-input"
+        value={group}
+        onChange={(e) => setGroup(e.target.value)}
+        aria-label={t("apiKeyGroup")}
+      >
+        {groups.map((g) => (
+          <option key={g.name} value={g.name}>
+            {g.name}
+          </option>
+        ))}
+      </select>
+      <select
+        className="rd-input"
+        value={expiry}
+        onChange={(e) => setExpiry(e.target.value)}
+        aria-label={t("apiKeyExpiry")}
+      >
+        {EXPIRY_OPTIONS.map((o) => (
+          <option key={o.days} value={String(o.days)}>
+            {t(o.key)}
+          </option>
+        ))}
+      </select>
+      <label className="rd-apikeys-toggle">
+        <Switch checked={enabled} onCheckedChange={setEnabled} />
+        <span>{t(enabled ? "enabled" : "apiKeyDisabled")}</span>
+      </label>
+      <div className="rd-apikeys-edit-actions">
+        <Action
+          primary
+          type="submit"
+          disabled={!name.trim() || update.isPending}
+        >
+          {update.isPending ? <Loader2 size={13} className="rd-spin" /> : null}
+          {t("save")}
+        </Action>
+        <Action type="button" onClick={onDone}>
+          {t("cancel")}
+        </Action>
+      </div>
+    </form>
+  );
+}
+
 /**
  * 通用接入凭据：面向只需 Base URL + API Key 的第三方应用
  * （CherryStudio、WorkBuddy 等）。复用中转站令牌体系，
@@ -83,6 +197,7 @@ export function ApiKeysSection({
   const [name, setName] = useState("");
   const [group, setGroup] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [created, setCreated] = useState<RelayCreatedToken | null>(null);
 
   const tokens = useQuery({
@@ -140,31 +255,50 @@ export function ApiKeysSection({
 
       <ul className="rd-apikeys-list">
         {tokens.isPending && <li className="rd-muted">{t("loading")}</li>}
-        {items.map((token) => (
-          <li key={token.id} className="rd-apikeys-item">
-            <div className="rd-apikeys-item-main">
-              <strong>{token.name}</strong>
-              <span className="rd-muted">
-                {token.group} · {token.key || "sk-***"} ·{" "}
-                {formatCreated(token.createdTime)}
-              </span>
-            </div>
-            {token.status !== 1 && (
-              <span className="rd-muted">{t("apiKeyDisabled")}</span>
-            )}
-            <CopyTokenKey id={token.id} />
-            <button
-              type="button"
-              className="rd-path-action rd-apikeys-revoke"
-              title={t("apiKeyRevoke")}
-              aria-label={t("apiKeyRevoke")}
-              disabled={revoke.isPending}
-              onClick={() => revoke.mutate(token.id)}
-            >
-              <Trash2 size={14} />
-            </button>
-          </li>
-        ))}
+        {items.map((token) =>
+          editingId === token.id ? (
+            <li key={token.id} className="rd-apikeys-item is-editing">
+              <TokenEditForm
+                token={token}
+                groups={groups}
+                onDone={() => setEditingId(null)}
+              />
+            </li>
+          ) : (
+            <li key={token.id} className="rd-apikeys-item">
+              <div className="rd-apikeys-item-main">
+                <strong>{token.name}</strong>
+                <span className="rd-muted">
+                  {token.group} · {token.key || "sk-***"} ·{" "}
+                  {formatCreated(token.createdTime)}
+                </span>
+              </div>
+              {token.status !== 1 && (
+                <span className="rd-muted">{t("apiKeyDisabled")}</span>
+              )}
+              <CopyTokenKey id={token.id} />
+              <button
+                type="button"
+                className="rd-path-action"
+                title={t("apiKeyEdit")}
+                aria-label={t("apiKeyEdit")}
+                onClick={() => setEditingId(token.id)}
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                type="button"
+                className="rd-path-action rd-apikeys-revoke"
+                title={t("apiKeyRevoke")}
+                aria-label={t("apiKeyRevoke")}
+                disabled={revoke.isPending}
+                onClick={() => revoke.mutate(token.id)}
+              >
+                <Trash2 size={14} />
+              </button>
+            </li>
+          ),
+        )}
         {tokens.isSuccess && items.length === 0 && (
           <li className="rd-muted">{t("apiKeysEmpty")}</li>
         )}

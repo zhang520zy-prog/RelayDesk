@@ -623,5 +623,15 @@
   "onboardInstallOk": "Installed",
   "onboardInstallFailed": "Install failed — see the Environment page for detailed guidance",
   "followAllEnabled": "Suggested · all enabled",
-  "apiKeyCopyFailed": "Copy failed, try again"
+  "apiKeyCopyFailed": "Copy failed, try again",
+  "apiKeyEdit": "Edit",
+  "apiKeyExpiry": "Expiry",
+  "apiKeyUpdated": "Credential updated",
+  "apiKeyUpdateFailed": "Failed to update credential",
+  "expiryForever": "Never expires",
+  "expiry90d": "90 days",
+  "expiry30d": "30 days",
+  "expiry7d": "7 days",
+  "save": "Save",
+  "desktopChip": "Desktop"
 }

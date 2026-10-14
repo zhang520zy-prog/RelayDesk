@@ -59,6 +59,75 @@
   padding: 0;
   margin: 0;
 }
+/* 厂商分组：一行摘要（厂商名 + 各变体状态 chips + 展开箭头），
+   子项缩进挂在分组内 —— 工具变多时列表长度不随变体数膨胀 */
+.rd-env-group {
+  border-top: 1px solid var(--rd-line);
+}
+.rd-env-group:last-child {
+  border-bottom: 1px solid var(--rd-line);
+}
+.rd-env-group-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 0;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.rd-env-group-head > strong {
+  flex-shrink: 0;
+  min-width: 0;
+}
+.rd-env-group-chips {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.rd-env-chip {
+  font-size: var(--rd-font-caption);
+  color: var(--rd-muted);
+  border: 1px solid var(--rd-line);
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+.rd-env-chip[data-status="ok"] {
+  color: var(--rd-success);
+}
+.rd-env-chip[data-status="fixable"],
+.rd-env-chip[data-status="warn"] {
+  color: var(--rd-warning, #b45309);
+}
+.rd-env-chip[data-status="error"] {
+  color: var(--rd-danger, #dc2626);
+}
+.rd-env-group-head > svg {
+  color: var(--rd-muted);
+  transition: transform 0.15s ease;
+}
+.rd-env-group-head > svg.rd-flip {
+  transform: rotate(180deg);
+}
+.rd-env-group-body {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 4px 32px;
+}
+.rd-env-group-body .rd-env-row {
+  padding: 10px 0;
+}
+.rd-env-group-body .rd-env-row:last-child {
+  border-bottom: none;
+}
 /* 图标 | 内容 | 状态 | 操作 —— 四列网格定死，状态胶囊在有/无按钮的
    行间保持同一 x 位置；按钮永不折到第二行 */
 .rd-env-row {

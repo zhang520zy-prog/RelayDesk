@@ -1685,6 +1685,7 @@ pub fn run() {
             commands::relay_create_api_token,
             commands::relay_delete_api_token,
             commands::relay_get_api_token_key,
+            commands::relay_update_api_token,
             commands::relay_export_diagnostics,
             // OpenCode specific
             commands::import_opencode_providers_from_live,

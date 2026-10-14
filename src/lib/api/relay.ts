@@ -152,6 +152,15 @@ export interface RelayCreatedToken {
   key: string;
 }
 
+/** 令牌编辑补丁；未传字段保持原值。expiredTime -1 = 永久，status 1=启用 2=禁用 */
+export interface RelayTokenUpdate {
+  name?: string;
+  group?: string;
+  expiredTime?: number;
+  unlimitedQuota?: boolean;
+  status?: number;
+}
+
 // ── 钱包、充值与中转站账单用量 ─────────────────────────────────────────────
 // 这些 DTO 只描述 Rust 适配层可以安全返回给 renderer 的字段。金额、订单
 // 状态与 Token 口径由中转站提供，renderer 不自行换算或推断。
@@ -524,6 +533,10 @@ export const relayApi = {
 
   async getApiTokenKey(id: number): Promise<string> {
     return await invoke("relay_get_api_token_key", { id });
+  },
+
+  async updateApiToken(id: number, patch: RelayTokenUpdate): Promise<void> {
+    return await invoke("relay_update_api_token", { id, patch });
   },
 
   async detectTargetInstallations(): Promise<RelayTargetInstall[]> {

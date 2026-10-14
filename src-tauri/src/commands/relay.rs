@@ -761,6 +761,18 @@ pub async fn relay_create_api_token(
         .map_err(|e| safe_relay_error(&e, false))
 }
 
+/// 更新令牌（名称/分组/有效期/无限额度/启停）。patch 中 None 字段保持原值。
+#[tauri::command]
+pub async fn relay_update_api_token(
+    state: State<'_, AppState>,
+    id: i64,
+    patch: crate::relay::RelayTokenUpdate,
+) -> Result<(), String> {
+    RelayService::update_api_token(state.inner(), id, patch)
+        .await
+        .map_err(|e| safe_relay_error(&e, false))
+}
+
 /// 取回某把令牌的完整 key（列表只回掩码，复制时按需取全量）。
 #[tauri::command]
 pub async fn relay_get_api_token_key(

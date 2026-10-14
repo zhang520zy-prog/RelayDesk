@@ -140,6 +140,10 @@ impl RelayClient {
         self.request(reqwest::Method::POST, path, Some(body)).await
     }
 
+    async fn put(&self, path: &str, body: Value) -> Result<Value, AppError> {
+        self.request(reqwest::Method::PUT, path, Some(body)).await
+    }
+
     async fn delete(&self, path: &str) -> Result<Value, AppError> {
         self.request(reqwest::Method::DELETE, path, None).await
     }
@@ -508,6 +512,18 @@ impl RelayClient {
             .or_else(|| data.as_str().map(str::to_string))
             .ok_or_else(|| AppError::Message("获取令牌 key 响应格式异常".to_string()))?;
         Ok(normalize_sk_key(&raw))
+    }
+
+    /// `GET /api/token/{id}` → 单个令牌完整字段（更新前先取回，避免半量覆盖）
+    pub async fn get_token(&self, id: i64) -> Result<Value, AppError> {
+        self.get(&format!("/api/token/{id}")).await
+    }
+
+    /// `PUT /api/token/` 更新令牌。payload 须是完整令牌对象：
+    /// new-api 的 PUT 是整对象覆盖，字段缺失会被清零。
+    pub async fn update_token(&self, payload: Value) -> Result<(), AppError> {
+        self.put("/api/token/", payload).await?;
+        Ok(())
     }
 
     /// `DELETE /api/token/{id}` 吊销令牌

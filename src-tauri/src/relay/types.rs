@@ -233,6 +233,17 @@ pub struct RelayCreatedToken {
     pub key: String,
 }
 
+/// 令牌编辑补丁：None 字段保持原值。expired_time -1 表示永不过期，status 1=启用 2=禁用。
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelayTokenUpdate {
+    pub name: Option<String>,
+    pub group: Option<String>,
+    pub expired_time: Option<i64>,
+    pub unlimited_quota: Option<bool>,
+    pub status: Option<i64>,
+}
+
 /// 中转站令牌条目（列表视图，key 为掩码）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
