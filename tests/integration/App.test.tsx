@@ -70,8 +70,10 @@ async function pickModel(
 }
 beforeEach(async () => {
   localStorage.clear();
-  // 既有用例都以"老用户"视角进模型中心：预置引导已完成 + 账号已见过。
+  // 既有用例都以"老用户"视角进模型中心：预置引导已完成 + 账号已见过
+  // + 已同意使用声明（门自身的用例在 declaration.test.tsx 单独覆盖）。
   localStorage.setItem("relaydesk.onboarding.dismissed", "1");
+  localStorage.setItem("relaydesk.legal.accepted.v1", "1");
   localStorage.setItem(
     "relaydesk.seenAccounts",
     JSON.stringify(

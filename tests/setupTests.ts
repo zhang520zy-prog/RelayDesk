@@ -29,6 +29,12 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+beforeAll(() => {
+  // 使用与风险声明在首次启动时强制展示；测试环境默认已同意，
+  // 门自身的回归用例在 tests/relaydesk/declaration.test.tsx 单独覆盖。
+  localStorage.setItem("relaydesk.legal.accepted.v1", "1");
+});
+
 afterAll(() => {
   server.close();
 });

@@ -1049,3 +1049,73 @@ code {
   border-color: var(--rd-primary-soft, #99d5ce);
   background: var(--rd-primary-faint, #f0fdfa);
 }
+
+/* 使用与风险声明：宽卡 + 内部滚动，勾选区固定在底部 */
+.rd-legal {
+  max-width: 640px;
+  max-height: min(82vh, 780px);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+.rd-legal-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 22px 26px 14px;
+  border-bottom: 1px solid var(--rd-line);
+}
+.rd-legal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 26px;
+  font-size: var(--rd-font-caption);
+  line-height: 1.75;
+  color: var(--rd-text);
+}
+.rd-legal-intro {
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+.rd-legal-body h2 {
+  font-size: var(--rd-font-body, 0.95rem);
+  font-weight: 700;
+  margin: 18px 0 8px;
+}
+.rd-legal-body p {
+  margin: 0 0 10px;
+}
+.rd-legal-body strong {
+  font-weight: 700;
+}
+.rd-legal-end {
+  text-align: center;
+  color: var(--rd-muted);
+  margin-top: 18px;
+}
+.rd-legal-foot {
+  border-top: 1px solid var(--rd-line);
+  padding: 14px 26px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.rd-legal-confirm {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: var(--rd-font-caption);
+  line-height: 1.6;
+  cursor: pointer;
+}
+.rd-legal-confirm input {
+  margin-top: 3px;
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--rd-primary, #0f766e);
+}
+.rd-legal-foot .rd-button {
+  align-self: stretch;
+  justify-content: center;
+}

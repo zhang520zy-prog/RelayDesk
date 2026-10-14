@@ -7,6 +7,7 @@ import {
   ExternalLink,
   Github,
   RefreshCw,
+  ScrollText,
 } from "lucide-react";
 import { relayApi } from "@/lib/api/relay";
 import { settingsApi } from "@/lib/api/settings";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/api/updateInstall";
 import { version } from "../../../package.json";
 import { Action } from "../ui";
+import { DeclarationGate } from "../legal/DeclarationGate";
 
 const PROJECT_URL = "https://github.com/zhang520zy-prog/RelayDesk";
 const ISSUES_URL = `${PROJECT_URL}/issues`;
@@ -105,6 +107,7 @@ type UpdateResult =
 export function AboutPage() {
   const { t } = useTranslation("relaydesk");
   const [checking, setChecking] = useState(false);
+  const [declarationOpen, setDeclarationOpen] = useState(false);
   // 横幅入口可能已发起安装：进入本页时同步在途状态
   const [installing, setInstalling] = useState(updateInstallInFlight);
   const [result, setResult] = useState<UpdateResult | null>(null);
@@ -284,6 +287,25 @@ export function AboutPage() {
           </Action>
         </div>
       </section>
+      <section className="rd-setting-section">
+        <div className="rd-about-head">
+          <h2>{t("legalDeclaration")}</h2>
+        </div>
+        <div className="rd-setting-row">
+          <span className="rd-muted rd-small">{t("legalDeclarationHint")}</span>
+        </div>
+        <div className="rd-setting-actions">
+          <Action onClick={() => setDeclarationOpen(true)}>
+            <ScrollText size={15} />
+            {t("viewDeclaration")}
+          </Action>
+        </div>
+      </section>
+      <DeclarationGate
+        open={declarationOpen}
+        readOnly
+        onClose={() => setDeclarationOpen(false)}
+      />
     </div>
   );
 }

@@ -648,5 +648,8 @@
   "credentialsGroupsFailed": "Failed to load groups · Retry",
   "envStatus_info": "Optional",
   "pathAuto": "Auto-detected",
-  "pathCustom": "Custom"
+  "pathCustom": "Custom",
+  "legalDeclaration": "Usage & Risk Declaration",
+  "legalDeclarationHint": "Required reading and acceptance before first use.",
+  "viewDeclaration": "View declaration"
 }
