@@ -115,9 +115,16 @@ beforeEach(async () => {
 });
 afterEach(() => vi.restoreAllMocks());
 
+/** 厂商分组默认收起：测试要像用户一样先点组头再操作子行。 */
+async function openGroup(name: string) {
+  await userEvent.click(screen.getByRole("button", { name: new RegExp(name) }));
+}
+
 describe("environment health", () => {
   it("blocks installation while another workspace operation is pending", async () => {
     mount(<EnvironmentPage onBack={() => {}} busy />);
+    await screen.findByRole("button", { name: /OpenAI Codex/ });
+    await openGroup("OpenAI Codex");
     expect(
       await screen.findByRole("button", { name: "Install CLI" }),
     ).toBeDisabled();
@@ -125,6 +132,8 @@ describe("environment health", () => {
   it("shows only real CLI findings and real environment doctor results", async () => {
     mount(<EnvironmentPage onBack={() => {}} platform="macos" />);
     expect(await screen.findByText("1.2.3")).toBeInTheDocument();
+    await openGroup("OpenAI Codex");
+    await openGroup("Claude Code");
     const git = screen.getByText("Git").closest("li")!;
     expect(await within(git).findByText("2.45.0")).toBeInTheDocument();
     expect(within(git).getByText("Healthy")).toBeInTheDocument();
@@ -212,6 +221,7 @@ describe("environment health", () => {
   it("opens the registry-provided desktop download page for a missing desktop app", async () => {
     const open = vi.spyOn(relayApi, "openDesktopDownload").mockResolvedValue();
     mount(<EnvironmentPage onBack={() => {}} platform="macos" />);
+    await openGroup("OpenAI Codex");
     const desktop = (
       await screen.findByText("ChatGPT (Codex) desktop")
     ).closest("li")!;
@@ -222,6 +232,7 @@ describe("environment health", () => {
   });
   it("marks desktop detection as supported on Windows and offers the download", async () => {
     mount(<EnvironmentPage onBack={() => {}} platform="windows" />);
+    await openGroup("OpenAI Codex");
     const desktop = (
       await screen.findByText("ChatGPT (Codex) desktop")
     ).closest("li")!;
@@ -237,6 +248,7 @@ describe("environment health", () => {
   });
   it("marks desktop detection as unsupported on Linux desktop but still offers the download", async () => {
     mount(<EnvironmentPage onBack={() => {}} platform="linux-desktop" />);
+    await openGroup("OpenAI Codex");
     const desktop = (
       await screen.findByText("ChatGPT (Codex) desktop")
     ).closest("li")!;
@@ -352,6 +364,8 @@ describe("explicit installation confirmation", () => {
       <QueryClientProvider client={client}>{node}</QueryClientProvider>
     );
     const view = render(wrap(<EnvironmentPage onBack={() => {}} />));
+    await screen.findByRole("button", { name: /OpenAI Codex/ });
+    await openGroup("OpenAI Codex");
     await screen.findByRole("button", { name: "Install CLI" });
     vi.spyOn(settingsApi, "runToolLifecycleAction").mockResolvedValue();
     view.rerender(

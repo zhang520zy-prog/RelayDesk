@@ -148,29 +148,29 @@ function CodexImageRow({
 }
 
 /** 厂商分组行：AI 工具按厂商折叠（如 OpenAI Codex = CLI + ChatGPT 桌面端），
- *  摘要行直接给各子项状态 chips；有待办项时默认展开，用户可再收起。 */
+ *  摘要行直接给各子项状态 chips；展开态由页面级 openGroups 受控，
+ *  点哪组开哪组——探测数据晚到不再把其他组弹开。 */
 function ToolVendorGroup({
   name,
   checks,
+  expanded,
+  onToggle,
   children,
 }: {
   name: string;
   checks: { id: string; status: EnvironmentCheck["status"]; label: string }[];
+  expanded: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }) {
   const { t } = useTranslation("relaydesk");
-  const needsAction = checks.some((c) =>
-    ["fixable", "warn", "error"].includes(c.status),
-  );
-  const [open, setOpen] = useState<boolean | null>(null);
-  const expanded = open ?? needsAction;
   return (
     <li className="rd-env-group" data-open={expanded}>
       <button
         type="button"
         className="rd-env-group-head"
         aria-expanded={expanded}
-        onClick={() => setOpen(!expanded)}
+        onClick={onToggle}
       >
         <strong>{name}</strong>
         <span className="rd-env-group-chips">
@@ -222,6 +222,9 @@ export function EnvironmentPage({
     null,
   );
   const [guide, setGuide] = useState<string | null>(null);
+  // 厂商分组展开态：页面级持有，子组件重挂载/探测刷新不丢用户选择；
+  // 默认全收起，点哪组开哪组。
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [guidePlatform, setGuidePlatform] =
     useState<EnvironmentPlatform>(platform);
   const [exporting, setExporting] = useState(false);
@@ -425,7 +428,15 @@ export function EnvironmentPage({
                 : []),
             ];
             return (
-              <ToolVendorGroup key={app} name={vendor} checks={groupChecks}>
+              <ToolVendorGroup
+                key={app}
+                name={vendor}
+                checks={groupChecks}
+                expanded={openGroups[app] ?? false}
+                onToggle={() =>
+                  setOpenGroups((s) => ({ ...s, [app]: !(s[app] ?? false) }))
+                }
+              >
                 <EnvironmentCheckRow key={check.id} check={check}>
                   {check.status === "fixable" && (
                     <Action
