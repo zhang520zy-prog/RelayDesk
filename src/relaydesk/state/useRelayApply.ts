@@ -16,10 +16,19 @@ import { relayErrorKey } from "./relayErrors";
 export const deployOnlyIds = ["devin"] as const;
 export const deployOnlyLabels: Record<string, string> = { devin: "Devin" };
 
+/** 对外厂商名：与官网/环境部署页一致 */
 export const targetLabels: Record<RelayTarget, string> = {
+  claude: "Claude",
+  codex: "ChatGPT",
+  gemini: "Gemini",
+  grok: "Grok",
+};
+
+/** 技术语境产品名：安装/重启/CLI 提示里指真实 CLI 产物，不用厂商名 */
+export const targetTechLabels: Record<RelayTarget, string> = {
   claude: "Claude Code",
   codex: "OpenAI Codex",
-  gemini: "Gemini CLI",
+  gemini: "Gemini",
   grok: "Grok Build",
 };
 export const targetIds = Object.keys(targetLabels) as RelayTarget[];

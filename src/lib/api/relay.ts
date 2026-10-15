@@ -169,6 +169,8 @@ export interface RelayTopupAmountOption {
   amount: number;
   label?: string;
   creditAmount?: number;
+  /** 站点给出的折扣率（如 0.96 = 省 4%）；无此字段时也可由 creditAmount 反推 */
+  discount?: number;
   currency?: string;
   currencySymbol?: string;
 }
@@ -463,6 +465,11 @@ export const relayApi = {
     return await invoke("relay_list_recharge_history", { page, pageSize });
   },
 
+  /** 兑换码兑换额度：与站点网页端"兑换额度"同源。返回兑换到的配额（站点未返回时为 null）。 */
+  async redeemCode(key: string): Promise<number | null> {
+    return await invoke("relay_redeem_code", { key });
+  },
+
   async getUsageModels(query: RelayUsageQuery): Promise<RelayUsageModels> {
     return await invoke("relay_get_usage_models", { query });
   },
@@ -619,6 +626,14 @@ export function inferRelayTargets(
   return [];
 }
 
+/** 识别仅部署工具（不接中转站写入）：Cognition SWE 系列等 → Devin。
+ *  用于在应用目标/分组路由里把"归属 Devin"如实标出来。 */
+export function inferDeployTools(group: string, model?: string): string[] {
+  const text = `${model ?? ""} ${group}`.toLowerCase();
+  if (/(swe|devin|cognition)/.test(text)) return ["devin"];
+  return [];
+}
+
 /**
  * 按中转站 /api/status 返回的配置格式化额度。
  * 没有可信货币配置时保留原始 quota 单位，绝不猜测美元或人民币。
@@ -626,6 +641,7 @@ export function inferRelayTargets(
 export function formatRelayQuota(
   quota: number,
   config: RelayCurrencyConfig,
+  options?: { fractionDigits?: number },
 ): string {
   const raw = new Intl.NumberFormat().format(quota);
   if (
@@ -645,9 +661,11 @@ export function formatRelayQuota(
   if (rate === undefined || !Number.isFinite(rate) || rate <= 0)
     return `${raw} quota`;
   const amount = (quota / config.quotaPerUnit) * rate;
+  const fractionDigits = options?.fractionDigits;
   const formatted = new Intl.NumberFormat(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: Math.abs(amount) > 0 && Math.abs(amount) < 1 ? 6 : 2,
+    minimumFractionDigits: fractionDigits ?? 2,
+    maximumFractionDigits:
+      fractionDigits ?? (Math.abs(amount) > 0 && Math.abs(amount) < 1 ? 6 : 2),
   }).format(amount);
   const symbol = config.currencySymbol?.trim();
   if (symbol) return `${symbol}${formatted}`;
@@ -673,9 +691,4 @@ export function formatRelayMoney(
   return value.toUpperCase().includes(code.toUpperCase())
     ? value
     : `${value} ${code}`;
-}
-
-/** @deprecated 仅为旧调用方保留；新 UI 必须使用 formatRelayQuota。 */
-export function quotaToUsd(quota: number): number {
-  return quota / 500000;
 }

@@ -16,7 +16,11 @@ import {
   type RelayRestartStage,
   type RelayTarget,
 } from "@/lib/api/relay";
-import { type ApplyReport, targetLabels } from "../state/useRelayApply";
+import {
+  type ApplyReport,
+  targetLabels,
+  targetTechLabels,
+} from "../state/useRelayApply";
 import { Action } from "../ui";
 import "./restart.css";
 
@@ -101,7 +105,7 @@ export function RestartToolsAction({
     ) {
       return [];
     }
-    return [capability.displayName ?? targetLabels[app]];
+    return [capability.displayName ?? targetTechLabels[app]];
   });
 
   // 主按钮是唯一执行入口，按真实状态启用：
@@ -283,7 +287,8 @@ function RestartExecuteDialog({
   const capability = tool
     ? capabilities?.find((cap) => cap.app === tool)
     : undefined;
-  const displayName = capability?.displayName ?? (tool && targetLabels[tool]);
+  const displayName =
+    capability?.displayName ?? (tool && targetTechLabels[tool]);
 
   async function confirmRestart() {
     const targetId = capability?.targetId;

@@ -329,6 +329,7 @@ export default function RelayDeskApp() {
                 setPage("targets");
                 setFocusTarget(app ?? null);
               }}
+              openDeployment={() => setPage("deployment")}
               viewAccount={() => setPage("settings")}
               viewWallet={() => setPage("wallet")}
             />
@@ -347,6 +348,7 @@ export default function RelayDeskApp() {
               report={operation.report}
               change={(apps) => void session.setApps(apps)}
               changeGroupTarget={session.setGroupTarget}
+              openDeployment={() => setPage("deployment")}
             />
           )}
           {page === "credentials" && (

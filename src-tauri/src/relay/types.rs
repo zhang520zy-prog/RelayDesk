@@ -277,6 +277,9 @@ pub struct RelayTopupAmountOption {
     pub label: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub credit_amount: Option<f64>,
+    /// 站点给出的折扣率（如 0.96 = 省 4%）；不同站点字段名不一，service 层归一化
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub discount: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

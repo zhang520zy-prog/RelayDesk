@@ -71,10 +71,15 @@ it("shares distinct legend colors across chart views and model filtering", async
     }),
   );
   const { rerender } = render(<UsageCharts rows={rows} modelFilter="all" />);
+  // 明细榜的色点与图表系列同色：读取圆点内联背景色做身份断言
   const colors = () =>
     Array.from(
       document.querySelectorAll<HTMLLIElement>(".rd-chart-legend li"),
-    ).map((li) => li.style.borderLeftColor);
+    ).map(
+      (li) =>
+        li.querySelector<HTMLElement>(".rd-chart-legend-dot")?.style
+          .background ?? "",
+    );
   const initial = colors();
   expect(new Set(initial).size).toBe(3);
   const user = userEvent.setup();
@@ -112,20 +117,18 @@ it("matches trend markers and line patterns to the legend through ranking, filte
   const identities = () =>
     new Map(
       Array.from(document.querySelectorAll(".rd-chart-legend li")).map((li) => [
-        li.querySelector("span")!.textContent,
+        li.querySelector(".rd-chart-legend-name")!.textContent,
         {
-          color: li.querySelector("svg line")?.getAttribute("stroke"),
-          dash: li.querySelector("svg line")?.getAttribute("stroke-dasharray"),
-          marker: li
-            .querySelector("svg [data-marker]")
-            ?.getAttribute("data-marker"),
+          color:
+            li.querySelector<HTMLElement>(".rd-chart-legend-dot")?.style
+              .background ?? "",
         },
       ]),
     );
   const assertSeriesMatchLegend = () => {
     const legends = [...identities().values()];
     const curves = Array.from(
-      document.querySelectorAll(".recharts-line-curve"),
+      document.querySelectorAll(".recharts-area-curve"),
     );
     expect(curves).toHaveLength(legends.length);
     legends.forEach((legend) => {
@@ -133,21 +136,20 @@ it("matches trend markers and line patterns to the legend through ranking, filte
         (curve) => curve.getAttribute("stroke") === legend.color,
       );
       expect(matching).toHaveLength(1);
-      expect(matching[0].getAttribute("stroke-dasharray")).toBe(legend.dash);
       // Recharts' separate z-index layers preserve mount order across re-ranking.
       const markers = Array.from(
         document.querySelectorAll(".rd-chart-canvas [data-marker]"),
       ).filter((marker) => marker.getAttribute("stroke") === legend.color);
       expect(markers.length).toBeGreaterThan(0);
-      markers.forEach((marker) =>
-        expect(marker.getAttribute("data-marker")).toBe(legend.marker),
+      // 同一系列的数据点标记形状一致（身份不因重排漂移）
+      const shapes = new Set(
+        markers.map((marker) => marker.getAttribute("data-marker")),
       );
+      expect(shapes.size).toBe(1);
     });
   };
   const initial = identities();
-  expect(
-    new Set([...initial.values()].map((identity) => identity.marker)).size,
-  ).toBe(3);
+  expect(initial.size).toBe(3);
   assertSeriesMatchLegend();
   await userEvent
     .setup()

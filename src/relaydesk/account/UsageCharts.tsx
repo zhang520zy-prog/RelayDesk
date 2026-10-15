@@ -2,10 +2,11 @@ import { useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  ComposedChart,
+  Area,
   BarChart,
   Bar,
+  LabelList,
   PieChart,
   Pie,
   Cell,
@@ -25,9 +26,62 @@ import { useViewPreference } from "../state/useViewPreference";
 
 type Metric = "totalTokens" | "requestCount" | "chargedQuota";
 const colors = Array.from(
-  { length: 8 },
+  { length: 12 },
   (_, index) => "var(--rd-chart-" + (index + 1) + ")",
 );
+
+// 与 tokens.css 的 --rd-chart-1..12 对应色相（度），用于相邻扇区对比度检查
+const paletteHues = [220, 28, 275, 170, 330, 75, 190, 0, 250, 50, 140, 18];
+
+function paletteIndexOf(color: string) {
+  const match = /rd-chart-(\d+)/.exec(color);
+  return match ? parseInt(match[1], 10) - 1 : -1;
+}
+
+function circularDiff(a: number, b: number) {
+  const diff = Math.abs(a - b) % 360;
+  return diff > 180 ? 360 - diff : diff;
+}
+
+/** 榜单相邻两色若色相差 <45°（如红/橙挨在一起难分辨），
+ *  把后一名换成一个未占用、且与前一色相距最远的调色板色。
+ *  修改共享 map——图表、明细榜、表格色点三者保持一致。 */
+export function ensureAdjacentContrast(
+  names: string[],
+  map: Map<string, string>,
+) {
+  let prevHue: number | null = null;
+  for (const name of names) {
+    const color = map.get(name);
+    if (!color) continue;
+    const idx = paletteIndexOf(color);
+    if (idx < 0) {
+      prevHue = null;
+      continue;
+    }
+    let hue = paletteHues[idx];
+    if (prevHue !== null && circularDiff(hue, prevHue) < 45) {
+      const used = new Set(map.values());
+      let best = color;
+      let bestDistance = circularDiff(hue, prevHue);
+      for (const candidate of colors) {
+        if (used.has(candidate) && candidate !== color) continue;
+        const candidateIdx = paletteIndexOf(candidate);
+        if (candidateIdx < 0) continue;
+        const distance = circularDiff(paletteHues[candidateIdx], prevHue);
+        if (distance > bestDistance) {
+          best = candidate;
+          bestDistance = distance;
+        }
+      }
+      if (best !== color) {
+        map.set(name, best);
+        hue = paletteHues[paletteIndexOf(best)];
+      }
+    }
+    prevHue = hue;
+  }
+}
 
 export function modelChartColor(name: string) {
   let hash = 0;
@@ -63,8 +117,22 @@ export function assignModelColors(
   return assigned;
 }
 
-const chartMarkers = ["circle", "square", "diamond", "triangle"] as const;
-const chartLinePatterns = [undefined, "8 4", "2 4", "8 3 2 3"] as const;
+const chartMarkers = [
+  "circle",
+  "square",
+  "diamond",
+  "triangle",
+  "star",
+  "triangleDown",
+] as const;
+const chartLinePatterns = [
+  undefined,
+  "8 4",
+  "2 4",
+  "8 3 2 3",
+  "1 3",
+  "12 4",
+] as const;
 type ModelChartPattern = {
   marker: (typeof chartMarkers)[number];
   strokeDasharray: (typeof chartLinePatterns)[number];
@@ -97,7 +165,7 @@ function ModelChartMarker({
   cy,
   marker,
   color,
-  size = 3.25,
+  size = 2,
 }: {
   cx?: number;
   cy?: number;
@@ -127,6 +195,17 @@ function ModelChartMarker({
       {marker === "triangle" && (
         <polygon
           points={`0,${-size * 1.25} ${size * 1.1},${size} ${-size * 1.1},${size}`}
+        />
+      )}
+      {marker === "triangleDown" && (
+        <polygon
+          points={`0,${size * 1.25} ${size * 1.1},${-size} ${-size * 1.1},${-size}`}
+        />
+      )}
+      {marker === "star" && (
+        <path
+          d="M0 -1.55 L0.44 -0.55 L1.5 -0.49 L0.72 0.2 L0.93 1.26 L0 0.62 L-0.93 1.26 L-0.72 0.2 L-1.5 -0.49 L-0.44 -0.55 Z"
+          transform={`scale(${size * 1.05})`}
         />
       )}
     </g>
@@ -192,11 +271,14 @@ export function UsageCharts({
   buckets,
   account,
   modelFilter,
+  colors,
 }: {
   rows: RelayUsageModelRow[];
   buckets?: RelayUsageBucket[];
   account?: RelayAccountInfo;
   modelFilter: string;
+  /** 外部共享的模型→颜色映射（明细表与图表同色）；缺省内部自建 */
+  colors?: Map<string, string>;
 }) {
   const { t, i18n } = useTranslation("relaydesk");
   const [metric, setMetric] = useViewPreference<Metric>(
@@ -217,7 +299,9 @@ export function UsageCharts({
   const modelColors = useRef(new Map<string, string>());
   const modelPatterns = useRef(new Map<string, ModelChartPattern>());
   const allModelNames = rows.map((row) => row.modelId);
-  modelColors.current = assignModelColors(allModelNames, modelColors.current);
+  if (!colors)
+    modelColors.current = assignModelColors(allModelNames, modelColors.current);
+  else modelColors.current = colors;
   modelPatterns.current = assignModelPatterns(
     allModelNames,
     modelPatterns.current,
@@ -231,6 +315,20 @@ export function UsageCharts({
   const visible = ranking.filter(
     (row) => modelFilter === "all" || row.name === modelFilter,
   );
+  // 榜单相邻项颜色必须有明显区别（饼图扇区、柱条、明细行共用此约束）
+  ensureAdjacentContrast(
+    visible.map((row) => row.name),
+    modelColors.current,
+  );
+  // 柱状/饼图只看头部模型：前 9 名 + "其他"合并条，图例区仍展示完整明细
+  const CHART_TOP = 9;
+  const head = visible.slice(0, CHART_TOP);
+  const tail = visible.slice(CHART_TOP);
+  const tailSum = tail.reduce((sum, row) => sum + row.value, 0);
+  const chartRows: { name: string; value: number; others?: boolean }[] =
+    tailSum > 0
+      ? [...head, { name: t("usageOthers"), value: tailSum, others: true }]
+      : head;
   const names = visible.map((row) => row.name);
   const timeline = aggregateChartTimeline(buckets ?? [], metric, daily, names);
   const total = visible.reduce((sum, row) => sum + row.value, 0);
@@ -328,10 +426,33 @@ export function UsageCharts({
             {timeline.length ? (
               <div className="rd-chart-canvas" aria-label={t("usageTrend")}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
+                  <ComposedChart
                     data={timeline}
                     margin={{ top: 12, right: 20, bottom: 8, left: 8 }}
                   >
+                    <defs>
+                      {names.map((name, i) => (
+                        <linearGradient
+                          key={name}
+                          id={`rd-usage-grad-${i}`}
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor={colorFor(name)}
+                            stopOpacity={0.28}
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor={colorFor(name)}
+                            stopOpacity={0.02}
+                          />
+                        </linearGradient>
+                      ))}
+                    </defs>
                     <CartesianGrid
                       stroke="var(--rd-line)"
                       strokeDasharray="3 3"
@@ -358,13 +479,14 @@ export function UsageCharts({
                       formatter={(value) => number(Number(value))}
                     />
                     {names.map((name, i) => (
-                      <Line
+                      <Area
                         key={name}
                         name={name}
                         dataKey={"m" + i}
                         stroke={colorFor(name)}
                         strokeWidth={2}
                         strokeDasharray={patternFor(name).strokeDasharray}
+                        fill={`url(#rd-usage-grad-${i})`}
                         dot={
                           <ModelChartMarker
                             marker={patternFor(name).marker}
@@ -375,15 +497,15 @@ export function UsageCharts({
                           <ModelChartMarker
                             marker={patternFor(name).marker}
                             color={colorFor(name)}
-                            size={4.5}
+                            size={3.5}
                           />
                         }
-                        type="linear"
+                        type="monotone"
                         connectNulls={false}
                         isAnimationActive={false}
                       />
                     ))}
-                  </LineChart>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             ) : (
@@ -397,46 +519,68 @@ export function UsageCharts({
             <h3>
               {t("usageModelComparison")} <small>{label}</small>
             </h3>
-            {visible.length ? (
-              <div
-                className="rd-chart-bars"
-                style={{ height: Math.max(220, visible.length * 40) }}
-              >
-                <ResponsiveContainer width="100%" height="100%">
+            {chartRows.length ? (
+              /* 竖向柱状图：X 轴=模型名（贴近常规读法），柱顶直接标注数值 */
+              <div className="rd-chart-bars rd-chart-bars-v">
+                <ResponsiveContainer width="100%" height={280}>
                   <BarChart
-                    data={visible}
-                    layout="vertical"
-                    margin={{ top: 8, right: 20, bottom: 8, left: 10 }}
+                    data={chartRows}
+                    margin={{ top: 22, right: 16, bottom: 6, left: 6 }}
+                    barCategoryGap="30%"
                   >
-                    <XAxis
-                      type="number"
-                      tickFormatter={compact}
-                      tick={{ fontSize: 12, fill: "var(--rd-muted)" }}
+                    {/* 只保留横向 Y 虚线；纵向网格与柱条方向重复易乱 */}
+                    <CartesianGrid
+                      stroke="var(--rd-line)"
+                      strokeDasharray="3 3"
+                      vertical={false}
                     />
-                    <YAxis
-                      type="category"
+                    <XAxis
                       dataKey="name"
-                      width={148}
-                      tick={{ fontSize: 12, fill: "var(--rd-muted)" }}
+                      tickLine={false}
+                      axisLine={{ stroke: "var(--rd-line)" }}
+                      tick={{ fontSize: 11, fill: "var(--rd-muted)" }}
+                      interval={0}
+                      angle={-32}
+                      textAnchor="end"
+                      height={64}
+                      tickMargin={4}
                       tickFormatter={(value) =>
-                        String(value).length > 22
-                          ? String(value).slice(0, 21) + "…"
+                        String(value).length > 16
+                          ? String(value).slice(0, 15) + "…"
                           : String(value)
                       }
+                    />
+                    <YAxis
+                      width={56}
+                      tickFormatter={compact}
+                      tick={{ fontSize: 12, fill: "var(--rd-muted)" }}
+                      axisLine={false}
+                      tickLine={false}
                     />
                     <Tooltip
                       contentStyle={tooltipStyle}
                       itemStyle={tooltipItemStyle}
+                      cursor={{ fill: "var(--rd-hover)" }}
                       formatter={(value) => [number(Number(value)), label]}
                     />
-                    <Bar
-                      dataKey="value"
-                      radius={[0, 4, 4, 0]}
-                      isAnimationActive={false}
-                    >
-                      {visible.map((row) => (
-                        <Cell key={row.name} fill={colorFor(row.name)} />
+                    <Bar dataKey="value" radius={[5, 5, 0, 0]} maxBarSize={56}>
+                      {chartRows.map((row) => (
+                        <Cell
+                          key={row.name}
+                          fill={
+                            row.others ? "var(--rd-muted)" : colorFor(row.name)
+                          }
+                        />
                       ))}
+                      <LabelList
+                        dataKey="value"
+                        position="top"
+                        formatter={(value: unknown) =>
+                          compact(Number(value ?? 0))
+                        }
+                        fill="var(--rd-muted)"
+                        fontSize={11}
+                      />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -453,21 +597,24 @@ export function UsageCharts({
             </h3>
             {total > 0 ? (
               <div className="rd-chart-donut">
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
                     <Pie
-                      data={visible}
+                      data={chartRows}
                       dataKey="value"
                       nameKey="name"
-                      innerRadius={64}
-                      outerRadius={92}
+                      innerRadius={68}
+                      outerRadius={94}
                       paddingAngle={2}
+                      cornerRadius={3}
                       isAnimationActive={false}
                     >
-                      {visible.map((row) => (
+                      {chartRows.map((row) => (
                         <Cell
                           key={row.name}
-                          fill={colorFor(row.name)}
+                          fill={
+                            row.others ? "var(--rd-muted)" : colorFor(row.name)
+                          }
                           stroke="var(--rd-surface)"
                         />
                       ))}
@@ -479,6 +626,11 @@ export function UsageCharts({
                     />
                   </PieChart>
                 </ResponsiveContainer>
+                {/* 环心总量：一眼看到该指标合计 */}
+                <div className="rd-chart-donut-total" aria-hidden="true">
+                  <strong>{compact(total)}</strong>
+                  <small>{label}</small>
+                </div>
               </div>
             ) : (
               <p>{t("usageNoData")}</p>
@@ -490,43 +642,42 @@ export function UsageCharts({
           aria-label={t("usageModelBreakdown")}
         >
           <h3>{t("usageModelBreakdown")}</h3>
+          {/* 明细=排名榜：色点 + 模型 + 占比进度条 + 数值 + 百分比，紧凑清晰 */}
           <ul className="rd-chart-legend">
-            {visible.map((row) => (
-              <li
-                key={row.name}
-                style={{ borderLeftColor: colorFor(row.name) }}
-              >
-                <svg
-                  className="rd-chart-series-key"
-                  width={36}
-                  height={14}
-                  viewBox="0 0 36 14"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  <line
-                    x1={0}
-                    y1={7}
-                    x2={36}
-                    y2={7}
-                    stroke={colorFor(row.name)}
-                    strokeWidth={2}
-                    strokeDasharray={patternFor(row.name).strokeDasharray}
-                  />
-                  <ModelChartMarker
-                    cx={18}
-                    cy={7}
-                    marker={patternFor(row.name).marker}
-                    color={colorFor(row.name)}
-                  />
-                </svg>
-                <span>{row.name}</span>
-                <strong>{number(row.value)}</strong>
-                <small>
-                  {total > 0 ? ((row.value / total) * 100).toFixed(1) : "0"}%
-                </small>
-              </li>
-            ))}
+            {visible.map((row, index) => {
+              const share = total > 0 ? (row.value / total) * 100 : 0;
+              return (
+                <li key={row.name}>
+                  <div className="rd-chart-legend-head">
+                    <span className="rd-chart-legend-rank">{index + 1}</span>
+                    <i
+                      className="rd-chart-legend-dot"
+                      style={{ background: colorFor(row.name) }}
+                      aria-hidden="true"
+                    />
+                    <span className="rd-chart-legend-name" title={row.name}>
+                      {row.name}
+                    </span>
+                  </div>
+                  <div className="rd-chart-legend-stats">
+                    <strong>{number(row.value)}</strong>
+                    <small>{share.toFixed(1)}%</small>
+                  </div>
+                  <div
+                    className="rd-chart-legend-bar"
+                    role="presentation"
+                    aria-hidden="true"
+                  >
+                    <i
+                      style={{
+                        width: `${Math.min(100, Math.max(1.5, share))}%`,
+                        background: colorFor(row.name),
+                      }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </aside>
       </div>

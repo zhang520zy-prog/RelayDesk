@@ -16,11 +16,11 @@ There is exactly one way to tell: look for the `Needs Routing` badge on the Code
 
 The badge is driven by the API format recorded when the provider was saved, so upgrading RelayDesk **does not** change how an existing provider behaves. For DeepSeek specifically, there are three cases after upgrading to 3.19.1:
 
-| Your situation | Routing needed? | Notes |
-|---|---|---|
-| A DeepSeek provider saved before 3.19.1 | **Yes**, badge still shown | Preset changes only affect newly created providers; a saved configuration is kept as-is. To move it to a direct connection, see the end of Step 1 |
-| A DeepSeek provider created from the preset after 3.19.1 | No | Connects directly to `api.deepseek.com` and picks up DeepSeek's official model catalog |
-| You want to use `deepseek-v4-pro` | **Yes** | DeepSeek has not opened its Codex integration for that model yet (early August 2026 by their own estimate), so a direct connection fails upstream; it has to go through Chat + routing |
+| Your situation                                           | Routing needed?            | Notes                                                                                                                                                                                  |
+| -------------------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A DeepSeek provider saved before 3.19.1                  | **Yes**, badge still shown | Preset changes only affect newly created providers; a saved configuration is kept as-is. To move it to a direct connection, see the end of Step 1                                      |
+| A DeepSeek provider created from the preset after 3.19.1 | No                         | Connects directly to `api.deepseek.com` and picks up DeepSeek's official model catalog                                                                                                 |
+| You want to use `deepseek-v4-pro`                        | **Yes**                    | DeepSeek has not opened its Codex integration for that model yet (early August 2026 by their own estimate), so a direct connection fails upstream; it has to go through Chat + routing |
 
 Beyond DeepSeek, plenty of providers are still Chat-format — Kimi, Zhipu GLM, SiliconFlow, ModelScope and others — and this guide applies to them in full. Just substitute the relevant preset wherever DeepSeek appears below.
 

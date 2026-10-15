@@ -8,6 +8,7 @@ import {
   Languages,
   SunMoon,
   Loader2,
+  Wrench,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { version } from "../../../package.json";
@@ -88,6 +89,16 @@ export function LoginPage({
       <div className="rd-login-top">
         <Brand />
         <div className="rd-login-utilities">
+          {openEnvironment && (
+            <button
+              type="button"
+              className="rd-login-env-btn"
+              onClick={openEnvironment}
+            >
+              <Wrench size={15} aria-hidden="true" />
+              {t("guestEnvironment")}
+            </button>
+          )}
           <label htmlFor="rd-login-theme">
             <SunMoon size={16} aria-hidden="true" />
             <span className="sr-only">{t("theme")}</span>
@@ -137,9 +148,11 @@ export function LoginPage({
           </h2>
           <p>{t("loginSubtitle")}</p>
           <div className="rd-login-tools" aria-label={t("loginTools")}>
-            <span>Claude Code</span>
-            <span>OpenAI Codex</span>
-            <span>Gemini CLI</span>
+            <span>Claude</span>
+            <span>ChatGPT</span>
+            <span>Gemini</span>
+            <span>Grok</span>
+            <span>Devin</span>
           </div>
           <div className="rd-login-benefit">
             <Check size={16} />
@@ -357,7 +370,7 @@ export function LoginPage({
             className="rd-text-button rd-login-env-link"
             onClick={openEnvironment}
           >
-            {t("guestEnvironment")}
+            {t("guestEnvironment")} ↗
           </button>
         )}
       </footer>

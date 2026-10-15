@@ -1351,6 +1351,17 @@ pub fn run() {
             // 静默启动：根据设置决定是否显示主窗口
             let settings = crate::settings::get_settings();
             if let Some(window) = app.get_webview_window("main") {
+                // 首屏尺寸随显示器自适应：小屏保持 1120×740 默认，
+                // 大屏按比例放大（≈62%×72% 工作区），夹在 1120..1600 / 740..1040 之间
+                if let Ok(Some(monitor)) = window.current_monitor() {
+                    let scale = monitor.scale_factor();
+                    let logical_w = monitor.size().width as f64 / scale;
+                    let logical_h = monitor.size().height as f64 / scale;
+                    let w = (logical_w * 0.62).clamp(1120.0, 1600.0);
+                    let h = (logical_h * 0.72).clamp(740.0, 1040.0);
+                    let _ = window.set_size(tauri::LogicalSize::new(w, h));
+                    let _ = window.center();
+                }
                 // 在窗口首次显示前同步装饰状态，避免前端加载后再切换导致标题栏闪烁
                 // 仅 Linux 生效：解决 Wayland 下系统窗口按钮不可用的问题
                 #[cfg(target_os = "linux")]
@@ -1665,6 +1676,7 @@ pub fn run() {
             commands::relay_create_topup_payment,
             commands::relay_list_topup_history,
             commands::relay_list_recharge_history,
+            commands::relay_redeem_code,
             commands::relay_get_usage_models,
             commands::relay_get_usage_summary,
             commands::relay_logout,

@@ -87,6 +87,10 @@
   --rd-chart-6: #677816;
   --rd-chart-7: #0c7999;
   --rd-chart-8: #be4141;
+  --rd-chart-9: #4b4bbd;
+  --rd-chart-10: #a67c00;
+  --rd-chart-11: #1a7f37;
+  --rd-chart-12: #8c4a2b;
   --rd-canvas: linear-gradient(
     135deg,
     var(--rd-teal-50),
@@ -153,6 +157,10 @@
   --rd-chart-6: #ccda70;
   --rd-chart-7: #66cce9;
   --rd-chart-8: #f98b86;
+  --rd-chart-9: #9d9df0;
+  --rd-chart-10: #e0c04a;
+  --rd-chart-11: #6fbf7f;
+  --rd-chart-12: #d09a7f;
   --rd-canvas: linear-gradient(135deg, #10211b, var(--rd-bg) 52%, #17342a);
   --rd-gradient: linear-gradient(120deg, #224c3e, #192f26 80%);
   --rd-glass: rgb(25 42 35 / 86%);

@@ -169,3 +169,14 @@
     animation: none;
   }
 }
+
+/* 归属仅部署工具的分组标记（SWE 系列 → Devin） */
+.rd-routing-deploy-badge {
+  border: 1px dashed var(--rd-control-line);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--rd-muted);
+  font-size: var(--rd-font-caption);
+  line-height: 1.5;
+  white-space: nowrap;
+}

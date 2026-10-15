@@ -29,6 +29,7 @@ export function ModelCenterPage({
   apply,
   details,
   targets,
+  openDeployment,
   viewAccount,
   viewWallet,
   filters,
@@ -50,6 +51,7 @@ export function ModelCenterPage({
   apply: (group: string, model: string) => void;
   details: () => void;
   targets: (app?: RelayTarget) => void;
+  openDeployment?: () => void;
   viewAccount: () => void;
   viewWallet: () => void;
 }) {
@@ -119,6 +121,7 @@ export function ModelCenterPage({
         report={report}
         busy={busy}
         onConfigure={targets}
+        onDeployOnly={openDeployment}
       />
       {notice && (
         <div className="rd-alert warning" role="alert">

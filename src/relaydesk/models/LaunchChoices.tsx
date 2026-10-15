@@ -15,7 +15,7 @@ import {
   type RelayTargetInstall,
 } from "@/lib/api/relay";
 import { Action } from "../ui";
-import { targetLabels } from "../state/useRelayApply";
+import { targetLabels, targetTechLabels } from "../state/useRelayApply";
 import { InstallToolDialog } from "../environment/InstallToolDialog";
 import { ToolInstallGuide } from "../environment/ToolInstallGuide";
 import { canLaunchDesktop, getRuntimePlatform } from "../environment/platform";
@@ -209,7 +209,7 @@ export function LaunchChoices({
                   <p className="rd-alert warning rd-launch-feedback">
                     {t("launchDesktopConfigWarning", {
                       name: installed.desktopName ?? t("launchDesktop"),
-                      target: targetLabels[app],
+                      target: targetTechLabels[app],
                     })}
                   </p>
                 )}

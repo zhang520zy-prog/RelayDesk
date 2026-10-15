@@ -580,6 +580,24 @@ fn codex_skills_dir() -> Option<std::path::PathBuf> {
     Some(crate::codex_config::get_codex_config_dir().join("skills"))
 }
 
+/// 图像生成 skill 是否已就位：匹配 skills/ 下任何 `codex-image*` 目录。
+/// 官方克隆名是 codex-image2-skill，但用户可能手工装成 codex-image2 等
+/// 变体——按前缀识别，检测的是"能力已就绪"而非"我们写入的那个目录名"。
+fn codex_image_skill_installed(skills_dir: &std::path::Path) -> bool {
+    std::fs::read_dir(skills_dir)
+        .map(|entries| {
+            entries.flatten().any(|entry| {
+                entry.path().is_dir()
+                    && entry
+                        .file_name()
+                        .to_str()
+                        .map(|n| n.to_ascii_lowercase().starts_with("codex-image"))
+                        .unwrap_or(false)
+            })
+        })
+        .unwrap_or(false)
+}
+
 /// 从已应用的 Codex 配置读 base_url + api_key（两者缺一即不可修复）。
 fn codex_relay_credentials() -> Option<(String, String)> {
     let config_text =
@@ -598,14 +616,49 @@ fn codex_relay_credentials() -> Option<(String, String)> {
     Some((base_url, key))
 }
 
-/// ~/.env 中两个变量是否都已就位
+/// 文件中两个变量是否都已就位（支持 `KEY=` 与 `export KEY=` 行）
 fn env_file_ready(path: &std::path::Path) -> bool {
     let Ok(text) = std::fs::read_to_string(path) else {
         return false;
     };
-    ["OPENAI_BASE_URL=", "OPENAI_API_KEY="]
-        .iter()
-        .all(|k| text.lines().any(|l| l.trim_start().starts_with(k)))
+    ["OPENAI_BASE_URL=", "OPENAI_API_KEY="].iter().all(|k| {
+        text.lines().any(|l| {
+            let l = l.trim_start().trim_start_matches("export ");
+            l.starts_with(k)
+                && l[k.len()..]
+                    .trim()
+                    .trim_matches('"')
+                    .trim_matches('\'')
+                    .len()
+                    > 0
+        })
+    })
+}
+
+/// Codex 生图环境变量是否就位——不只认 ~/.env：
+/// skill 由 Codex CLI 在终端读取环境，用户可能把变量写进 Codex 配置目录的
+/// .env、shell rc 文件，或用 launchctl/setx 直接同步到用户会话。
+/// 任一来源两个变量齐备即视为已就绪（值不透传，只判存在性）。
+fn codex_image_env_ready() -> bool {
+    let home = crate::config::get_home_dir();
+    let candidates = [
+        home.join(".env"),
+        crate::codex_config::get_codex_config_dir().join(".env"),
+        home.join(".zshenv"),
+        home.join(".zprofile"),
+        home.join(".zshrc"),
+        home.join(".bash_profile"),
+        home.join(".bashrc"),
+        home.join(".profile"),
+    ];
+    if candidates.iter().any(|p| env_file_ready(p)) {
+        return true;
+    }
+    ["OPENAI_BASE_URL", "OPENAI_API_KEY"].iter().all(|k| {
+        std::env::var(k)
+            .map(|v| !v.trim().is_empty())
+            .unwrap_or(false)
+    })
 }
 
 /// upsert 两个 KEY=VALUE 到 ~/.env，不动其他条目
@@ -658,18 +711,22 @@ fn run_quiet(program: &str, args: &[&str]) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn relay_codex_image_status() -> Result<CodexImageStatus, String> {
-    tauri::async_runtime::spawn_blocking(|| {
+pub async fn relay_codex_image_status(
+    state: State<'_, AppState>,
+) -> Result<CodexImageStatus, String> {
+    let logged_in = RelayService::account(&state).ok().flatten().is_some();
+    tauri::async_runtime::spawn_blocking(move || {
         let skills_dir = codex_skills_dir();
         let skill_installed = skills_dir
             .as_ref()
-            .map(|d| d.join(CODEX_IMAGE_SKILL_DIR).exists())
+            .map(|d| codex_image_skill_installed(d))
             .unwrap_or(false);
-        let env_ready = env_file_ready(&crate::config::get_home_dir().join(".env"));
+        let env_ready = codex_image_env_ready();
         CodexImageStatus {
             skill_installed,
             env_ready,
-            repairable: codex_relay_credentials().is_some(),
+            // 已应用过 Codex 配置、或已登录（修复时自动建 codex 组令牌）皆可修
+            repairable: codex_relay_credentials().is_some() || logged_in,
         }
     })
     .await
@@ -677,23 +734,31 @@ pub async fn relay_codex_image_status() -> Result<CodexImageStatus, String> {
 }
 
 #[tauri::command]
-pub async fn relay_codex_image_fix() -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(|| {
-        let (base_url, api_key) = codex_relay_credentials()
-            .ok_or_else(|| AppError::Message("relay.codex_image_no_credentials".to_string()))?;
-
+pub async fn relay_codex_image_fix(state: State<'_, AppState>) -> Result<(), String> {
+    // 凭据：优先读已应用的 Codex 配置；否则用登录账号自动确保 codex 组令牌
+    let (base_url, api_key) = match codex_relay_credentials() {
+        Some(creds) => creds,
+        None => RelayService::ensure_repair_credentials(&state, "codex")
+            .await
+            .map_err(|e| e.to_string())?,
+    };
+    tauri::async_runtime::spawn_blocking(move || {
         // 1. 装/更新 skill（git 已是最小依赖，与 env_fix 同约束）
         let skills_dir = codex_skills_dir()
             .ok_or_else(|| AppError::Message("relay.codex_image_no_credentials".to_string()))?;
         std::fs::create_dir_all(&skills_dir)
             .map_err(|e| AppError::Message(format!("创建 skills 目录失败: {e}")))?;
         let target = skills_dir.join(CODEX_IMAGE_SKILL_DIR);
-        if target.exists() {
-            run_quiet(
-                "git",
-                &["-C", &target.to_string_lossy(), "pull", "--ff-only"],
-            )
-            .map_err(|e| AppError::Message(format!("更新 skill 失败: {e}")))?;
+        if codex_image_skill_installed(&skills_dir) {
+            // 已存在任意 codex-image* 目录：若是本应用装的就尝试更新；用户
+            // 手工装的目录（可能非 git 仓库）跳过 pull，只补环境变量。
+            if target.join(".git").exists() {
+                run_quiet(
+                    "git",
+                    &["-C", &target.to_string_lossy(), "pull", "--ff-only"],
+                )
+                .map_err(|e| AppError::Message(format!("更新 skill 失败: {e}")))?;
+            }
         } else {
             run_quiet(
                 "git",

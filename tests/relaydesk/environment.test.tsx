@@ -206,13 +206,14 @@ describe("environment health", () => {
     vi.mocked(relayApi.envCheck).mockReturnValue(new Promise(() => {}));
     mount(<EnvironmentPage onBack={() => {}} />);
     // 6 个基础环境项仍是行式检查（Checking…徽标）；
-    // 5 个工具 CLI 槽位 + 1 个 codex 图像槽位 + 重检按钮本体处于加载态
+    // 5 个工具 CLI 槽位 + 重检按钮本体处于加载态
+    // （codex 图像修复行属补救项，探测有结果前不渲染）
     expect(screen.getAllByText("Checking…")).toHaveLength(6);
     expect(
       screen.getAllByRole("button", {
         name: /Checking installation and runtime/,
       }),
-    ).toHaveLength(7);
+    ).toHaveLength(6);
     expect(screen.queryByText("Not installed")).not.toBeInTheDocument();
   });
   it("shows a check failure instead of invented results when env check fails", async () => {
@@ -275,7 +276,9 @@ describe("environment health", () => {
   it("offers headless guidance and no desktop action on Linux Server", async () => {
     mount(<EnvironmentPage onBack={() => {}} platform="linux-server" />);
     await screen.findByText("1.2.3");
-    expect(screen.getByText(/SSH/)).toBeInTheDocument();
+    // 平台与部署已并入系统环境：运行环境独立展示当前系统，无指引下拉
+    expect(screen.getByText(/Runtime · Linux Server/)).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Open desktop app" }),
     ).not.toBeInTheDocument();

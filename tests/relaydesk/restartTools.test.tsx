@@ -550,7 +550,7 @@ describe("restart execute dialog", () => {
       within(dialog).getByRole("button", { name: "重启 ChatGPT (Codex)" }),
     ).toBeEnabled();
     expect(
-      within(dialog).getByText("本次应用成功：Claude Code · OpenAI Codex"),
+      within(dialog).getByText("本次应用成功：Claude · ChatGPT"),
     ).toBeInTheDocument();
   });
 });

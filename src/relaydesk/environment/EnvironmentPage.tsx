@@ -12,7 +12,6 @@ import {
   Download,
   Monitor,
   MonitorX,
-  Image,
   Terminal,
   Info,
 } from "lucide-react";
@@ -75,59 +74,66 @@ export function EnvironmentCheckRow({
         {check.hint && <small className="rd-env-hint">{check.hint}</small>}
       </div>
       <span className={`rd-env-status ${check.status}`}>
-        {t(`envStatus_${check.status}`)}
+        {check.statusLabel ?? t(`envStatus_${check.status}`)}
       </span>
       {children && <div className="rd-env-row-actions">{children}</div>}
     </li>
   );
 }
 
-/** Codex 图像生成修复槽位：skill 未装或 ~/.env 缺配置时点击即修复；
- *  词汇与安装槽位统一：已安装 / 未安装。 */
-function CodexImageSlot({
+/** Codex 图像生成本质是"中转端无法生图"的修复项，不是可装工具——
+ *  挂在环境健康区，装了 Codex 就显示：
+ *  已就绪=ok / 缺 skill 或 env=可一键修复 / 未应用中转过 Codex=提示先行。 */
+function CodexImageFixRow({
   status,
-  loading,
   onFixed,
 }: {
-  status:
-    | { skillInstalled: boolean; envReady: boolean; repairable: boolean }
-    | undefined;
-  loading: boolean;
+  status: { skillInstalled: boolean; envReady: boolean; repairable: boolean };
   onFixed: () => void;
 }) {
   const { t } = useTranslation("relaydesk");
   const [fixing, setFixing] = useState(false);
-  const ready = !!status?.skillInstalled && !!status?.envReady;
-  const state: SlotState = loading
-    ? "loading"
-    : ready
-      ? "installed"
-      : "missing";
+  const ready = status.skillInstalled && status.envReady;
+  const check: EnvironmentCheck = ready
+    ? {
+        id: "codex-image",
+        label: t("codexImageLabel"),
+        status: "ok",
+        detail: t("codexImageReady"),
+      }
+    : status.repairable
+      ? {
+          id: "codex-image",
+          label: t("codexImageLabel"),
+          status: "fixable",
+          statusLabel: t("codexImageStatusFixable"),
+          detail: t("codexImageMissing"),
+        }
+      : {
+          id: "codex-image",
+          label: t("codexImageLabel"),
+          status: "warn",
+          detail: t("codexImageNeedModelHint"),
+        };
   return (
-    <ToolSlot
-      icon={<Image size={14} />}
-      label={t("codexImageLabel")}
-      state={state}
-      hint={
-        loading
-          ? undefined
-          : !status?.repairable && !ready
-            ? t("codexImageNeedModelHint")
-            : t("codexImageFix")
-      }
-      onClick={
-        !loading && !ready && status?.repairable && !fixing
-          ? () => {
-              setFixing(true);
-              relayApi
-                .codexImageFix()
-                .then(onFixed)
-                .catch(() => undefined)
-                .finally(() => setFixing(false));
-            }
-          : undefined
-      }
-    />
+    <EnvironmentCheckRow check={check}>
+      {!ready && status.repairable && (
+        <Action
+          disabled={fixing}
+          onClick={() => {
+            setFixing(true);
+            relayApi
+              .codexImageFix()
+              .then(onFixed)
+              .catch(() => undefined)
+              .finally(() => setFixing(false));
+          }}
+        >
+          {fixing ? <Loader2 size={13} className="rd-spin" /> : null}
+          {t("codexImageFix")}
+        </Action>
+      )}
+    </EnvironmentCheckRow>
   );
 }
 
@@ -208,8 +214,7 @@ export function EnvironmentPage({
   const [envFix, setEnvFix] = useState<{ id: string; label: string } | null>(
     null,
   );
-  const [guidePlatform, setGuidePlatform] =
-    useState<EnvironmentPlatform>(platform);
+
   const [exporting, setExporting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const installing =
@@ -474,13 +479,6 @@ export function EnvironmentPage({
                         : undefined
                     }
                   />
-                  {app === "codex" && (
-                    <CodexImageSlot
-                      status={codexImage.data}
-                      loading={codexImage.isPending}
-                      onFixed={() => void codexImage.refetch()}
-                    />
-                  )}
                 </div>
               </li>
             );
@@ -492,40 +490,12 @@ export function EnvironmentPage({
         <CircleHelp size={17} />
         {t("environmentScope")}
       </p>
-      <section className="rd-setting-section rd-env-platform">
-        <h3>{t("platformGuidance")}</h3>
-        <p>
-          {t("platformDetectedHint", { platform: t(`platform_${platform}`) })}
-        </p>
-        <label htmlFor="rd-guide-platform">{t("platformGuideFor")}</label>
-        <select
-          id="rd-guide-platform"
-          className="rd-select"
-          value={guidePlatform}
-          onChange={(e) =>
-            setGuidePlatform(e.target.value as EnvironmentPlatform)
-          }
-        >
-          {Array.from(
-            new Set<EnvironmentPlatform>([
-              platform,
-              "windows",
-              "macos",
-              "linux-desktop",
-              "linux-server",
-            ]),
-          ).map((p) => (
-            <option key={p} value={p}>
-              {t(`platform_${p}`)}
-            </option>
-          ))}
-        </select>
-        <p className="rd-small rd-muted">
-          {t(`platformHint_${guidePlatform}`)}
-        </p>
-      </section>
       <section className="rd-setting-section">
         <h3>{t("envSystemBase")}</h3>
+        {/* 运行环境是单独的检测结果展示，不是可检查项 */}
+        <p className="rd-env-runtime">
+          {t("envRuntimePlatform")} · {t(`platform_${platform}`)}
+        </p>
         <ul className="rd-env-list">
           {systemCheckIds.map((id) => {
             const check = envRow(id);
@@ -550,6 +520,23 @@ export function EnvironmentPage({
           })}
         </ul>
       </section>
+      {/* Codex 生图修复：独立修复区，装了 Codex 即出现；
+          未应用过模型时也会自动用登录账号建 codex 组令牌后修复 */}
+      {codexImage.data &&
+        (installations.data?.some(
+          (f) => f.app === "codex" && (f.cliPath || f.desktopApp),
+        ) ??
+          false) && (
+          <section className="rd-setting-section">
+            <h3>{t("envRepair")}</h3>
+            <ul className="rd-env-list">
+              <CodexImageFixRow
+                status={codexImage.data}
+                onFixed={() => void codexImage.refetch()}
+              />
+            </ul>
+          </section>
+        )}
       <section className="rd-setting-section">
         <h3>{t("envConnections")}</h3>
         <ul className="rd-env-list">

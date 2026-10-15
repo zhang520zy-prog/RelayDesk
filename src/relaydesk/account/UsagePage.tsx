@@ -20,7 +20,7 @@ import {
 import { Action } from "../ui";
 import "./account.css";
 import { useViewPreference } from "../state/useViewPreference";
-import { UsageCharts } from "./UsageCharts";
+import { assignModelColors, UsageCharts } from "./UsageCharts";
 import { relayErrorKey } from "../state/relayErrors";
 
 type Range = "24h" | "today" | "7d" | "30d";
@@ -46,14 +46,20 @@ function numberValue(value?: number) {
 }
 
 function chargedValue(row: RelayUsageModelRow, account?: RelayAccountInfo) {
-  if (row.chargedAmount !== undefined)
-    return formatRelayMoney(row.chargedAmount, {
+  if (row.chargedAmount !== undefined) {
+    // 费用统一三位小数；站点返回非纯数字（如已含符号）则原样透出
+    const numeric = Number(row.chargedAmount);
+    const amount = Number.isFinite(numeric)
+      ? numeric.toFixed(3)
+      : row.chargedAmount;
+    return formatRelayMoney(amount, {
       currencySymbol: row.currencySymbol,
       currencyCode: row.currency,
     });
+  }
   if (row.chargedQuota !== undefined)
     return account
-      ? formatRelayQuota(row.chargedQuota, account)
+      ? formatRelayQuota(row.chargedQuota, account, { fractionDigits: 3 })
       : numberValue(row.chargedQuota) + " quota";
   return "—";
 }
@@ -111,6 +117,12 @@ export function UsagePage({
     if (models.error) notifySessionExpired(models.error);
   }, [models.error, notifySessionExpired]);
   const rows = models.data?.items ?? [];
+  // 模型→颜色映射在这里分配一次：图表明细与下方表格共用，保证同名同色
+  const colorMap = useRef(new Map<string, string>());
+  colorMap.current = assignModelColors(
+    rows.map((row) => row.modelId),
+    colorMap.current,
+  );
   const selectedModel =
     models.isSuccess &&
     modelFilter !== "all" &&
@@ -178,16 +190,6 @@ export function UsagePage({
       render: (row: RelayUsageModelRow) => numberValue(row.outputTokens),
     },
     {
-      key: "cacheReadTokens",
-      label: "usageCacheRead",
-      render: (row: RelayUsageModelRow) => numberValue(row.cacheReadTokens),
-    },
-    {
-      key: "cacheWriteTokens",
-      label: "usageCacheWrite",
-      render: (row: RelayUsageModelRow) => numberValue(row.cacheWriteTokens),
-    },
-    {
       key: "totalTokens",
       label: "usageTotalTokens",
       render: (row: RelayUsageModelRow) => numberValue(row.totalTokens),
@@ -197,11 +199,8 @@ export function UsagePage({
       label: "usageCharged",
       render: (row: RelayUsageModelRow) => chargedValue(row, account),
     },
-  ].filter(
-    (column) =>
-      has(column.key as keyof RelayUsageModelRow) ||
-      (column.key === "chargedQuota" && has("chargedAmount")),
-  ) as typeof columns;
+  ];
+  // 列常驻：站点没返回的字段显示 "—"，保证表格满列不留大片空白
 
   return (
     <div className="rd-account-page rd-usage-page">
@@ -292,6 +291,7 @@ export function UsagePage({
           buckets={models.data.buckets}
           account={account}
           modelFilter={selectedModel}
+          colors={colorMap.current}
         />
       )}
 
@@ -395,7 +395,18 @@ export function UsagePage({
                 {sortedRows.map((row) => (
                   <tr key={row.modelId + ":" + (row.group ?? "")}>
                     <td>
-                      <strong>{row.displayName}</strong>
+                      <span className="rd-usage-model-cell">
+                        <i
+                          className="rd-chart-legend-dot"
+                          style={{
+                            background:
+                              colorMap.current.get(row.modelId) ??
+                              "var(--rd-muted)",
+                          }}
+                          aria-hidden="true"
+                        />
+                        <strong>{row.displayName}</strong>
+                      </span>
                       {row.detailsReconciled === false && (
                         <small>
                           {t("usageLogCoverage", {

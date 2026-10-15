@@ -8,7 +8,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { settingsApi } from "@/lib/api/settings";
-import { type RelayApplyApps, type RelayTarget } from "@/lib/api/relay";
+import {
+  inferDeployTools,
+  type RelayApplyApps,
+  type RelayTarget,
+} from "@/lib/api/relay";
 import { Action } from "../ui";
 import {
   type ApplyReport,
@@ -143,6 +147,23 @@ export function ApplyProgressDialog({
               </div>
             );
           })}
+          {/* 归属仅部署工具的模型（SWE 系列 → Devin）：如实标注，
+              中转站配置不写入 Devin */}
+          {inferDeployTools(report.group, report.model).map((id) => (
+            <div key={id} className="rd-result rd-result--deploy">
+              <div>
+                <strong>Devin</strong>
+                <span className="rd-muted">{t("targetDeployOnly")}</span>
+              </div>
+              <button
+                type="button"
+                className="rd-text-button"
+                onClick={() => openEnvironment?.()}
+              >
+                {t("targetDeployAction")}
+              </button>
+            </div>
+          ))}
         </div>
         {open && succeeded.length > 0 && (
           <LaunchChoices

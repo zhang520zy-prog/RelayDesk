@@ -222,6 +222,12 @@ impl RelayClient {
             .await
     }
 
+    /// 兑换码充值：new-api `POST /api/user/topup {key}`——与站点"兑换额度"同源。
+    pub async fn redeem_code(&self, key: &str) -> Result<Value, AppError> {
+        self.post("/api/user/topup", serde_json::json!({ "key": key }))
+            .await
+    }
+
     /// 按类型拉取用户日志（new-api LogType）：1=充值到账、3=管理员调整、6=退款。
     /// 分页按类型独立进行，必须用指定 type 分别请求，不能 type=0 拉全量。
     pub async fn recharge_logs(
@@ -258,34 +264,116 @@ impl RelayClient {
     }
 
     pub async fn usage_details(&self, query: &RelayUsageQuery) -> Result<Value, AppError> {
-        let base = usage_path(query)?.replace("/api/data/self?", "/api/log/self?");
-        let mut rows = Vec::new();
-        let mut expected = None;
-        for page in 1..=50 {
-            let data = self
-                .get(&format!("{base}&type=2&p={page}&page_size=100"))
-                .await?;
-            let total = data
-                .get("total")
-                .and_then(Value::as_u64)
-                .ok_or_else(|| AppError::Message("relay.usage_details_incomplete".into()))?;
-            if expected.is_some_and(|n| n != total) {
-                break;
+        // 站点日志保留期可能比查询窗短（limitLogTimeRange 直接报错），
+        // 失败时退化为不带时间窗的全量日志——按 model_name 匹配仍准确。
+        // usage_path 对明细查询的窗口校验同样可能失败（聚合桶时间戳单位
+        // 差异等），此时不能静默返回——直接走无窗口兜底并记录原因。
+        let bases: Vec<(bool, String)> = match usage_path(query) {
+            Ok(base) => vec![
+                (
+                    true,
+                    format!(
+                        "{}&type=2",
+                        base.replace("/api/data/self?", "/api/log/self?")
+                    ),
+                ),
+                (false, "/api/log/self?type=2".to_string()),
+            ],
+            Err(error) => {
+                log::warn!(
+                    "usage details: ranged path rejected ({error}), using unbounded log query"
+                );
+                vec![(false, "/api/log/self?type=2".to_string())]
             }
-            expected = Some(total);
-            let items = data
-                .get("items")
-                .and_then(Value::as_array)
-                .ok_or_else(|| AppError::Message("relay.usage_details_incomplete".into()))?;
-            if items.is_empty() && rows.len() < total as usize {
-                break;
-            }
-            rows.extend(items.iter().cloned());
-            if rows.len() == total as usize {
-                return Ok(Value::Array(rows));
+        };
+        for (ranged, base) in bases {
+            match self.usage_details_page(&base).await {
+                Ok(rows) => {
+                    log::info!(
+                        "usage details fetched: {} rows (ranged={})",
+                        rows.as_array().map(|a| a.len()).unwrap_or(0),
+                        ranged
+                    );
+                    return Ok(rows);
+                }
+                Err(error) if !ranged => {
+                    log::warn!("usage details unbounded query failed: {error}");
+                    return Err(error);
+                }
+                Err(error) => {
+                    log::info!("usage details ranged query failed, retrying unbounded: {error}");
+                    continue;
+                }
             }
         }
-        Err(AppError::Message("relay.usage_details_incomplete".into()))
+        unreachable!()
+    }
+
+    async fn usage_details_page(&self, base: &str) -> Result<Value, AppError> {
+        // 页大小取 200：站点若钳制回 100 也能工作——判停用"服务器实际
+        // 返回的页长"而非请求值。页数上限配合行数预算：200 条/页 × 60 页
+        // = 12,000 行，覆盖常规账号一个月的消耗日志量级。
+        const PAGE_SIZE: u32 = 200;
+        const MAX_PAGES: u32 = 60;
+        let mut rows = Vec::new();
+        let mut expected = None;
+        let mut eff_page_len: Option<usize> = None;
+        for page in 1..=MAX_PAGES {
+            let data = self
+                .get(&format!("{base}&p={page}&page_size={PAGE_SIZE}"))
+                .await?;
+            // 站点版本差异：行数组可能在 items / logs / data / 顶层数组；
+            // total 可能叫 count 或完全缺失（此时按"最后一页不足页长"收尾）。
+            let items = ["items", "logs", "data"]
+                .iter()
+                .find_map(|key| data.get(*key).and_then(Value::as_array))
+                .or_else(|| data.as_array());
+            let Some(items) = items else {
+                if page == 1 {
+                    return Err(AppError::Message("relay.usage_details_incomplete".into()));
+                }
+                break;
+            };
+            let total = data
+                .get("total")
+                .or_else(|| data.get("count"))
+                .and_then(Value::as_u64);
+            if let (Some(expected), Some(total)) = (expected, total) {
+                if expected != total {
+                    break;
+                }
+            }
+            if expected.is_none() {
+                expected = total;
+            }
+            let page_len = items.len();
+            if page_len == 0 {
+                break;
+            }
+            // 服务器可能把 page_size 钳制到更小的值：以首页实际返回
+            // 长度为"满页"基准，后续不足该长度即视为末页。
+            let full = *eff_page_len.get_or_insert(page_len);
+            rows.extend(items.iter().cloned());
+            log::info!(
+                "usage details page {page}: +{page_len} rows (total={total:?}, cumulative={})",
+                rows.len()
+            );
+            match total {
+                Some(total) if rows.len() < total as usize => continue,
+                Some(_) => return Ok(Value::Array(rows)),
+                None if page_len < full => return Ok(Value::Array(rows)),
+                None => continue,
+            }
+        }
+        if rows.is_empty() {
+            Err(AppError::Message("relay.usage_details_incomplete".into()))
+        } else {
+            log::warn!(
+                "usage details truncated at {} rows (page budget exhausted)",
+                rows.len()
+            );
+            Ok(Value::Array(rows))
+        }
     }
 
     /// 用户可选分组：合并 `/api/user/self/groups`（网页端建 key 分组下拉的

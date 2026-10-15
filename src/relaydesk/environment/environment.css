@@ -21,7 +21,6 @@
   margin: 0 0 5px;
 }
 .rd-env-heading p,
-.rd-env-platform p,
 .rd-env-diagnostics p {
   color: var(--rd-muted);
   font-size: var(--rd-font-caption);
@@ -46,13 +45,6 @@
   font-size: var(--rd-font-control);
   font-weight: var(--rd-weight-strong);
   margin-bottom: 8px;
-}
-.rd-env-platform .rd-select {
-  max-width: 100%;
-  margin: 8px 0 8px 12px;
-}
-.rd-env-platform label {
-  font-size: var(--rd-font-caption);
 }
 .rd-env-list {
   list-style: none;
@@ -101,8 +93,8 @@
   gap: 8px;
   flex-shrink: 0;
 }
-/* 槽位按钮：已安装=内敛灰底对勾（不可点）；
-   未安装=主题色描边实心入口（可点下载/安装）；加载=脉动 */
+/* 槽位按钮要有"可点"的立体感：未安装=浅色底+描边+投影的可按入口
+   （hover 抬升、按下回落）；已安装=内凹收敛（不可点）；异常=警示描边 */
 .rd-env-slot {
   display: inline-flex;
   align-items: center;
@@ -110,28 +102,54 @@
   padding: 7px 14px;
   border-radius: 8px;
   border: 1px solid var(--rd-line);
-  background: transparent;
+  background: var(--rd-surface, #fff);
   color: inherit;
   font-size: var(--rd-font-caption);
   font-family: inherit;
   white-space: nowrap;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 1px 2px rgba(15, 23, 42, 0.08);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease;
 }
 .rd-env-slot:disabled {
   cursor: default;
+  box-shadow: none;
 }
 .rd-env-slot:not(:disabled) {
   cursor: pointer;
 }
 .rd-env-slot.missing {
-  border-color: var(--rd-primary);
+  border-color: color-mix(in srgb, var(--rd-primary) 45%, var(--rd-line));
   color: var(--rd-primary);
-  background: color-mix(in srgb, var(--rd-primary) 8%, transparent);
+  background: color-mix(in srgb, var(--rd-primary) 7%, var(--rd-surface, #fff));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 1px 3px color-mix(in srgb, var(--rd-primary) 25%, transparent);
 }
 .rd-env-slot.missing:hover {
-  background: color-mix(in srgb, var(--rd-primary) 16%, transparent);
+  transform: translateY(-1px);
+  background: color-mix(
+    in srgb,
+    var(--rd-primary) 13%,
+    var(--rd-surface, #fff)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 3px 8px color-mix(in srgb, var(--rd-primary) 30%, transparent);
+}
+.rd-env-slot.missing:active {
+  transform: translateY(0);
+  box-shadow: inset 0 1px 2px
+    color-mix(in srgb, var(--rd-primary) 25%, transparent);
 }
 .rd-env-slot.installed {
   color: var(--rd-muted);
+  background: color-mix(in srgb, var(--rd-muted) 4%, transparent);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 .rd-env-slot.installed .rd-env-slot-state {
   color: var(--rd-success);
@@ -330,36 +348,16 @@
   }
 }
 
-/* 安装指引内联展开：紧跟点击行，不再跳到底部 */
-.rd-env-guide-row {
-  list-style: none;
-  margin: -2px 0 6px;
-  padding: 12px 16px 14px 38px;
-  border: 1px solid var(--rd-line);
-  border-top: 0;
-  border-radius: 0 0 var(--rd-control-radius) var(--rd-control-radius);
-  background: var(--rd-raised);
-  animation: rd-env-guide-in 0.2s ease;
-}
-@keyframes rd-env-guide-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .rd-env-guide-row {
-    animation: none;
-  }
-}
 .rd-env-hint {
   display: block;
   color: var(--rd-muted);
   font-size: var(--rd-font-caption);
   margin-top: 2px;
   word-break: break-all;
+}
+/* 运行环境：独立检测结果展示（非检查项，无徽标） */
+.rd-env-runtime {
+  margin: -4px 0 10px;
+  color: var(--rd-muted);
+  font-size: var(--rd-font-caption);
 }

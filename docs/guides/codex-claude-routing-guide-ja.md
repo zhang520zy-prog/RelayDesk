@@ -125,5 +125,4 @@ API エンドポイントを確認してください。ゲートウェイのル�
 
 - [RelayDesk ユーザーマニュアル: プロキシサービス](../user-manual/ja/4-proxy/4.1-service.md)
 - [RelayDesk ユーザーマニュアル: アプリケーションルーティング](../user-manual/ja/4-proxy/4.2-routing.md)
-- [RelayDesk v3.17.0 リリースノート](../release-notes/v3.17.0-ja.md)
 - この機能はコミュニティからの貢献 [#5071](https://github.com/zhang520zy-prog/RelayDesk/pull/5071) によるものです。@yeeyzy に感謝します。

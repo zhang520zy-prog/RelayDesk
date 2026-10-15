@@ -103,18 +103,40 @@
   font-size: var(--rd-font-caption);
   line-height: 1.6;
 }
+/* 单卡收银台：金额→方式→兑换码→付款条全部在一个卡片流里 */
+/* 收银台双栏：左列步骤内容，右列结算面板（对齐站点充值页） */
 .rd-wallet-composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(230px, 0.65fr);
-  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  gap: 24px;
   align-items: start;
-}
-.rd-wallet-form-grid {
-  display: grid;
-  gap: 28px;
   min-width: 0;
 }
-.rd-wallet-form-grid h3 {
+.rd-wallet-composer-main {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+/* 右侧结算面板：需支付金额 + 去付款；拉伸与左列同高，底边对齐分割线 */
+.rd-wallet-summary {
+  position: sticky;
+  top: 0;
+  align-self: stretch;
+  border: 1px solid var(--rd-line);
+  border-radius: 12px;
+  background: var(--rd-raised);
+  padding: 18px;
+  min-width: 0;
+}
+@media (max-width: 760px) {
+  .rd-wallet-composer {
+    grid-template-columns: 1fr;
+  }
+  .rd-wallet-summary {
+    position: static;
+  }
+}
+.rd-wallet-step h3 {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -134,24 +156,39 @@
   font-weight: var(--rd-weight-strong);
   font-variant-numeric: tabular-nums;
 }
+/* 金额瓦片：按内容自适应宽度、可换行（对齐站点收银台的紧凑按钮流） */
 .rd-wallet-choice-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 .rd-wallet-choice {
-  position: relative;
+  flex: 0 0 auto;
   min-width: 0;
   min-height: 44px;
-  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 14px;
   border: 1px solid var(--rd-line);
   border-radius: 10px;
   color: var(--rd-text);
   background: var(--rd-surface);
+  overflow: hidden;
+}
+.rd-wallet-choice-top {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.rd-wallet-choice strong {
   font-size: 15px;
   font-weight: var(--rd-weight-strong);
   font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 .rd-wallet-choice:hover {
   border-color: var(--rd-control-line);
@@ -163,34 +200,88 @@
   background: var(--rd-soft);
   box-shadow: inset 0 0 0 1px var(--rd-teal);
 }
+/* 折扣徽标：瓦片内的站点真实优惠（discount/credit 推导），无优惠不显示 */
+.rd-wallet-choice-off {
+  padding: 0 6px;
+  border-radius: 999px;
+  color: var(--rd-teal);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: var(--rd-weight-medium);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+/* 瓦片次行：实付 / 省额（有折扣才渲染） */
+.rd-wallet-choice-sub {
+  color: var(--rd-muted);
+  font-size: 11px;
+  font-weight: var(--rd-weight-medium);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+/* 自定义金额瓦片：并入金额按钮行流内，与预设档同高对齐 */
+.rd-wallet-choice-custom {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  cursor: text;
+}
+.rd-wallet-choice-custom label {
+  color: var(--rd-muted);
+  font-size: var(--rd-font-caption);
+  white-space: nowrap;
+  cursor: text;
+}
+.rd-wallet-choice-custom .rd-wallet-custom-input {
+  width: 96px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+.rd-wallet-choice-custom:focus-within {
+  border-color: var(--rd-teal);
+  box-shadow: inset 0 0 0 1px var(--rd-teal);
+}
+.rd-wallet-custom-quote {
+  font-size: var(--rd-font-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* 支付方式：品牌 logo + 名称 按钮 */
 .rd-wallet-method-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 10px;
 }
 .rd-wallet-method {
   min-width: 0;
-  min-height: 44px;
+  min-height: 46px;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 9px 14px;
   border: 1px solid var(--rd-line);
   border-radius: 10px;
+  background: var(--rd-surface);
+  color: var(--rd-text);
   cursor: pointer;
+  text-align: left;
 }
-.rd-wallet-method:has(input:checked) {
+.rd-wallet-method.is-selected {
   border-color: var(--rd-teal);
   background: var(--rd-soft);
+  box-shadow: inset 0 0 0 1px var(--rd-teal);
 }
-.rd-wallet-method:focus-within {
+.rd-wallet-method:focus-visible {
   outline: 2px solid var(--rd-focus);
   outline-offset: 2px;
-}
-.rd-wallet-method input {
-  accent-color: var(--rd-teal);
-  flex-shrink: 0;
-  margin: 0;
 }
 .rd-wallet-method > span {
   min-width: 0;
@@ -203,81 +294,89 @@
 }
 .rd-wallet-method small {
   display: block;
-  margin-top: 4px;
+  margin-top: 2px;
   color: var(--rd-muted);
   font-size: var(--rd-font-caption);
   line-height: 1.5;
 }
-.rd-wallet-checkout {
-  min-width: 0;
-  padding: 22px;
+.rd-pay-icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 5.5px;
+}
+.rd-pay-icon--generic {
+  display: inline-grid;
+  place-items: center;
   background: var(--rd-raised);
   border: 1px solid var(--rd-line);
-  border-radius: 12px;
-  /* 不随左侧表单列等高拉伸，内容顶部对齐，消除下方死留白 */
-  align-self: start;
+  color: var(--rd-muted);
 }
-.rd-wallet-checkout h3 {
-  font-size: var(--rd-font-body);
-  font-weight: var(--rd-weight-strong);
-  margin: 0 0 22px;
+/* 兑换码通栏：跨过左右两列，顶部即整卡分割线 */
+.rd-wallet-redeem-inline {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 16px;
+  border-top: 1px solid var(--rd-line);
+}
+.rd-wallet-redeem-inline > .rd-muted {
+  font-size: var(--rd-font-caption);
+  white-space: nowrap;
+}
+.rd-wallet-redeem-form {
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.rd-wallet-redeem-form .rd-input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--rd-font-code);
+  letter-spacing: 0.02em;
+}
+.rd-wallet-redeem-inline .rd-alert {
+  width: 100%;
+  margin: 8px 0 0;
+}
+/* 结算面板内部：金额区置顶、付款区贴底（与左列底边对齐） */
+.rd-wallet-paybar {
+  display: grid;
+  gap: 16px;
+  height: 100%;
+  align-content: space-between;
 }
 .rd-wallet-quote {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 14px 12px;
+  display: flex;
   align-items: baseline;
-}
-.rd-wallet-quote-item {
-  display: grid;
-  gap: 4px;
+  gap: 10px;
   min-width: 0;
 }
-.rd-wallet-quote span {
+.rd-wallet-quote > span {
   color: var(--rd-muted);
   font-size: var(--rd-font-caption);
+  white-space: nowrap;
 }
-.rd-wallet-quote strong {
-  font-size: var(--rd-font-body);
-  font-weight: var(--rd-weight-medium);
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-/* 支付金额是主数字：整行 + 大字号 + 品牌色 */
-.rd-wallet-quote-item.is-payable {
-  grid-column: 1 / -1;
-}
-.rd-wallet-quote-item.is-payable strong {
+.rd-wallet-quote > strong {
   color: var(--rd-teal);
   font-size: var(--rd-font-stat);
   font-weight: var(--rd-weight-strong);
+  font-variant-numeric: tabular-nums;
   line-height: 1.15;
+  overflow-wrap: anywhere;
 }
-.rd-wallet-quote p {
-  grid-column: 1 / -1;
+.rd-wallet-quote > small {
   font-size: var(--rd-font-caption);
-  color: var(--rd-muted);
-  line-height: 1.7;
-  margin: 2px 0 0;
 }
 .rd-topup-intro {
   color: var(--rd-muted);
   font-size: var(--rd-font-caption);
   margin-top: 6px !important;
   line-height: 1.6;
-}
-.rd-wallet-contract-note {
-  align-items: flex-start;
-  justify-content: flex-start;
-  margin: 12px 0 0;
-}
-.rd-wallet-contract-note span {
-  display: grid;
-  gap: 4px;
-}
-.rd-wallet-contract-note small {
-  color: var(--rd-muted);
-  font-size: var(--rd-font-caption);
 }
 .rd-account-table-scroll {
   max-width: 100%;
@@ -390,9 +489,6 @@
   align-items: center;
   gap: 5px;
 }
-.rd-warning-text {
-  color: var(--rd-warning);
-}
 .rd-usage-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -428,12 +524,6 @@
 .rd-usage-table {
   min-width: 100%;
 }
-.rd-usage-total-row th,
-.rd-usage-total-row td {
-  color: var(--rd-teal);
-  font-weight: var(--rd-weight-strong);
-  border-top: 1px solid var(--rd-line);
-}
 .rd-usage-page > .rd-alert {
   margin: 0;
   justify-content: flex-start;
@@ -449,7 +539,6 @@
 }
 @media (max-width: 760px) {
   .rd-account-summary,
-  .rd-wallet-form-grid,
   .rd-usage-metrics {
     grid-template-columns: 1fr;
   }
@@ -474,7 +563,6 @@
 .rd-wallet-payment-actions {
   display: grid;
   gap: 12px;
-  margin-top: 22px;
 }
 .rd-wallet-payment-actions .rd-button {
   width: 100%;
@@ -491,20 +579,6 @@
 .rd-usage-toolbar .rd-select {
   max-width: 190px;
 }
-.rd-detail-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.rd-usage-core .rd-usage-table {
-  min-width: 640px;
-}
-.rd-usage-core .rd-usage-table tr > :nth-child(3),
-.rd-usage-core .rd-usage-table tr > :nth-child(11),
-.rd-usage-core .rd-usage-table tr > :nth-child(12) {
-  display: none;
-}
-
 .rd-usage-charts {
   display: grid;
   gap: 14px;
@@ -536,57 +610,111 @@
   height: 260px;
   min-width: 0;
 }
-.rd-chart-pair {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  gap: 14px;
-  align-items: start;
-}
 .rd-chart-bars {
   min-height: 220px;
 }
+/* 模型明细排行榜：两列网格压缩纵向留白，
+   每行 = 名次 + 色点 + 名称 + 数值 + 占比，下挂细进度条 */
 .rd-chart-legend {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 18px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px 28px;
 }
 .rd-chart-legend li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   min-width: 0;
   font-size: var(--rd-font-caption);
 }
-.rd-chart-legend i {
+.rd-chart-legend-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.rd-chart-legend-rank {
+  flex: none;
+  width: 16px;
+  color: var(--rd-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.rd-chart-legend-dot {
+  flex: none;
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  flex-shrink: 0;
+  align-self: center;
 }
-.rd-chart-legend span {
-  overflow-wrap: anywhere;
+.rd-chart-legend-name {
   flex: 1;
+  min-width: 0;
+  /* 名称完整展示：允许断行换到第二行，不再省略号截断；
+     title 保留悬停查看（覆盖极小宽度场景） */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  font-weight: var(--rd-weight-medium);
 }
-.rd-chart-legend strong {
-  font-size: var(--rd-font-caption);
+/* 明细行两行式：名称独占一行完整展示，数值+占比第二行放大填充 */
+.rd-chart-legend-stats {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 3px;
+  margin-left: 24px;
+}
+.rd-chart-legend-stats strong {
+  font-size: var(--rd-font-body);
+  font-weight: var(--rd-weight-strong);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.rd-chart-legend small {
+.rd-chart-legend-stats small {
   color: var(--rd-muted);
-  min-width: 42px;
-  text-align: right;
+  font-size: var(--rd-font-caption);
+  font-variant-numeric: tabular-nums;
 }
-@media (max-width: 760px) {
-  .rd-chart-pair,
-  .rd-chart-legend {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.rd-chart-legend-bar {
+  margin-top: 5px;
+  margin-left: 24px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--rd-hover);
+  overflow: hidden;
 }
-
+.rd-chart-legend-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+}
+/* 饼图环心总量 */
+.rd-chart-donut {
+  position: relative;
+}
+.rd-chart-donut-total {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+.rd-chart-donut-total strong {
+  font-size: var(--rd-font-section);
+  font-variant-numeric: tabular-nums;
+}
+.rd-chart-donut-total small {
+  color: var(--rd-muted);
+  font-size: var(--rd-font-caption);
+}
+.rd-chart-bars-v .recharts-cartesian-axis-tick text {
+  /* 模型名较长时允许两行内的省略刻度 */
+  font-size: 11px;
+}
 .rd-saved-login {
   border: 1px solid var(--rd-line);
   padding: 12px;
@@ -670,6 +798,20 @@
   font-size: var(--rd-font-caption);
   font-variant-numeric: tabular-nums;
 }
+/* 用量表格行距收紧一档，减少视觉留白 */
+.rd-usage-table th,
+.rd-usage-table td {
+  padding-block: 8px;
+}
+/* 数据列少时（如只有 4 列）不让首列独吞余量：
+   首列限宽，数值列改回 auto 让浏览器按比例分摊剩余空间 */
+.rd-usage-table td:first-child {
+  max-width: 300px;
+}
+.rd-usage-table th:not(:first-child),
+.rd-usage-table td:not(:first-child) {
+  width: auto;
+}
 .rd-usage-table tbody tr:hover {
   background: var(--rd-hover);
 }
@@ -695,6 +837,12 @@
   max-width: 260px;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+/* 明细表模型名带图例同色圆点：表格与图表互相对应 */
+.rd-usage-model-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
 .rd-usage-table td small {
   font-size: var(--rd-font-caption);
@@ -805,17 +953,19 @@
   border-left: 3px solid;
   padding: 6px 0 6px 10px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 3px 10px;
+  gap: 4px;
 }
-.rd-chart-breakdown .rd-chart-legend i {
+.rd-chart-breakdown .rd-chart-legend i,
+.rd-chart-breakdown .rd-chart-legend .rd-chart-legend-bar {
   display: none;
 }
-.rd-chart-breakdown .rd-chart-legend span {
-  grid-column: 1 / -1;
+.rd-chart-breakdown .rd-chart-legend .rd-chart-legend-name {
   font-size: var(--rd-font-caption);
 }
-.rd-chart-breakdown .rd-chart-legend strong {
+.rd-chart-breakdown .rd-chart-legend-stats {
+  margin-left: 24px;
+}
+.rd-chart-breakdown .rd-chart-legend-stats strong {
   font-size: var(--rd-font-body);
   font-weight: var(--rd-weight-strong);
 }
@@ -857,47 +1007,20 @@
     overflow: auto;
   }
 }
-@media (max-width: 1100px) {
-  .rd-wallet-composer {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 24px;
-  }
-  .rd-wallet-form-grid {
-    grid-template-columns: minmax(0, 1.25fr) minmax(180px, 1fr);
-    gap: 24px;
-  }
-  .rd-wallet-method-list {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .rd-wallet-checkout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(170px, 0.65fr);
-    gap: 0 24px;
-    align-items: start;
-  }
-  .rd-wallet-checkout h3 {
-    grid-column: 1 / -1;
-    margin-bottom: 16px;
-  }
-  .rd-wallet-payment-actions {
-    align-content: start;
-    margin-top: 0;
-  }
-  .rd-wallet-payment-actions p {
-    text-align: left;
-    margin: 0;
-  }
-}
+/* 收银台窄屏适配：瓦片行收紧、付款区不再贴底 */
 @media (max-width: 760px) {
   .rd-wallet-page .rd-account-summary {
     grid-template-columns: 1fr;
   }
-  .rd-wallet-form-grid,
-  .rd-wallet-checkout {
-    grid-template-columns: minmax(0, 1fr);
+  .rd-wallet-paybar {
+    align-content: start;
+    height: auto;
+  }
+  .rd-wallet-choice-custom .rd-wallet-custom-input {
+    width: 100%;
   }
   .rd-wallet-payment-actions {
-    margin-top: 18px;
+    margin-top: 4px;
   }
 }
 

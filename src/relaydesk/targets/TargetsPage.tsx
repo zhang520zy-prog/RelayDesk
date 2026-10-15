@@ -22,10 +22,12 @@ import {
 } from "@/lib/api/relay";
 import {
   type ApplyReport,
+  deployOnlyIds,
   targetIds,
   targetLabels,
   toAppId,
 } from "../state/useRelayApply";
+import { TOOL_VENDORS } from "../environment/toolIcons";
 import { GroupRouting } from "./GroupRouting";
 
 const targetIcons: Record<RelayTarget, typeof Bot> = {
@@ -177,6 +179,7 @@ export function TargetsPage({
   change,
   changeGroupTarget,
   focusTarget,
+  openDeployment,
 }: {
   focusTarget?: RelayTarget | null;
   apps: RelayApplyApps;
@@ -193,6 +196,8 @@ export function TargetsPage({
     group: string,
     target: RelayTarget | null,
   ) => Promise<boolean>;
+  /** 仅部署工具卡片点击"前往部署"时跳环境部署页 */
+  openDeployment?: () => void;
 }) {
   const { t } = useTranslation("relaydesk");
   return (
@@ -213,6 +218,39 @@ export function TargetsPage({
           focused={focusTarget === app}
         />
       ))}
+      {/* 仅部署工具（Devin 走自有账号体系，不接中转站写入）：
+          卡片常驻展示，让 SWE 系列模型/分组的归属可被识别 */}
+      {deployOnlyIds.map((id) => {
+        const vendor = TOOL_VENDORS[id];
+        const VendorIcon = vendor?.Icon;
+        return (
+          <section
+            key={id}
+            id={`rd-target-${id}`}
+            className="rd-target-card rd-target-card--deploy"
+          >
+            <div className="rd-target-card-top">
+              <span className="rd-tool-icon rd-tool-icon--deploy">
+                {VendorIcon ? <VendorIcon size={23} /> : <Bot size={23} />}
+              </span>
+              <div>
+                <h2>{vendor?.name ?? id}</h2>
+                <span className="rd-muted">{t("targetDeployOnly")}</span>
+              </div>
+            </div>
+            <div className="rd-target-card-bottom">
+              <span className="rd-muted">{t("targetDeployHint")}</span>
+              <button
+                type="button"
+                className="rd-path-action rd-deploy-action"
+                onClick={() => openDeployment?.()}
+              >
+                {t("targetDeployAction")}
+              </button>
+            </div>
+          </section>
+        );
+      })}
       <GroupRouting
         {...{ apps, groups, groupTargets, changeGroupTarget }}
         busy={routingBusy ?? busy}

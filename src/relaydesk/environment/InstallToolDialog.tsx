@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { settingsApi } from "@/lib/api/settings";
 import { relayApi } from "@/lib/api/relay";
-import { deployOnlyLabels, targetLabels } from "../state/useRelayApply";
+import { deployOnlyLabels, targetTechLabels } from "../state/useRelayApply";
 import { Action } from "../ui";
 import { ToolInstallGuide } from "./ToolInstallGuide";
 import "./environment.css";
@@ -105,7 +105,7 @@ function InstallConfirmation({
         <DialogTitle>
           {t(repair ? "confirmToolRepair" : "confirmToolInstall", {
             tool:
-              (targetLabels as Record<string, string>)[app] ??
+              (targetTechLabels as Record<string, string>)[app] ??
               deployOnlyLabels[app] ??
               app,
           })}
@@ -149,7 +149,7 @@ function InstallConfirmation({
             <Loader2 size={16} className="rd-spin" />
             {t("installingTool", {
               tool:
-                (targetLabels as Record<string, string>)[app] ??
+                (targetTechLabels as Record<string, string>)[app] ??
                 deployOnlyLabels[app] ??
                 app,
             })}

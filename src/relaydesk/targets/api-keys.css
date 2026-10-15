@@ -73,12 +73,24 @@
   flex-direction: column;
 }
 .rd-apikeys-item {
-  display: flex;
+  /* grid 定列：主信息 | 停用徽标(定宽占位) | 复制 | 编辑 | 吊销——
+     各行尾部操作列 x 坐标一致，不因个别行多了停用标记而错位 */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px 28px 28px 28px;
   align-items: center;
   gap: 10px;
   padding: 9px 0;
   border-top: 1px solid var(--rd-line);
   font-size: var(--rd-font-caption);
+}
+.rd-apikeys-item.is-editing {
+  grid-template-columns: 1fr;
+}
+.rd-apikeys-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
 }
 .rd-apikeys-item-main {
   flex: 1;

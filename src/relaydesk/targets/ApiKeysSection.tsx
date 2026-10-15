@@ -285,9 +285,10 @@ export function ApiKeysSection({
                   {formatCreated(token.createdTime)}
                 </span>
               </div>
-              {token.status !== 1 && (
-                <span className="rd-muted">{t("apiKeyDisabled")}</span>
-              )}
+              {/* 停用徽标列固定占位：保持尾部三个操作图标的横向对齐 */}
+              <span className="rd-apikeys-status rd-muted">
+                {token.status !== 1 ? t("apiKeyDisabled") : ""}
+              </span>
               <CopyTokenKey id={token.id} />
               <button
                 type="button"

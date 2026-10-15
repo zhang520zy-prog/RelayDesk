@@ -241,10 +241,10 @@ describe("group routing", () => {
     const select = await mountReady();
     expect(select).toHaveValue("gemini");
     expect(
-      screen.getByText("Gemini CLI 已关闭，启用后才能应用该组模型。"),
+      screen.getByText("Gemini 已关闭，启用后才能应用该组模型。"),
     ).toBeInTheDocument();
     expect(
-      within(select).getByRole("option", { name: "Gemini CLI · 已关闭" }),
+      within(select).getByRole("option", { name: "Gemini · 已关闭" }),
     ).toBeEnabled();
   });
 

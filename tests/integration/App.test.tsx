@@ -906,11 +906,9 @@ describe("RelayDesk user flows", () => {
     expect(calls[0].targetApps).toEqual(["claude"]);
     const dialog = await screen.findByRole("dialog");
     await within(dialog).findByText("同步成功");
-    expect(within(dialog).getAllByText("Claude Code").length).toBeGreaterThan(
-      0,
-    );
-    expect(within(dialog).queryByText("Gemini CLI")).not.toBeInTheDocument();
-    expect(within(dialog).queryByText("OpenAI Codex")).not.toBeInTheDocument();
+    expect(within(dialog).getAllByText("Claude").length).toBeGreaterThan(0);
+    expect(within(dialog).queryByText("Gemini")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText("ChatGPT")).not.toBeInTheDocument();
   });
   it("retains the previous model when all tools fail", async () => {
     results = [
@@ -976,7 +974,7 @@ describe("RelayDesk user flows", () => {
     const user = userEvent.setup();
     mount();
     await user.click(await screen.findByRole("button", { name: "应用目标" }));
-    await user.click(await screen.findByRole("switch", { name: /Gemini CLI/ }));
+    await user.click(await screen.findByRole("switch", { name: /Gemini/ }));
     await waitFor(() => expect(account!.applyApps.gemini).toBe(true));
     expect(calls).toHaveLength(0);
   });

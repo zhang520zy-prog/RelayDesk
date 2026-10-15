@@ -2,6 +2,7 @@ import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import {
+  inferDeployTools,
   inferRelayTargets,
   type RelayApplyApps,
   type RelayGroup,
@@ -40,6 +41,8 @@ function GroupRoutingRow({
   // 建议值必须与 apply 的推断一致：显示推断目标本身；
   // 推断不出的组（如 Grok/特惠组）落到"全部已启用"，不再假装猜中某客户端。
   const suggestion = inferRelayTargets(group.name)[0] ?? null;
+  // 归属仅部署工具的组（如 SWE 系列 → Devin）：不下拉可选，但要标出来
+  const deployOnly = inferDeployTools(group.name)[0] ?? null;
   const selected = draft ?? target ?? "auto";
   const effectiveTarget =
     selected === "auto" ? (suggestion ?? undefined) : selected;
@@ -75,6 +78,14 @@ function GroupRoutingRow({
         <span className={`rd-routing-source ${target ? "is-local" : ""}`}>
           {t(target ? "groupRoutingLocal" : "groupRoutingAutomatic")}
         </span>
+        {deployOnly && (
+          <span
+            className="rd-routing-deploy-badge"
+            title={t("groupRoutingDeployHint")}
+          >
+            {t("groupRoutingDeployBadge")}
+          </span>
+        )}
       </div>
       <div className="rd-routing-control">
         <select

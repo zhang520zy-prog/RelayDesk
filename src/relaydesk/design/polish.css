@@ -45,7 +45,6 @@ textarea {
 code {
   font-family: var(--rd-font-code);
 }
-.rd-model-id,
 .rd-rate {
   font-family: var(--rd-font-ui);
 }
@@ -247,7 +246,6 @@ code {
 .rd-setting-actions,
 .rd-env-actions,
 .rd-env-row-actions,
-.rd-launch-actions,
 .rd-result-actions,
 .rd-header-actions,
 .rd-restart-entry {
@@ -330,8 +328,6 @@ code {
   overflow-wrap: anywhere;
 }
 .rd-metric > span,
-.rd-model-description,
-.rd-group,
 .rd-price-note {
   font-size: var(--rd-font-caption);
 }
@@ -342,21 +338,6 @@ code {
 }
 .rd-metric-links {
   gap: var(--rd-space-3);
-}
-.rd-section-heading {
-  gap: var(--rd-space-4);
-}
-.rd-model-table th {
-  font-size: var(--rd-font-caption);
-  font-weight: 500;
-}
-.rd-model-id {
-  font-size: var(--rd-font-control);
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-.rd-model-description {
-  line-height: 1.6;
 }
 .rd-target-card.is-enabled {
   border-top: 3px solid var(--rd-teal);
@@ -507,18 +488,6 @@ code {
 .rd-wallet-composer {
   gap: var(--rd-space-6);
 }
-.rd-wallet-form-grid {
-  gap: var(--rd-space-6);
-}
-.rd-wallet-checkout {
-  border-radius: 14px;
-  background: var(--rd-gradient);
-  box-shadow: var(--rd-inset-highlight);
-}
-.rd-wallet-checkout .rd-wallet-quote strong:nth-of-type(2) {
-  font-size: var(--rd-font-stat);
-  font-weight: 600;
-}
 .rd-wallet-payment-actions {
   gap: var(--rd-space-3);
 }
@@ -581,27 +550,6 @@ code {
   padding: var(--rd-space-4);
   border: 1px solid var(--rd-line);
 }
-.rd-chart-breakdown .rd-chart-legend li {
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  gap: 4px 8px;
-  padding: 8px 0;
-  border-left: 0;
-}
-.rd-chart-series-key {
-  grid-row: 1 / 3;
-  align-self: center;
-  flex-shrink: 0;
-}
-.rd-chart-breakdown .rd-chart-legend span {
-  grid-column: 2 / -1;
-}
-.rd-chart-breakdown .rd-chart-legend strong {
-  grid-column: 2;
-}
-.rd-chart-breakdown .rd-chart-legend small {
-  min-width: 0;
-  font-size: var(--rd-font-caption);
-}
 .rd-account-table {
   font-size: var(--rd-font-control);
 }
@@ -644,6 +592,26 @@ code {
 .rd-login-utilities .rd-select {
   height: 40px;
   max-width: 150px;
+}
+/* 环境诊断入口：与主题/语言同级但带品牌色描边，新手也能一眼看到 */
+.rd-login-env-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--rd-teal) 45%, transparent);
+  border-radius: 10px;
+  color: var(--rd-teal);
+  background: var(--rd-soft);
+  font-size: var(--rd-font-control);
+  font-weight: var(--rd-weight-medium);
+  white-space: nowrap;
+}
+.rd-login-env-btn:hover {
+  border-color: var(--rd-teal);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--rd-teal) 18%, transparent);
+  transform: translateY(-1px);
 }
 .rd-login-main {
   grid-template-columns: minmax(0, 1fr) minmax(340px, 408px);
@@ -900,12 +868,6 @@ code {
   .rd-model-center .rd-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .rd-wallet-composer {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .rd-wallet-checkout {
-    grid-template-columns: minmax(0, 1fr) minmax(170px, 0.75fr);
-  }
   .rd-main .rd-page-header {
     padding-block: 16px;
   }
@@ -973,9 +935,6 @@ code {
   .rd-sidebar .rd-account-card > div {
     margin-bottom: 8px;
   }
-  .rd-sidebar .rd-account-status {
-    display: none;
-  }
   .rd-login-top {
     padding-block: 12px;
   }
@@ -1004,10 +963,6 @@ code {
   }
   .rd-wallet-page .rd-account-summary {
     grid-template-columns: 1fr;
-  }
-  .rd-wallet-form-grid,
-  .rd-wallet-checkout {
-    grid-template-columns: minmax(0, 1fr);
   }
   .rd-page-header p {
     display: none;
@@ -1137,4 +1092,35 @@ code {
 .rd-legal-confirm.is-disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* 仅部署工具卡片（Devin）：无开关无路径，弱化边框区分 */
+.rd-target-card--deploy {
+  border-style: dashed;
+}
+.rd-tool-icon--deploy {
+  border: 1px dashed var(--rd-control-line);
+}
+.rd-deploy-action {
+  padding: 5px 12px;
+  border: 1px solid var(--rd-control-line);
+  border-radius: 8px;
+  color: var(--rd-teal);
+  font-size: var(--rd-font-caption);
+  font-weight: var(--rd-weight-medium);
+  white-space: nowrap;
+}
+.rd-deploy-action:hover {
+  border-color: var(--rd-teal);
+  background: var(--rd-soft);
+}
+
+/* 应用报告中的仅部署工具行（Devin）：虚线边弱化，区别于同步结果 */
+.rd-result--deploy {
+  border: 1px dashed var(--rd-line);
+  border-radius: 9px;
+  padding: 9px 12px;
+}
+.rd-result--deploy .rd-muted {
+  font-size: var(--rd-font-caption);
 }

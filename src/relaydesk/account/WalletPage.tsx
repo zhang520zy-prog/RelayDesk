@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
   CheckCircle2,
@@ -49,6 +49,21 @@ function normalizeAmount(
   return typeof option === "number" ? { amount: option } : option;
 }
 
+/** 预设档位与站点收银台一致：仅此五档 + 自定义金额 */
+const PRESET_AMOUNTS = [10, 25, 50, 100, 200] as const;
+
+/** 折扣徽标百分比：优先站点给的 discount 率，否则由 creditAmount 反推。
+ *  无优惠信息返回 null（不显示徽标，不虚构折扣）。 */
+function discountPct(option: RelayTopupAmountOption): number | null {
+  if (option.discount != null && option.discount > 0 && option.discount < 1)
+    return Math.round((1 - option.discount) * 100);
+  if (option.creditAmount != null && option.creditAmount > option.amount)
+    return Math.round(
+      ((option.creditAmount - option.amount) / option.creditAmount) * 100,
+    );
+  return null;
+}
+
 function orderLabel(refId: string) {
   if (!refId) return "—";
   if (refId.length <= 16) return refId;
@@ -67,6 +82,47 @@ function methodLabel(method: string | undefined, t: (key: string) => string) {
   if (!method) return "—";
   const known = ["wxpay", "alipay", "redeem", "admin", "stripe", "epay"];
   return known.includes(method) ? t(`topupMethod_${method}`) : method;
+}
+
+/** 支付方式品牌图标（微信绿标 / 支付宝蓝标），未知方式回退通用卡标 */
+function MethodIcon({ id }: { id: string }) {
+  if (id === "wxpay")
+    return (
+      <svg
+        className="rd-pay-icon"
+        viewBox="0 0 24 24"
+        width={22}
+        height={22}
+        aria-hidden="true"
+      >
+        <rect width="24" height="24" rx="5.5" fill="#09bb07" />
+        <path
+          fill="#fff"
+          d="M9.6 5.6c-3 0-5.4 2-5.4 4.5 0 1.4.8 2.7 2 3.5l-.5 1.7 2-1.1c.5.2 1.2.3 1.9.3h.4a4.7 4.7 0 0 1-.2-1.3c0-2.6 2.5-4.7 5.5-4.7h.3C15 6.8 12.5 5.6 9.6 5.6Zm-2.1 2.4a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6Zm4.3 0a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6Zm8.5 5.2c0-2.3-2.3-4.1-5-4.1s-5 1.8-5 4.1 2.2 4.2 5 4.2c.6 0 1.2-.1 1.7-.3l1.7.9-.5-1.5c1.2-.7 2.1-1.9 2.1-3.3Zm-6.7-.7a.7.7 0 1 1 0-1.4.7.7 0 0 1 0 1.4Zm3.4 0a.7.7 0 1 1 0-1.4.7.7 0 0 1 0 1.4Z"
+        />
+      </svg>
+    );
+  if (id === "alipay")
+    return (
+      <svg
+        className="rd-pay-icon"
+        viewBox="0 0 24 24"
+        width={22}
+        height={22}
+        aria-hidden="true"
+      >
+        {/* 官方「支」字蓝底标（simple-icons 路径，含圆角底） */}
+        <path
+          fill="#1677ff"
+          d="M19.695 15.07c3.426 1.158 4.203 1.22 4.203 1.22V3.846c0-2.124-1.705-3.845-3.81-3.845H3.914C1.808.001.102 1.722.102 3.846v16.31c0 2.123 1.706 3.845 3.813 3.845h16.173c2.105 0 3.81-1.722 3.81-3.845v-.157s-6.19-2.602-9.315-4.119c-2.096 2.602-4.8 4.181-7.607 4.181-4.75 0-6.361-4.19-4.112-6.949.49-.602 1.324-1.175 2.617-1.497 2.025-.502 5.247.313 8.266 1.317a16.796 16.796 0 0 0 1.341-3.302H5.781v-.952h4.799V6.975H4.77v-.953h5.81V3.591s0-.409.411-.409h2.347v2.84h5.744v.951h-5.744v1.704h4.69a19.453 19.453 0 0 1-1.986 5.06c1.424.52 2.702 1.011 3.654 1.333m-13.81-2.032c-.596.06-1.71.325-2.321.869-1.83 1.608-.735 4.55 2.968 4.55 2.151 0 4.301-1.388 5.99-3.61-2.403-1.182-4.438-2.028-6.637-1.809"
+        />
+      </svg>
+    );
+  return (
+    <span className="rd-pay-icon rd-pay-icon--generic" aria-hidden="true">
+      <CreditCard size={16} />
+    </span>
+  );
 }
 
 export function WalletPage({
@@ -101,6 +157,12 @@ export function WalletPage({
   const [orderCheckFailed, setOrderCheckFailed] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const [amount, setAmount] = useState<number | null>(null);
+  const [customAmount, setCustomAmount] = useState("");
+  const [redeemKey, setRedeemKey] = useState("");
+  const [redeemBusy, setRedeemBusy] = useState(false);
+  const [redeemResult, setRedeemResult] = useState<
+    { ok: true; credited: number | null } | { ok: false; key: string } | null
+  >(null);
   const [method, setMethod] = useState<string | null>(null);
   const [externalOpenFailed, setExternalOpenFailed] = useState(false);
   const expiredNotified = useRef(false);
@@ -135,16 +197,54 @@ export function WalletPage({
     retry: false,
     staleTime: 15_000,
   });
-  const options = useMemo(
-    () => (info.data?.amountOptions ?? []).map(normalizeAmount),
-    [info.data?.amountOptions],
-  );
+  const options = useMemo(() => {
+    const offered = (info.data?.amountOptions ?? []).map(normalizeAmount);
+    // 固定五档为主列表：站点返回的档位信息（优惠/标签）按 amount 合并进来
+    return PRESET_AMOUNTS.map(
+      (amount) =>
+        offered.find((option) => option.amount === amount) ?? {
+          amount: amount as number,
+        },
+    );
+  }, [info.data?.amountOptions]);
   const methods = useMemo(
     () => (info.data?.payMethods ?? []).filter((item) => item.enabled),
     [info.data?.payMethods],
   );
-  const activeAmount = amount ?? options[0]?.amount ?? null;
+  const minAmount = info.data?.minAmount ?? 1;
+  const customValue = Number(customAmount);
+  const customValid =
+    customAmount.trim() !== "" &&
+    Number.isInteger(customValue) &&
+    customValue >= minAmount;
+  // 自定义金额填了就用它（非法则置空阻断支付）；否则用预设档
+  const activeAmount =
+    customAmount.trim() !== ""
+      ? customValid
+        ? customValue
+        : null
+      : (amount ?? options[0]?.amount ?? null);
   const activeMethod = method ?? methods[0]?.id ?? null;
+  // 逐档真实报价：站点收银台的"实付/省 X%"来自服务端按金额+支付方式
+  // 计算的 quote，而不是 amount_options 里的静态字段——金额选项常是裸
+  // 数字数组，缺 discount 字段时徽标全灭，跟站点显示对不上。
+  const presetQuotes = useQueries({
+    queries: PRESET_AMOUNTS.map((preset) => ({
+      queryKey: ["relaydesk", "topup-quote", activeMethod, preset],
+      queryFn: () => relayApi.calculateTopupAmount(activeMethod!, preset),
+      enabled: Boolean(info.data?.enabled && activeMethod),
+      retry: false,
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+    })),
+  });
+  const presetQuoteMap = useMemo(() => {
+    const map = new Map<number, number | undefined>();
+    PRESET_AMOUNTS.forEach((preset, i) => {
+      map.set(preset, presetQuotes[i]?.data?.payAmount);
+    });
+    return map;
+  }, [presetQuotes]);
   const quote = useQuery({
     queryKey: ["relaydesk", "topup-quote", activeMethod, activeAmount],
     queryFn: () => relayApi.calculateTopupAmount(activeMethod!, activeAmount!),
@@ -156,11 +256,23 @@ export function WalletPage({
     refetchOnWindowFocus: false,
   });
   useEffect(() => {
-    const error = [info.error, history.error, quote.error].find(
+    const candidates = [
+      info.error,
+      history.error,
+      quote.error,
+      ...presetQuotes.map((q) => q.error),
+    ];
+    const error = candidates.find(
       (candidate) => candidate && relayErrorKey(candidate) === "expired",
     );
     if (error) notifySessionExpired(error);
-  }, [info.error, history.error, quote.error, notifySessionExpired]);
+  }, [
+    info.error,
+    history.error,
+    quote.error,
+    presetQuotes,
+    notifySessionExpired,
+  ]);
 
   async function refreshWallet() {
     if (refreshLock.current) return;
@@ -225,6 +337,30 @@ export function WalletPage({
     } finally {
       refreshLock.current = false;
       setChecking(false);
+    }
+  }
+
+  async function redeem() {
+    const key = redeemKey.trim();
+    if (redeemBusy || !key) return;
+    setRedeemBusy(true);
+    setRedeemResult(null);
+    try {
+      const credited = await relayApi.redeemCode(key);
+      if (!mounted.current) return;
+      setRedeemResult({ ok: true, credited });
+      setRedeemKey("");
+      void refreshAccount?.();
+      void history.refetch();
+    } catch (error) {
+      if (!mounted.current) return;
+      if (relayErrorKey(error) === "expired") {
+        notifySessionExpired(error);
+        return;
+      }
+      setRedeemResult({ ok: false, key: relayErrorKey(error) });
+    } finally {
+      setRedeemBusy(false);
     }
   }
 
@@ -375,9 +511,12 @@ export function WalletPage({
           </div>
         ) : (
           <>
+            {/* 单卡收银台（对齐站点充值页布局）：
+                左列 = 金额瓦片 → 自定义金额 → 支付方式 → 兑换码
+                右列 = 结算面板（支付金额 + 去付款） */}
             <div className="rd-wallet-composer">
-              <div className="rd-wallet-form-grid">
-                <div>
+              <div className="rd-wallet-composer-main">
+                <div className="rd-wallet-step">
                   <h3>
                     <span className="rd-step-number" aria-hidden="true">
                       1
@@ -389,32 +528,115 @@ export function WalletPage({
                     role="group"
                     aria-label={t("topupAmount")}
                   >
-                    {options.length ? (
-                      options.map((option) => {
-                        const symbol =
-                          info.data?.currencySymbol ??
-                          account.currencySymbol ??
-                          "";
-                        const label =
-                          option.label ?? `${symbol}${option.amount}`;
-                        return (
-                          <button
-                            key={`${option.amount}-${label}`}
-                            type="button"
-                            aria-pressed={activeAmount === option.amount}
-                            className="rd-wallet-choice"
-                            onClick={() => setAmount(option.amount)}
-                          >
-                            {label}
-                          </button>
-                        );
-                      })
-                    ) : (
-                      <span className="rd-muted">{t("topupNoMethods")}</span>
-                    )}
+                    {options.map((option) => {
+                      const symbol =
+                        option.currencySymbol ??
+                        info.data?.currencySymbol ??
+                        account.currencySymbol ??
+                        "";
+                      const label = option.label ?? `${symbol}${option.amount}`;
+                      // 优惠以该档位+当前支付方式的真实报价为准；
+                      // quote 未返回时退回 amount_options 的 discount/credit 字段
+                      const quotePay = presetQuoteMap.get(option.amount);
+                      const payable =
+                        quotePay != null &&
+                        quotePay > 0 &&
+                        quotePay < option.amount
+                          ? quotePay
+                          : option.discount != null &&
+                              option.discount > 0 &&
+                              option.discount < 1
+                            ? option.amount * option.discount
+                            : null;
+                      const pct =
+                        payable != null
+                          ? Math.round(
+                              ((option.amount - payable) / option.amount) * 100,
+                            )
+                          : discountPct(option);
+                      const saved =
+                        payable != null
+                          ? option.amount - payable
+                          : option.creditAmount != null &&
+                              option.creditAmount > option.amount
+                            ? option.creditAmount - option.amount
+                            : null;
+                      const selected =
+                        customAmount.trim() === "" &&
+                        activeAmount === option.amount;
+                      return (
+                        <button
+                          key={`${option.amount}-${label}`}
+                          type="button"
+                          aria-pressed={selected}
+                          className={`rd-wallet-choice${selected ? " is-selected" : ""}`}
+                          onClick={() => {
+                            setAmount(option.amount);
+                            setCustomAmount("");
+                          }}
+                        >
+                          <span className="rd-wallet-choice-top">
+                            <strong>{label}</strong>
+                            {pct != null && pct > 0 && (
+                              <em className="rd-wallet-choice-off">
+                                {t("topupDiscountBadge", { pct })}
+                              </em>
+                            )}
+                          </span>
+                          {payable != null && saved != null && saved > 0 && (
+                            <small className="rd-wallet-choice-sub">
+                              {t("topupTileSavings", {
+                                pay: `${symbol}${payable.toFixed(0)}`,
+                                save: `${symbol}${saved.toFixed(0)}`,
+                              })}
+                            </small>
+                          )}
+                        </button>
+                      );
+                    })}
+                    {/* 自定义金额：与金额瓦片同一行流内对齐，成为第 6 个"瓦片" */}
+                    <div
+                      className={`rd-wallet-choice rd-wallet-choice-custom${
+                        customAmount.trim() !== "" ? " is-selected" : ""
+                      }`}
+                    >
+                      <label htmlFor="rd-topup-custom">
+                        {t("topupCustomAmount")}
+                      </label>
+                      <input
+                        id="rd-topup-custom"
+                        className="rd-wallet-custom-input"
+                        inputMode="numeric"
+                        placeholder={t("topupCustomPlaceholder")}
+                        value={customAmount}
+                        onChange={(event) =>
+                          setCustomAmount(event.target.value)
+                        }
+                      />
+                      {customAmount.trim() !== "" && (
+                        <span className="rd-muted rd-wallet-custom-quote">
+                          {t("topupPayAmount")}:{" "}
+                          {quote.data?.payAmount === undefined
+                            ? "—"
+                            : formatRelayMoney(quote.data.payAmount, {
+                                currencySymbol:
+                                  quote.data.currencySymbol ??
+                                  info.data.currencySymbol ??
+                                  account.currencySymbol,
+                                currencyCode:
+                                  quote.data.currency ?? info.data.currency,
+                              })}
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  {customAmount.trim() !== "" && !customValid && (
+                    <p className="rd-danger-text" role="alert">
+                      {t("topupCustomInvalid", { min: minAmount })}
+                    </p>
+                  )}
                 </div>
-                <div>
+                <div className="rd-wallet-step">
                   <h3>
                     <span className="rd-step-number" aria-hidden="true">
                       2
@@ -428,21 +650,22 @@ export function WalletPage({
                   >
                     {methods.length ? (
                       methods.map((item: RelayTopupPaymentMethod) => (
-                        <label className="rd-wallet-method" key={item.id}>
-                          <input
-                            type="radio"
-                            name="relaydesk-topup-method"
-                            value={item.id}
-                            checked={activeMethod === item.id}
-                            onChange={() => setMethod(item.id)}
-                          />
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={activeMethod === item.id}
+                          className={`rd-wallet-method${activeMethod === item.id ? " is-selected" : ""}`}
+                          key={item.id}
+                          onClick={() => setMethod(item.id)}
+                        >
+                          <MethodIcon id={item.id} />
                           <span>
                             <strong>{item.label ?? item.id}</strong>
                             {item.description && (
                               <small>{item.description}</small>
                             )}
                           </span>
-                        </label>
+                        </button>
                       ))
                     ) : (
                       <span className="rd-muted">{t("topupNoMethods")}</span>
@@ -450,12 +673,13 @@ export function WalletPage({
                   </div>
                 </div>
               </div>
+              {/* 右侧结算面板：需支付金额 + 去付款（对应原型右栏） */}
               <aside
-                className="rd-wallet-checkout"
-                aria-label={t("topupSummary")}
+                className="rd-wallet-summary"
+                aria-label={t("topupPayAmount")}
               >
-                <div className="rd-wallet-quote" aria-live="polite">
-                  <div className="rd-wallet-quote-item is-payable">
+                <div className="rd-wallet-paybar">
+                  <div className="rd-wallet-quote" aria-live="polite">
                     <span>{t("topupPayAmount")}</span>
                     <strong>
                       {quote.data?.payAmount === undefined
@@ -469,35 +693,81 @@ export function WalletPage({
                               quote.data.currency ?? info.data.currency,
                           })}
                     </strong>
+                    <small className="rd-muted">
+                      {quote.isError
+                        ? t("topupQuoteUnavailable")
+                        : quote.isFetching
+                          ? t("topupQuoteLoading")
+                          : t("topupQuotePending")}
+                    </small>
                   </div>
-                  <p>
-                    {quote.isError
-                      ? t("topupQuoteUnavailable")
-                      : quote.isFetching
-                        ? t("topupQuoteLoading")
-                        : t("topupQuotePending")}
-                  </p>
-                </div>
-                <div className="rd-wallet-payment-actions">
-                  <Action
-                    primary
-                    disabled={
-                      payBusy ||
-                      quote.isFetching ||
-                      quote.isError ||
-                      quote.data?.payAmount === undefined ||
-                      !["wxpay", "alipay"].includes(activeMethod ?? "")
-                    }
-                    onClick={() => {
-                      setPayError(false);
-                      setConfirmPay(true);
-                    }}
-                  >
-                    {t("topupPayNow")}
-                  </Action>
-                  <p className="rd-muted">{t("topupCheckoutHint")}</p>
+                  <div className="rd-wallet-payment-actions">
+                    <Action
+                      primary
+                      disabled={
+                        payBusy ||
+                        quote.isFetching ||
+                        quote.isError ||
+                        quote.data?.payAmount === undefined ||
+                        !["wxpay", "alipay"].includes(activeMethod ?? "")
+                      }
+                      onClick={() => {
+                        setPayError(false);
+                        setConfirmPay(true);
+                      }}
+                    >
+                      {t("topupPayNow")}
+                    </Action>
+                    <p className="rd-muted">{t("topupCheckoutHint")}</p>
+                  </div>
                 </div>
               </aside>
+              {/* 兑换码：通栏一行，跨过左右两列（与站点充值页一致） */}
+              <div className="rd-wallet-redeem-inline">
+                <span className="rd-muted">{t("redeemInlineHint")}</span>
+                <form
+                  className="rd-wallet-redeem-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void redeem();
+                  }}
+                >
+                  <input
+                    className="rd-input"
+                    placeholder={t("redeemPlaceholder")}
+                    aria-label={t("redeemTitle")}
+                    value={redeemKey}
+                    onChange={(event) => setRedeemKey(event.target.value)}
+                  />
+                  <Action
+                    primary
+                    disabled={redeemBusy || !redeemKey.trim()}
+                    type="submit"
+                  >
+                    {redeemBusy ? (
+                      <RefreshCw size={13} className="rd-spin" />
+                    ) : null}
+                    {t(redeemBusy ? "redeeming" : "redeemSubmit")}
+                  </Action>
+                </form>
+                {redeemResult && (
+                  <p
+                    role={redeemResult.ok ? "status" : "alert"}
+                    className={`rd-alert ${redeemResult.ok ? "success" : "error"}`}
+                  >
+                    {redeemResult.ok
+                      ? redeemResult.credited != null
+                        ? t("redeemSuccessAmount", {
+                            amount: formatRelayQuota(
+                              redeemResult.credited,
+                              account,
+                            ),
+                          })
+                        : t("redeemSuccess")
+                      : t(redeemResult.key)}
+                  </p>
+                )}
+              </div>
             </div>
             {createdOrder && (
               <div

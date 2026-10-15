@@ -249,9 +249,9 @@ describe("model application launch choices", () => {
     });
     const launch = await screen.findByRole("region", { name: "下一步" });
     expect(
-      within(launch).getByRole("group", { name: "OpenAI Codex 启动选项" }),
+      within(launch).getByRole("group", { name: "ChatGPT 启动选项" }),
     ).toBeInTheDocument();
-    expect(within(launch).queryByText("Claude Code")).not.toBeInTheDocument();
+    expect(within(launch).queryByText("Claude")).not.toBeInTheDocument();
   });
 
   it("never offers an unexpected successful target outside this application report", async () => {
@@ -263,7 +263,7 @@ describe("model application launch choices", () => {
       ],
     });
     const launch = await screen.findByRole("region", { name: "下一步" });
-    expect(within(launch).queryByText("Claude Code")).not.toBeInTheDocument();
+    expect(within(launch).queryByText("Claude")).not.toBeInTheDocument();
   });
 
   it("limits choices to the successful tool in the latest single-tool retry", async () => {
@@ -300,9 +300,9 @@ describe("model application launch choices", () => {
     mount(result.current.report!);
     const launch = await screen.findByRole("region", { name: "下一步" });
     expect(
-      within(launch).getByRole("group", { name: "Claude Code 启动选项" }),
+      within(launch).getByRole("group", { name: "Claude 启动选项" }),
     ).toBeInTheDocument();
-    expect(within(launch).queryByText("OpenAI Codex")).not.toBeInTheDocument();
+    expect(within(launch).queryByText("ChatGPT")).not.toBeInTheDocument();
   });
 
   it("requires install confirmation and cancellation never runs the installer", async () => {

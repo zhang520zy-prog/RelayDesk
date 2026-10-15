@@ -718,10 +718,12 @@ impl RelayService {
         let account = require_account(state)?;
         let client = RelayClient::new(&account.base_url, &account.access_token);
         let info = parse_topup_info(&client.topup_info().await?);
+        let preset_hit = info.amount_options.iter().any(|a| a.amount == amount);
+        // 预设金额之外允许自定义整数金额（与站点网页端"自定义金额"一致），下限取 min_amount
+        let custom_ok = amount.fract() == 0.0 && amount >= info.min_amount.unwrap_or(1.0);
         if !info.enabled
             || !info.pay_methods.iter().any(|m| m.id == method && m.enabled)
-            || !info.amount_options.iter().any(|a| a.amount == amount)
-            || info.min_amount.is_some_and(|min| amount < min)
+            || !(preset_hit || custom_ok)
         {
             return Err(AppError::Message("relay.invalid_amount".into()));
         }
@@ -750,6 +752,25 @@ impl RelayService {
             .await
             .map_err(|error| authenticated_error(state, &account, error))?;
         Ok(parse_topup_history(&raw))
+    }
+
+    /// 兑换码兑换额度（new-api `POST /api/user/topup {key}`）。
+    /// 返回兑换到账的配额值——站点响应 data 通常是数字（额度）。
+    pub async fn redeem_code(state: &AppState, key: &str) -> Result<Option<f64>, AppError> {
+        let key = key.trim();
+        if key.is_empty() || key.len() > 128 {
+            return Err(AppError::Message("relay.redeem_key_invalid".into()));
+        }
+        let account = require_account(state)?;
+        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let raw = client
+            .redeem_code(key)
+            .await
+            .map_err(|error| authenticated_error(state, &account, error))?;
+        let credited = payload(&raw)
+            .as_f64()
+            .or_else(|| payload(&raw).get("quota").and_then(|v| v.as_f64()));
+        Ok(credited)
     }
 
     /// 充值记录 = 到账日志（type=1，与站点"充值记录"同源）∪ 未完结支付订单。
@@ -806,8 +827,18 @@ impl RelayService {
         let mut models = parse_usage_models(&raw, &query)
             .ok_or_else(|| AppError::Message("relay.usage_models_not_ready".to_string()))?;
         let detail_query = usage_bucket_query(&models, &query);
+        // 脱敏计数日志：只落行数与时间戳范围，不落任何内容字段
+        log::info!(
+            "usage models parsed: {} models, {} buckets; detail window {}..{}",
+            models.items.len(),
+            models.buckets.len(),
+            detail_query.start,
+            detail_query.end
+        );
         match tokio::time::timeout(
-            std::time::Duration::from_secs(30),
+            // 明细要逐页拉取整个窗口的消费日志（数千行=几十页），
+            // 30s 会在翻页中途掐掉 future——没有任何日志留下。
+            std::time::Duration::from_secs(150),
             client.usage_details(&detail_query),
         )
         .await
@@ -878,6 +909,25 @@ impl RelayService {
         })
         .await
         .map_err(|e| AppError::Message(format!("应用任务执行失败: {e}")))?
+    }
+
+    /// 修复类功能（如 Codex 生图）在尚未应用任何模型时的凭据来源：
+    /// 登录账号 base_url + 确保 `<group>` 分组令牌存在，返回 (base_url, sk- key)。
+    /// 与 apply_model 的取 key 路径一致——复用已有 `relaydesk-<group>` 令牌，不重复建。
+    pub async fn ensure_repair_credentials(
+        state: &AppState,
+        group: &str,
+    ) -> Result<(String, String), AppError> {
+        let mut account = require_account(state)?;
+        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let key = ensure_group_token(state, &client, &mut account, group).await?;
+        let prepared = account.group_tokens.get(group).cloned();
+        let account = Self::commit_session_update(state, &account, |current| {
+            if let Some(token) = prepared {
+                current.group_tokens.insert(group.to_string(), token);
+            }
+        })?;
+        Ok((account.base_url.clone(), key))
     }
 }
 
@@ -1196,6 +1246,7 @@ fn parse_topup_info(raw: &Value) -> RelayTopupInfo {
                     amount,
                     label: None,
                     credit_amount: None,
+                    discount: None,
                     currency: None,
                     currency_symbol: None,
                 });
@@ -1204,6 +1255,7 @@ fn parse_topup_info(raw: &Value) -> RelayTopupInfo {
                 amount: value_f64(item, &["amount", "value", "pay_amount"])?,
                 label: value_string(item, &["label", "name", "title"]),
                 credit_amount: value_f64(item, &["credit_amount", "quota", "credit"]),
+                discount: value_f64(item, &["discount", "rate", "discount_rate"]),
                 currency: value_string(item, &["currency", "currency_code"]),
                 currency_symbol: value_string(item, &["currency_symbol", "symbol"]),
             })
@@ -1502,10 +1554,11 @@ fn parse_usage_models(raw: &Value, query: &RelayUsageQuery) -> Option<RelayUsage
         if count < 0 || tokens < 0 || quota < 0 {
             return None;
         }
-        let group = row
-            .get("use_group")
-            .and_then(Value::as_str)
-            .filter(|s| !s.is_empty())
+        let group = ["use_group", "group", "group_name"]
+            .iter()
+            .filter_map(|key| row.get(*key).and_then(Value::as_str))
+            .map(str::trim)
+            .find(|s| !s.is_empty())
             .map(str::to_owned);
         let sum = groups.entry((model.to_string(), group)).or_default();
         sum.0 = sum.0.checked_add(count)?;
@@ -1578,8 +1631,26 @@ fn parse_usage_models(raw: &Value, query: &RelayUsageQuery) -> Option<RelayUsage
 // an excluded partial first hour.
 fn usage_bucket_query(models: &RelayUsageModels, query: &RelayUsageQuery) -> RelayUsageQuery {
     let mut detail = query.clone();
-    if let Some(first) = models.buckets.iter().map(|bucket| bucket.timestamp).min() {
-        if let Some(time) = chrono::DateTime::from_timestamp(first, 0) {
+    let Some(first) = models.buckets.iter().map(|bucket| bucket.timestamp).min() else {
+        return detail;
+    };
+    // 站点版本差异：created_at 可能是秒或毫秒——超过 2001-09-09 的
+    // 秒值实为毫秒，归一化为秒，否则 rfc3339 转换会得到数万年后的
+    // 非法日期，进而让 usage_path 的 start>=end 校验静默失败。
+    let secs = if first > 1_000_000_000_000 {
+        first / 1000
+    } else {
+        first
+    };
+    let parse = |s: &str| chrono::DateTime::parse_from_rfc3339(s).map(|t| t.timestamp());
+    let (Ok(query_start), Ok(query_end)) = (parse(&query.start), parse(&query.end)) else {
+        return detail;
+    };
+    // 只在起点收窄后仍构成合法窗口时才收窄（start<end 且不超 usage_path
+    // 的 32 天上限）；否则保持原查询窗口，保证明细请求一定可发。
+    let start = secs.max(query_start);
+    if start < query_end && query_end - start <= 32 * 86400 {
+        if let Some(time) = chrono::DateTime::from_timestamp(start, 0) {
             detail.start = time.to_rfc3339();
         }
     }
@@ -1588,42 +1659,81 @@ fn usage_bucket_query(models: &RelayUsageModels, query: &RelayUsageQuery) -> Rel
 
 fn enrich_usage_details(models: &mut RelayUsageModels, raw: &Value) {
     let Some(logs) = raw.as_array() else {
+        log::info!("usage details enrich skipped: response not an array");
         return;
     };
+    let total_logs = logs.len();
+    // 分页重复防护：只对带 id 的行去重——部分站点版本日志行没有 id 字段，
+    // 不能因此整批丢弃明细（那是真实消耗数据缺数据的直接原因）。
     let mut ids = std::collections::HashSet::new();
-    if logs.iter().any(|row| {
-        row.get("id")
-            .and_then(Value::as_i64)
-            .is_none_or(|id| !ids.insert(id))
-    }) {
-        return;
+    let logs: Vec<&Value> = logs
+        .iter()
+        .filter(|row| match row.get("id").and_then(Value::as_i64) {
+            Some(id) => ids.insert(id),
+            None => true,
+        })
+        .collect();
+    fn log_group(r: &Value) -> Option<&str> {
+        ["group", "use_group", "group_name"]
+            .iter()
+            .filter_map(|key| r.get(*key).and_then(Value::as_str))
+            .map(str::trim)
+            .find(|s| !s.is_empty())
     }
     for model in &mut models.items {
-        let rows: Vec<_> =
-            logs.iter()
-                .filter(|r| {
-                    r.get("model_name").and_then(Value::as_str).map(str::trim)
-                        == Some(model.model_id.as_str())
-                        && model.group.as_ref().is_none_or(|g| {
-                            r.get("group").and_then(Value::as_str) == Some(g.as_str())
-                        })
-                })
-                .collect();
+        let target_model = model.model_id.to_ascii_lowercase();
+        let name_matches = |r: &&&Value| {
+            r.get("model_name")
+                .or_else(|| r.get("model"))
+                .and_then(Value::as_str)
+                .map(|s| s.trim().eq_ignore_ascii_case(&target_model))
+                .unwrap_or(false)
+        };
+        let mut rows: Vec<_> = logs
+            .iter()
+            .filter(|r| {
+                name_matches(r)
+                    && model
+                        .group
+                        .as_ref()
+                        .is_none_or(|g| log_group(r) == Some(g.as_str()))
+            })
+            .collect();
+        // 站点版本差异：日志行可能不携带分组字段（log_group=None）或与聚合
+        // 分组命名不同——严格匹配落空时退回仅按模型名匹配，宁可合并同模型
+        // 跨组明细也不让整列数据消失。
+        if rows.is_empty() && model.group.is_some() {
+            rows = logs.iter().filter(|r| name_matches(r)).collect();
+        }
         if rows.is_empty() {
             continue;
         }
         model.detail_request_count = Some(rows.len() as i64);
-        let sum = |field: &str| {
-            rows.iter().try_fold(0i64, |n, r| {
-                n.checked_add(r.get(field)?.as_i64().filter(|v| *v >= 0)?)
+        // 容错求和：单行缺字段不拖累整列——至少一行有值就出数；
+        // 所有行都缺才视为不可用（保持 None → 前端显示 —）。
+        // 字段名兼容站点版本差异：prompt_tokens/input_tokens、
+        // completion_tokens/output_tokens 任一命中即取值。
+        let sum = |fields: &[&str]| {
+            rows.iter().fold((0i64, false), |(n, seen), r| {
+                match fields
+                    .iter()
+                    .find_map(|f| r.get(*f).and_then(Value::as_i64))
+                    .filter(|v| *v >= 0)
+                {
+                    Some(v) => (n.saturating_add(v), true),
+                    None => (n, seen),
+                }
             })
         };
-        let (Some(input), Some(output)) = (sum("prompt_tokens"), sum("completion_tokens")) else {
+        let (input, input_seen) = sum(&["prompt_tokens", "input_tokens"]);
+        let (output, output_seen) = sum(&["completion_tokens", "output_tokens"]);
+        if !(input_seen && output_seen) {
             continue;
-        };
+        }
+        let quota_sum = sum(&["quota"]).0;
         model.details_reconciled = Some(
             model.detail_request_count == model.request_count
-                && sum("quota") == model.charged_quota
+                && model.charged_quota == Some(quota_sum)
                 && input.checked_add(output) == model.total_tokens,
         );
         model.input_tokens = Some(input);
@@ -1647,18 +1757,37 @@ fn enrich_usage_details(models: &mut RelayUsageModels, raw: &Value) {
                 n.checked_add(value)
             });
         }
-        let groups: std::collections::HashSet<_> = rows
-            .iter()
-            .filter_map(|r| r.get("group").and_then(Value::as_str))
-            .collect();
-        if groups.len() == 1 {
-            model.group = groups
-                .into_iter()
-                .next()
-                .filter(|v| !v.is_empty())
-                .map(str::to_string);
+        // 分组取日志中出现次数最多的非空组——多组混用时显示主导组，
+        // 而不是因为"不止一个"就整列留空。
+        let mut group_counts: std::collections::HashMap<&str, usize> =
+            std::collections::HashMap::new();
+        for r in &rows {
+            if let Some(g) = log_group(r).filter(|g| !g.is_empty()) {
+                *group_counts.entry(g).or_insert(0) += 1;
+            }
+        }
+        if let Some((group, _)) = group_counts.iter().max_by_key(|(_, n)| *n) {
+            model.group = Some((*group).to_string());
         }
     }
+    // 只记录聚合计数，不落任何行内容（诊断安全）
+    let enriched = models
+        .items
+        .iter()
+        .filter(|row| row.input_tokens.is_some())
+        .count();
+    let matched_rows: usize = models
+        .items
+        .iter()
+        .filter_map(|row| row.detail_request_count.map(|n| n as usize))
+        .sum();
+    log::info!(
+        "usage details enrich: {} logs -> {}/{} models with token split, {} rows unmatched",
+        total_logs,
+        enriched,
+        models.items.len(),
+        logs.len().saturating_sub(matched_rows)
+    );
     if models
         .items
         .iter()

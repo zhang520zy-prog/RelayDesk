@@ -251,9 +251,6 @@
 .rd-model-center .rd-model-toolbar {
   padding: 4px 0 14px;
 }
-.rd-group {
-  overflow-wrap: anywhere;
-}
 .rd-wallet-page {
   gap: 20px;
 }
@@ -316,18 +313,9 @@
   margin-top: 4px !important;
 }
 .rd-wallet-page .rd-wallet-composer {
-  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
-.rd-wallet-page .rd-wallet-form-grid {
-  grid-template-columns: minmax(0, 1.6fr) minmax(160px, 1fr);
-  gap: 24px;
-}
-.rd-wallet-form-grid h3 {
-  margin-bottom: 12px;
-}
 .rd-wallet-choice-list {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 .rd-wallet-choice {
@@ -352,38 +340,11 @@
   border-color: transparent;
   background: var(--rd-raised);
 }
-.rd-wallet-page .rd-wallet-checkout {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 14px 24px;
-  padding: 14px 0;
-  border: 0;
-  border-top: 1px solid var(--rd-line);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
 .rd-wallet-quote {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 4px 28px;
-}
-.rd-wallet-quote-item {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.rd-wallet-quote-item strong {
-  text-align: left;
-  font-size: 17px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.4;
-}
-.rd-wallet-quote-item.is-payable strong {
-  color: var(--rd-teal);
 }
 .rd-wallet-quote > p {
   flex-basis: 100%;
@@ -431,10 +392,6 @@
     gap: 16px 0;
   }
   .rd-wallet-page .rd-account-summary {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .rd-wallet-page .rd-wallet-form-grid,
-  .rd-wallet-page .rd-wallet-checkout {
     grid-template-columns: minmax(0, 1fr);
   }
   .rd-wallet-payment-actions {
@@ -517,6 +474,11 @@
   color: var(--rd-warning);
   border-color: color-mix(in srgb, var(--rd-warning) 30%, var(--rd-line));
   background: color-mix(in srgb, var(--rd-warning) 8%, var(--rd-raised));
+}
+/* 仅部署工具（Devin）：灰点边，点击跳环境部署页而非配置目标 */
+.rd-target-quick-bar__chip--deploy {
+  border-style: dotted;
+  color: var(--rd-muted);
 }
 .rd-page-loading {
   display: flex;
@@ -1070,7 +1032,10 @@
   gap: 10px;
 }
 .rd-model-group {
-  display: flex;
+  /* grid 定列：名称 | 倍率(定宽右对齐) | 模型下拉(伸缩)+复制 | 应用按钮，
+     各行控制列 x 坐标一致，不会因倍率位数不同而错位 */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1.4fr) auto;
   align-items: center;
   gap: 16px;
   padding: 10px 16px;
@@ -1086,8 +1051,6 @@
   background: color-mix(in srgb, var(--rd-soft) 45%, var(--rd-surface));
 }
 .rd-model-group-name {
-  /* 名称区宽到 40%：常规组名一行放下，极长名才省略号（title 有全文） */
-  flex: 0 1 40%;
   min-width: 0;
   display: flex;
   align-items: baseline;
@@ -1110,13 +1073,18 @@
   display: flex;
   align-items: baseline;
   gap: 5px;
-  flex-shrink: 0;
+  min-width: 0;
+}
+.rd-model-group-billing .rd-rate {
+  /* 数字右对齐：×0.15 与 ×2 在同一列内对齐 */
+  min-width: 3.2ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .rd-model-group-billing .rd-price-note {
   margin-top: 0;
 }
 .rd-model-group-pick {
-  flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -1128,28 +1096,24 @@
 }
 .rd-model-group .rd-use,
 .rd-model-group .rd-in-use {
-  flex-shrink: 0;
+  /* 按钮宽度随行文字变化（应用/使用中/阶段词），定最小宽防抖动 */
+  min-width: 84px;
+  justify-content: center;
   white-space: nowrap;
 }
 @media (max-width: 680px) {
+  /* 窄屏：名称与倍率一行，下拉满宽一行，应用按钮右侧一行 */
   .rd-model-group {
-    flex-wrap: wrap;
+    grid-template-columns: 1fr auto;
     row-gap: 8px;
   }
-  .rd-model-group-name {
-    flex: 1 1 100%;
-    max-width: none;
-  }
-  .rd-model-group-billing {
-    order: 2;
+  .rd-model-group-pick {
+    grid-column: 1 / -1;
   }
   .rd-model-group .rd-use,
   .rd-model-group .rd-in-use {
-    order: 3;
-  }
-  .rd-model-group-pick {
-    order: 4;
-    flex: 1 1 100%;
+    grid-column: 2;
+    justify-self: end;
   }
 }
 

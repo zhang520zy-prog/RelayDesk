@@ -178,6 +178,18 @@ pub async fn relay_list_topup_history(
     .map_err(|e| safe_relay_error(&e, false))
 }
 
+/// 兑换码兑换额度：与站点网页端"兑换额度"同源（new-api `/api/user/topup {key}`）。
+/// 返回兑换到账的配额值（站点未返回时为 null）。
+#[tauri::command]
+pub async fn relay_redeem_code(
+    state: State<'_, AppState>,
+    key: String,
+) -> Result<Option<f64>, String> {
+    RelayService::redeem_code(state.inner(), &key)
+        .await
+        .map_err(|e| safe_relay_error(&e, false))
+}
+
 /// 与站点网页端"充值记录"同源：到账日志 + 未完结支付订单。
 #[tauri::command]
 pub async fn relay_list_recharge_history(

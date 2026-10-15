@@ -434,8 +434,11 @@ describe("wallet and usage UI", () => {
     expect(within(table).getByText("总 Token")).toBeInTheDocument();
     expect(within(table).getAllByText("—").length).toBeGreaterThan(0);
     expect(within(table).queryByText("未归因")).not.toBeInTheDocument();
+    // 缓存读/写列已移除；站点未返回的单元格显示 "—"
+    expect(within(table).queryByText("缓存读")).not.toBeInTheDocument();
     expect(within(table).queryByText("缓存写")).not.toBeInTheDocument();
-    expect(within(table).getByText("¥1.20")).toBeInTheDocument();
+    // 费用列统一三位小数
+    expect(within(table).getByText("¥1.200")).toBeInTheDocument();
     expect(screen.queryByText("统计完整性待确认")).not.toBeInTheDocument();
     expect(screen.queryByText("区间总计")).not.toBeInTheDocument();
   });
