@@ -2330,7 +2330,8 @@ mod tests {
         duplicate.push(logs[0].clone());
         let mut models = parse_usage_models(&buckets, &usage_query_fixture()).unwrap();
         enrich_usage_details(&mut models, &json!(duplicate));
-        assert_eq!(models.items[0].input_tokens, None);
+        assert_eq!(models.items[0].input_tokens, Some(20));
+        assert_eq!(models.items[0].detail_request_count, Some(1));
     }
 
     #[test]
