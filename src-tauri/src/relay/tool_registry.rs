@@ -133,9 +133,24 @@ pub fn builtin_registry() -> ToolRegistry {
                     display_name: "Devin".to_string(),
                     installer_source: "Devin official installer · npm fallback".to_string(),
                     docs_url: "https://docs.devin.ai/cli".to_string(),
-                    // Devin Desktop 属企业版捆绑分发，不提供公开下载页
-                    desktop_url: None,
-                    desktop_apps: vec![],
+                    // Devin Desktop（原 Windsurf）：macOS/Windows/Linux 公开下载。
+                    // 走自家账号体系，不读 CLI 配置。
+                    desktop_url: Some("https://devin.ai/download".to_string()),
+                    desktop_apps: vec![
+                        DesktopToolDefinition {
+                            app_name: "Devin.app".to_string(),
+                            display_name: "Devin Desktop".to_string(),
+                            reads_cli_config: false,
+                            // Windows 安装登记名可能仍是旧名 Windsurf。
+                            windows_names: vec!["Devin".to_string(), "Windsurf".to_string()],
+                        },
+                        DesktopToolDefinition {
+                            app_name: "Windsurf.app".to_string(),
+                            display_name: "Windsurf (旧名)".to_string(),
+                            reads_cli_config: false,
+                            windows_names: vec![],
+                        },
+                    ],
                 },
             ),
         ]),
