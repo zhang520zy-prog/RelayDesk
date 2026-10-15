@@ -1703,7 +1703,7 @@ fn enrich_usage_details(models: &mut RelayUsageModels, raw: &Value) {
         // 分组命名不同——严格匹配落空时退回仅按模型名匹配，宁可合并同模型
         // 跨组明细也不让整列数据消失。
         if rows.is_empty() && model.group.is_some() {
-            rows = logs.iter().filter(|r| name_matches(r)).collect();
+            rows = logs.iter().filter(name_matches).collect();
         }
         if rows.is_empty() {
             continue;

@@ -625,12 +625,11 @@ fn env_file_ready(path: &std::path::Path) -> bool {
         text.lines().any(|l| {
             let l = l.trim_start().trim_start_matches("export ");
             l.starts_with(k)
-                && l[k.len()..]
+                && !l[k.len()..]
                     .trim()
                     .trim_matches('"')
                     .trim_matches('\'')
-                    .len()
-                    > 0
+                    .is_empty()
         })
     })
 }
