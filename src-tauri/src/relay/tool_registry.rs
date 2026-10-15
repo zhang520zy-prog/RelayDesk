@@ -99,13 +99,15 @@ pub fn builtin_registry() -> ToolRegistry {
                     display_name: "Gemini CLI".to_string(),
                     installer_source: "npm · @google/gemini-cli".to_string(),
                     docs_url: "https://geminicli.com/docs/get-started/installation/".to_string(),
-                    // 桌面端不提供部署入口：Gemini.app 不读 CLI 配置，CLI 已足够。
-                    desktop_url: None,
+                    // Google 官方桌面端：macOS(Apple Silicon, Sequoia+) 与
+                    // Windows 10/11 (x64+ARM64)。不读 CLI 配置，仅检测+下载入口。
+                    desktop_url: Some("https://gemini.google/desktop".to_string()),
                     desktop_apps: vec![DesktopToolDefinition {
                         app_name: "Gemini.app".to_string(),
                         display_name: "Gemini desktop".to_string(),
                         reads_cli_config: false,
-                        windows_names: vec![],
+                        // Windows 版卸载登记/包名按 "Gemini" 子串命中。
+                        windows_names: vec!["Gemini".to_string()],
                     }],
                 },
             ),
