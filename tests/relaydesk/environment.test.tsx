@@ -115,25 +115,23 @@ beforeEach(async () => {
 });
 afterEach(() => vi.restoreAllMocks());
 
-/** 厂商分组默认收起：测试要像用户一样先点组头再操作子行。 */
-async function openGroup(name: string) {
-  await userEvent.click(screen.getByRole("button", { name: new RegExp(name) }));
+/** AI 工具行：按厂商品牌名找到整行（桌面端/CLI 安装槽位在行内） */
+function toolRow(name: string) {
+  return screen.getByText(name).closest("li")!;
 }
 
 describe("environment health", () => {
   it("blocks installation while another workspace operation is pending", async () => {
     mount(<EnvironmentPage onBack={() => {}} busy />);
-    await screen.findByRole("button", { name: /OpenAI Codex/ });
-    await openGroup("OpenAI Codex");
     expect(
-      await screen.findByRole("button", { name: "Install CLI" }),
+      await within(toolRow("ChatGPT")).findByRole("button", {
+        name: /CLI Not installed/,
+      }),
     ).toBeDisabled();
   });
   it("shows only real CLI findings and real environment doctor results", async () => {
     mount(<EnvironmentPage onBack={() => {}} platform="macos" />);
     expect(await screen.findByText("1.2.3")).toBeInTheDocument();
-    await openGroup("OpenAI Codex");
-    await openGroup("Claude Code");
     const git = screen.getByText("Git").closest("li")!;
     expect(await within(git).findByText("2.45.0")).toBeInTheDocument();
     expect(within(git).getByText("Healthy")).toBeInTheDocument();
@@ -150,33 +148,31 @@ describe("environment health", () => {
     expect(
       await screen.findByText("http://127.0.0.1:7890"),
     ).toBeInTheDocument();
-    // 桌面端与 CLI 分行：Claude 桌面端已装，Codex 桌面端未装但可下载
-    const claudeDesktop = screen.getByText("Claude desktop").closest("li")!;
+    // 槽位态：Claude 桌面端已装（禁用），Codex 桌面端未装可点下载，
+    // Gemini 夹具无桌面候选 → 不渲染桌面槽位
     expect(
-      within(claudeDesktop).getByText("Installed; reads the CLI config"),
-    ).toBeInTheDocument();
-    const codexDesktop = screen
-      .getByText("ChatGPT (Codex) desktop")
-      .closest("li")!;
+      within(toolRow("Claude")).getByRole("button", {
+        name: /Desktop Installed/,
+      }),
+    ).toBeDisabled();
+    const codexRow = toolRow("ChatGPT");
     expect(
-      within(codexDesktop).getByText(
-        "Not installed (optional; the CLI works without it)",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(codexDesktop).getByRole("button", {
-        name: "Download desktop app",
+      within(codexRow).getByRole("button", {
+        name: /Desktop Not installed/,
       }),
     ).toBeEnabled();
-    // Gemini 无桌面入口（CLI 已足够）→ 不渲染桌面端行
-    expect(screen.queryByText("Gemini CLI desktop")).not.toBeInTheDocument();
-    expect(screen.getByText("Installed, but cannot run")).toBeInTheDocument();
+    expect(
+      within(toolRow("Gemini")).queryByRole("button", { name: /Desktop/ }),
+    ).not.toBeInTheDocument();
+    // Gemini CLI 已装但损坏 → 显示已安装（warn），仍可点击进入修复
+    expect(
+      within(toolRow("Gemini")).getByRole("button", {
+        name: /CLI Installed/,
+      }),
+    ).toBeEnabled();
     expect(screen.queryByText("secret raw error")).not.toBeInTheDocument();
     expect(
-      within(screen.getByText("OpenAI Codex CLI").closest("li")!).getByRole(
-        "button",
-        { name: "Install CLI" },
-      ),
+      within(codexRow).getByRole("button", { name: /CLI Not installed/ }),
     ).toBeEnabled();
   });
   it("does not turn a detection failure into a missing tool", async () => {
@@ -187,9 +183,13 @@ describe("environment health", () => {
       new Error("unavailable"),
     );
     mount(<EnvironmentPage onBack={() => {}} />);
-    await screen.findAllByText("Unable to confirm installation");
+    // 探测失败 ≠ 未安装：CLI 槽位显示"检查失败"且不可点，绝不冒充可安装入口
     expect(
-      screen.queryByRole("button", { name: "Install CLI" }),
+      (await screen.findAllByRole("button", { name: /CLI Check failed/ }))
+        .length,
+    ).toBeGreaterThanOrEqual(5);
+    expect(
+      screen.queryByRole("button", { name: /CLI Not installed/ }),
     ).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Check again" }));
     await waitFor(() =>
@@ -205,8 +205,14 @@ describe("environment health", () => {
     );
     vi.mocked(relayApi.envCheck).mockReturnValue(new Promise(() => {}));
     mount(<EnvironmentPage onBack={() => {}} />);
-    // 6 基础环境项 + 5 工具 CLI（claude/codex/gemini/grok/devin）+ 1 codex 图像修复
-    expect(screen.getAllByText("Checking…")).toHaveLength(12);
+    // 6 个基础环境项仍是行式检查（Checking…徽标）；
+    // 5 个工具 CLI 槽位 + 1 个 codex 图像槽位 + 重检按钮本体处于加载态
+    expect(screen.getAllByText("Checking…")).toHaveLength(6);
+    expect(
+      screen.getAllByRole("button", {
+        name: /Checking installation and runtime/,
+      }),
+    ).toHaveLength(7);
     expect(screen.queryByText("Not installed")).not.toBeInTheDocument();
   });
   it("shows a check failure instead of invented results when env check fails", async () => {
@@ -221,46 +227,28 @@ describe("environment health", () => {
   it("opens the registry-provided desktop download page for a missing desktop app", async () => {
     const open = vi.spyOn(relayApi, "openDesktopDownload").mockResolvedValue();
     mount(<EnvironmentPage onBack={() => {}} platform="macos" />);
-    await openGroup("OpenAI Codex");
-    const desktop = (
-      await screen.findByText("ChatGPT (Codex) desktop")
-    ).closest("li")!;
-    await userEvent.click(
-      within(desktop).getByRole("button", { name: "Download desktop app" }),
-    );
+    const slot = await within(toolRow("ChatGPT")).findByRole("button", {
+      name: /Desktop Not installed/,
+    });
+    await userEvent.click(slot);
     await waitFor(() => expect(open).toHaveBeenCalledWith("codex"));
   });
   it("marks desktop detection as supported on Windows and offers the download", async () => {
     mount(<EnvironmentPage onBack={() => {}} platform="windows" />);
-    await openGroup("OpenAI Codex");
-    const desktop = (
-      await screen.findByText("ChatGPT (Codex) desktop")
-    ).closest("li")!;
     expect(
-      within(desktop).getByText(
-        "Not installed (optional; the CLI works without it)",
-      ),
-    ).toBeInTheDocument();
-    expect(within(desktop).getByText("Optional")).toBeInTheDocument();
-    expect(
-      within(desktop).getByRole("button", { name: "Download desktop app" }),
+      await within(toolRow("ChatGPT")).findByRole("button", {
+        name: /Desktop Not installed/,
+      }),
     ).toBeEnabled();
   });
-  it("marks desktop detection as unsupported on Linux desktop but still offers the download", async () => {
+  it("disables the desktop download on platforms the app doesn't ship for", async () => {
     mount(<EnvironmentPage onBack={() => {}} platform="linux-desktop" />);
-    await openGroup("OpenAI Codex");
-    const desktop = (
-      await screen.findByText("ChatGPT (Codex) desktop")
-    ).closest("li")!;
+    // ChatGPT/Gemini 桌面端无 Linux 版：槽位如实显示"未安装"但禁用，不误导跳转
     expect(
-      within(desktop).getByText(
-        "Automatic detection isn't available on this platform; download the desktop app to install it manually",
-      ),
-    ).toBeInTheDocument();
-    expect(within(desktop).getByText("Not supported")).toBeInTheDocument();
-    expect(
-      within(desktop).getByRole("button", { name: "Download desktop app" }),
-    ).toBeEnabled();
+      await within(toolRow("ChatGPT")).findByRole("button", {
+        name: /Desktop Not installed/,
+      }),
+    ).toBeDisabled();
   });
   it.each([
     "ok",
@@ -364,9 +352,7 @@ describe("explicit installation confirmation", () => {
       <QueryClientProvider client={client}>{node}</QueryClientProvider>
     );
     const view = render(wrap(<EnvironmentPage onBack={() => {}} />));
-    await screen.findByRole("button", { name: /OpenAI Codex/ });
-    await openGroup("OpenAI Codex");
-    await screen.findByRole("button", { name: "Install CLI" });
+    await screen.findByRole("button", { name: /CLI Not installed/ });
     vi.spyOn(settingsApi, "runToolLifecycleAction").mockResolvedValue();
     view.rerender(
       wrap(
@@ -400,10 +386,9 @@ describe("explicit installation confirmation", () => {
     view.rerender(wrap(<EnvironmentPage onBack={() => {}} />));
     expect(await screen.findByText("2.0.0")).toBeInTheDocument();
     expect(
-      within(screen.getByText("OpenAI Codex CLI").closest("li")!).queryByRole(
-        "button",
-        { name: "Install CLI" },
-      ),
+      within(toolRow("ChatGPT")).queryByRole("button", {
+        name: /CLI Not installed/,
+      }),
     ).not.toBeInTheDocument();
   });
   it("shows the backend-selected Claude installer instead of an npm-only preview", async () => {

@@ -651,5 +651,9 @@
   "pathCustom": "自定义",
   "legalDeclaration": "使用与风险声明",
   "legalDeclarationHint": "本应用要求首次使用前阅读并同意声明。",
-  "viewDeclaration": "查看声明"
+  "viewDeclaration": "查看声明",
+  "envSlotDesktop": "桌面端",
+  "envSlotCli": "CLI",
+  "envInstalled": "已安装",
+  "envNotInstalled": "未安装"
 }

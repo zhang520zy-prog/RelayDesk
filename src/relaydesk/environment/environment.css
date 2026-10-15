@@ -59,77 +59,111 @@
   padding: 0;
   margin: 0;
 }
-/* 厂商分组：一行摘要（厂商名 + 各变体状态 chips + 展开箭头），
-   子项缩进挂在分组内 —— 工具变多时列表长度不随变体数膨胀 */
-.rd-env-group {
-  border-top: 1px solid var(--rd-line);
-}
-.rd-env-group:last-child {
-  border-bottom: 1px solid var(--rd-line);
-}
-.rd-env-group-head {
+/* AI 工具行：左侧 品牌 logo + 官网名，右侧「桌面端 / CLI」安装槽位 —
+   点哪格装哪格，无展开层。槽位用层次化按钮样式区分"可安装入口"与"状态展示" */
+.rd-env-tool {
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 13px 0;
-  background: none;
-  border: none;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--rd-line);
 }
-.rd-env-group-head > strong {
-  flex-shrink: 0;
-  min-width: 0;
+.rd-env-tool:last-child {
+  border-bottom: 1px solid var(--rd-line);
 }
-.rd-env-group-chips {
+.rd-env-tool-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
 }
-.rd-env-chip {
-  font-size: var(--rd-font-caption);
+.rd-env-tool-brand svg {
+  flex-shrink: 0;
+}
+.rd-env-tool-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.rd-env-tool-name small {
   color: var(--rd-muted);
-  border: 1px solid var(--rd-line);
-  border-radius: 999px;
-  padding: 2px 10px;
+  font-size: var(--rd-font-caption);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
-.rd-env-chip[data-status="ok"] {
+.rd-env-tool-brand strong {
+  font-size: var(--rd-font-body);
+}
+.rd-env-tool-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+/* 槽位按钮：已安装=内敛灰底对勾（不可点）；
+   未安装=主题色描边实心入口（可点下载/安装）；加载=脉动 */
+.rd-env-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--rd-line);
+  background: transparent;
+  color: inherit;
+  font-size: var(--rd-font-caption);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.rd-env-slot:disabled {
+  cursor: default;
+}
+.rd-env-slot:not(:disabled) {
+  cursor: pointer;
+}
+.rd-env-slot.missing {
+  border-color: var(--rd-primary);
+  color: var(--rd-primary);
+  background: color-mix(in srgb, var(--rd-primary) 8%, transparent);
+}
+.rd-env-slot.missing:hover {
+  background: color-mix(in srgb, var(--rd-primary) 16%, transparent);
+}
+.rd-env-slot.installed {
+  color: var(--rd-muted);
+}
+.rd-env-slot.installed .rd-env-slot-state {
   color: var(--rd-success);
 }
-.rd-env-chip[data-status="fixable"],
-.rd-env-chip[data-status="warn"] {
+.rd-env-slot.warn {
+  border-color: color-mix(in srgb, var(--rd-warning, #b45309) 55%, transparent);
+}
+.rd-env-slot.warn .rd-env-slot-state {
   color: var(--rd-warning, #b45309);
 }
-.rd-env-chip[data-status="info"] {
+.rd-env-slot.loading {
   color: var(--rd-muted);
 }
-.rd-env-chip[data-status="error"] {
+.rd-env-slot.error {
+  color: var(--rd-muted);
+}
+.rd-env-slot.error .rd-env-slot-state {
   color: var(--rd-danger, #dc2626);
 }
-.rd-env-group-head > svg {
-  color: var(--rd-muted);
-  transition: transform 0.15s ease;
+.rd-env-slot-icon {
+  display: inline-flex;
 }
-.rd-env-group-head > svg.rd-flip {
-  transform: rotate(180deg);
+.rd-env-slot-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
 }
-.rd-env-group-body {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 4px 32px;
-}
-.rd-env-group-body .rd-env-row {
-  padding: 10px 0;
-}
-.rd-env-group-body .rd-env-row:last-child {
-  border-bottom: none;
+@media (max-width: 640px) {
+  .rd-env-tool {
+    flex-wrap: wrap;
+  }
 }
 /* 图标 | 内容 | 状态 | 操作 —— 四列网格定死，状态胶囊在有/无按钮的
    行间保持同一 x 位置；按钮永不折到第二行 */

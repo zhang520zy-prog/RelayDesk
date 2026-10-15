@@ -651,5 +651,9 @@
   "pathCustom": "Custom",
   "legalDeclaration": "Usage & Risk Declaration",
   "legalDeclarationHint": "Required reading and acceptance before first use.",
-  "viewDeclaration": "View declaration"
+  "viewDeclaration": "View declaration",
+  "envSlotDesktop": "Desktop",
+  "envSlotCli": "CLI",
+  "envInstalled": "Installed",
+  "envNotInstalled": "Not installed"
 }

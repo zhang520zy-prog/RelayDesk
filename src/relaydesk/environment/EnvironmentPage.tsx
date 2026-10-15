@@ -4,13 +4,16 @@ import {
   ArrowLeft,
   CheckCircle2,
   AlertTriangle,
-  ChevronDown,
   CircleHelp,
   AlertCircle,
+  Check,
   Loader2,
   RefreshCw,
   Download,
+  Monitor,
   MonitorX,
+  Image,
+  Terminal,
   Info,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -34,7 +37,7 @@ const allToolLabels: Record<string, string> = {
 import { relayErrorKey } from "../state/relayErrors";
 import { InstallToolDialog } from "./InstallToolDialog";
 import { EnvFixDialog } from "./EnvFixDialog";
-import { ToolInstallGuide } from "./ToolInstallGuide";
+import { TOOL_VENDORS } from "./toolIcons";
 import { getRuntimePlatform, type EnvironmentPlatform } from "./platform";
 import type { EnvironmentCheck } from "./environmentTypes";
 import "./environment.css";
@@ -79,8 +82,9 @@ export function EnvironmentCheckRow({
   );
 }
 
-/** Codex 图像生成修复行：skill 未装或 ~/.env 缺配置时给一键修复 */
-function CodexImageRow({
+/** Codex 图像生成修复槽位：skill 未装或 ~/.env 缺配置时点击即修复；
+ *  词汇与安装槽位统一：已安装 / 未安装。 */
+function CodexImageSlot({
   status,
   loading,
   onFixed,
@@ -93,109 +97,92 @@ function CodexImageRow({
 }) {
   const { t } = useTranslation("relaydesk");
   const [fixing, setFixing] = useState(false);
-  const [failed, setFailed] = useState(false);
   const ready = !!status?.skillInstalled && !!status?.envReady;
-  const check: EnvironmentCheck = loading
-    ? {
-        id: "codex-image",
-        label: t("codexImageLabel"),
-        status: "loading",
-        detail: t("envCheckingTool"),
-      }
-    : !status?.repairable
-      ? {
-          id: "codex-image",
-          label: t("codexImageLabel"),
-          status: "warn",
-          detail: t("codexImageNeedModel"),
-          hint: t("codexImageNeedModelHint"),
-        }
-      : ready
-        ? {
-            id: "codex-image",
-            label: t("codexImageLabel"),
-            status: "ok",
-            detail: t("codexImageReady"),
-          }
-        : {
-            id: "codex-image",
-            label: t("codexImageLabel"),
-            status: "fixable",
-            detail: t("codexImageMissing"),
-          };
+  const state: SlotState = loading
+    ? "loading"
+    : ready
+      ? "installed"
+      : "missing";
   return (
-    <EnvironmentCheckRow check={check}>
-      {check.status === "fixable" && (
-        <Action
-          disabled={fixing}
-          onClick={() => {
-            setFixing(true);
-            setFailed(false);
-            relayApi
-              .codexImageFix()
-              .then(onFixed)
-              .catch(() => setFailed(true))
-              .finally(() => setFixing(false));
-          }}
-        >
-          {fixing ? <Loader2 size={13} className="rd-spin" /> : null}
-          {t("codexImageFix")}
-        </Action>
-      )}
-      {failed && <span className="rd-muted">{t("codexImageFixFailed")}</span>}
-    </EnvironmentCheckRow>
+    <ToolSlot
+      icon={<Image size={14} />}
+      label={t("codexImageLabel")}
+      state={state}
+      hint={
+        loading
+          ? undefined
+          : !status?.repairable && !ready
+            ? t("codexImageNeedModelHint")
+            : t("codexImageFix")
+      }
+      onClick={
+        !loading && !ready && status?.repairable && !fixing
+          ? () => {
+              setFixing(true);
+              relayApi
+                .codexImageFix()
+                .then(onFixed)
+                .catch(() => undefined)
+                .finally(() => setFixing(false));
+            }
+          : undefined
+      }
+    />
   );
 }
 
-/** 厂商分组行：AI 工具按厂商折叠（如 OpenAI Codex = CLI + ChatGPT 桌面端），
- *  摘要行直接给各子项状态 chips；展开态由页面级 openGroups 受控，
- *  点哪组开哪组——探测数据晚到不再把其他组弹开。 */
-function ToolVendorGroup({
-  name,
-  checks,
-  expanded,
-  onToggle,
-  children,
+/** 安装槽位状态词统一为「已安装 / 未安装」两级——未安装即入口（点击即装）；
+ *  探测失败是异常不是安装态，单独呈现「检查失败」不冒充"未安装"。 */
+type SlotState = "loading" | "installed" | "missing" | "error";
+
+/** AI 工具行内的单个安装槽位（桌面端 或 CLI）。 */
+function ToolSlot({
+  icon,
+  label,
+  state,
+  hint,
+  warn = false,
+  onClick,
 }: {
-  name: string;
-  checks: { id: string; status: EnvironmentCheck["status"]; label: string }[];
-  expanded: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
+  icon: React.ReactNode;
+  label: string;
+  state: SlotState;
+  hint?: string;
+  /** 已装但异常（如损坏可修复）：仍显示"已安装"但可点击处理 */
+  warn?: boolean;
+  onClick?: () => void;
 }) {
   const { t } = useTranslation("relaydesk");
+  const clickable = state !== "loading" && !!onClick;
   return (
-    <li className="rd-env-group" data-open={expanded}>
-      <button
-        type="button"
-        className="rd-env-group-head"
-        aria-expanded={expanded}
-        onClick={onToggle}
-      >
-        <strong>{name}</strong>
-        <span className="rd-env-group-chips">
-          {checks.map((c) => (
-            <span
-              key={c.id}
-              className={`rd-env-chip ${c.status}`}
-              data-status={c.status}
-            >
-              {c.label} · {t(`envStatus_${c.status}`)}
-            </span>
-          ))}
-        </span>
-        <ChevronDown
-          size={16}
-          aria-hidden
-          className={expanded ? "rd-flip" : undefined}
-        />
-      </button>
-      {/* 子行始终挂载、折叠时 hidden：检测即插即用，
-          状态徽标与屏幕阅读器由 hidden 属性正确隐藏 */}
-      <ul className="rd-env-group-body" hidden={!expanded}>
-        {children}
-      </ul>
-    </li>
+    <button
+      type="button"
+      className={`rd-env-slot ${state}${warn ? " warn" : ""}`}
+      disabled={!clickable}
+      onClick={clickable ? onClick : undefined}
+      title={hint}
+    >
+      <span className="rd-env-slot-icon">{icon}</span>
+      <span className="rd-env-slot-label">{label}</span>
+      <span className="rd-env-slot-state">
+        {state === "loading" ? (
+          <Loader2 size={12} className="rd-spin" aria-hidden />
+        ) : state === "installed" ? (
+          <Check size={12} aria-hidden />
+        ) : state === "error" ? (
+          <AlertCircle size={12} aria-hidden />
+        ) : (
+          <Download size={12} aria-hidden />
+        )}
+        {state === "loading"
+          ? t("envCheckingTool")
+          : state === "installed"
+            ? t("envInstalled")
+            : state === "error"
+              ? t("envStatus_error")
+              : t("envNotInstalled")}
+      </span>
+    </button>
   );
 }
 
@@ -221,10 +208,6 @@ export function EnvironmentPage({
   const [envFix, setEnvFix] = useState<{ id: string; label: string } | null>(
     null,
   );
-  const [guide, setGuide] = useState<string | null>(null);
-  // 厂商分组展开态：页面级持有，子组件重挂载/探测刷新不丢用户选择；
-  // 默认全收起，点哪组开哪组。
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [guidePlatform, setGuidePlatform] =
     useState<EnvironmentPlatform>(platform);
   const [exporting, setExporting] = useState(false);
@@ -409,96 +392,97 @@ export function EnvironmentPage({
         </Action>
       </div>
       <section className="rd-setting-section rd-deployment-tools">
-        <ul className="rd-env-list">
+        <ul className="rd-env-list rd-env-tools">
           {deployableIds.map((app) => {
             const check = toolCheck(app);
             const desktop = desktopCheck(app);
             const found = installations.data?.find((item) => item.app === app);
-            const vendor = check.label.replace(/\s*CLI\s*$/i, "");
-            const groupChecks = [
-              { id: `${app}-cli`, status: check.status, label: "CLI" },
-              ...(desktop
-                ? [
-                    {
-                      id: desktop.id,
-                      status: desktop.status,
-                      label: t("desktopChip"),
-                    },
-                  ]
-                : []),
-            ];
+            const meta = TOOL_VENDORS[app];
+            const cliState: SlotState =
+              check.status === "loading"
+                ? "loading"
+                : check.status === "error"
+                  ? "error"
+                  : check.status === "ok" ||
+                      (check.status === "warn" && !!check.repairable) ||
+                      (check.status === "warn" && !!found?.cliPath)
+                    ? "installed"
+                    : "missing";
+            const desktopState: SlotState =
+              desktop == null
+                ? "missing"
+                : desktop.status === "loading"
+                  ? "loading"
+                  : desktop.status === "ok"
+                    ? "installed"
+                    : "missing";
             return (
-              <ToolVendorGroup
-                key={app}
-                name={vendor}
-                checks={groupChecks}
-                expanded={openGroups[app] ?? false}
-                onToggle={() =>
-                  setOpenGroups((s) => ({ ...s, [app]: !(s[app] ?? false) }))
-                }
-              >
-                <EnvironmentCheckRow key={check.id} check={check}>
-                  {check.status === "fixable" && (
-                    <Action
-                      disabled={installing || busy}
-                      onClick={() => {
-                        if (!busy && !installing) setInstall(app);
-                      }}
-                    >
-                      {t("installCli")}
-                    </Action>
+              <li key={app} className="rd-env-tool">
+                <div className="rd-env-tool-brand">
+                  {meta ? <meta.Icon size={24} /> : null}
+                  <span className="rd-env-tool-name">
+                    <strong>{meta?.name ?? app}</strong>
+                    {check.status === "ok" && check.detail ? (
+                      <small>{check.detail}</small>
+                    ) : null}
+                  </span>
+                </div>
+                <div className="rd-env-tool-actions">
+                  {desktop !== null && (
+                    <ToolSlot
+                      icon={<Monitor size={14} />}
+                      label={t("envSlotDesktop")}
+                      state={desktopState}
+                      hint={
+                        desktop?.status === "unsupported"
+                          ? t("envDesktopUnsupported")
+                          : found?.desktopUrl
+                            ? found.desktopUrl
+                            : check.status === "loading"
+                              ? undefined
+                              : t("envDesktopMissingOptional")
+                      }
+                      onClick={
+                        desktopState === "missing" &&
+                        desktop?.status !== "unsupported" &&
+                        found?.desktopUrl
+                          ? () =>
+                              void relayApi
+                                .openDesktopDownload(app)
+                                .catch((e) => setStatus(relayErrorKey(e)))
+                          : undefined
+                      }
+                    />
                   )}
-                  {check.repairable && (
-                    <Action
-                      disabled={installing || busy}
-                      onClick={() => {
-                        if (!busy && !installing) setInstall(app);
-                      }}
-                    >
-                      {t("envToolRepair")}
-                    </Action>
-                  )}
-                  {check.status !== "loading" && check.status !== "ok" && (
-                    <Action
-                      aria-expanded={guide === app}
-                      onClick={() => setGuide(guide === app ? null : app)}
-                    >
-                      {t("viewInstallGuide")}
-                    </Action>
-                  )}
-                </EnvironmentCheckRow>
-                {/* 指引紧跟点击行内联展开，不再跳到列表底部 */}
-                {guide === app && (
-                  <li className="rd-env-guide-row">
-                    <ToolInstallGuide app={app} />
-                  </li>
-                )}
-                {desktop && (
-                  <EnvironmentCheckRow key={desktop.id} check={desktop}>
-                    {found?.desktopUrl &&
-                      (desktop.status === "info" ||
-                        desktop.status === "warn" ||
-                        desktop.status === "unsupported") && (
-                        <Action
-                          onClick={() =>
-                            void relayApi
-                              .openDesktopDownload(app)
-                              .catch((e) => setStatus(relayErrorKey(e)))
-                          }
-                        >
-                          {t("downloadDesktop")}
-                        </Action>
-                      )}
-                  </EnvironmentCheckRow>
-                )}
-                {app === "codex" && (
-                  <CodexImageRow
-                    status={codexImage.data}
-                    loading={codexImage.isPending}
-                    onFixed={() => void codexImage.refetch()}
+                  <ToolSlot
+                    icon={<Terminal size={14} />}
+                    label={t("envSlotCli")}
+                    state={cliState}
+                    warn={!!check.repairable}
+                    hint={
+                      check.status === "ok"
+                        ? check.detail
+                        : check.repairable
+                          ? t("envToolBroken")
+                          : undefined
+                    }
+                    onClick={
+                      !busy &&
+                      !installing &&
+                      (cliState === "missing" || check.repairable)
+                        ? () => setInstall(app)
+                        : undefined
+                    }
                   />
-                )}
-              </ToolVendorGroup>
+                  {app === "codex" && (
+                    <CodexImageSlot
+                      status={codexImage.data}
+                      loading={codexImage.isPending}
+                      onFixed={() => void codexImage.refetch()}
+                    />
+                  )}
+                </div>
+              </li>
             );
           })}
         </ul>
