@@ -112,3 +112,17 @@
 **后端死命令（待专项）**：lib.rs 注册 106 条命令中 76 条零前端调用（get_providers/switch_provider/MCP 全家/prompts/profiles/usage scripts/OAuth quotas/copilot optimizer…）。未删原因：与 relay apply 共享 services::provider/settings/dao 基础设施，需按模块逐个拆依赖，发布前做高风险大改不合适；前端已无调用路径，行为上等于休眠。专项建议：commands/{provider,mcp,prompt,profile,usage,copilot,xai_oauth,codex_oauth,coding_plan,subscription,balance,plugin,workspace,pi,hermes,openclaw,omo,deeplink,failover,stream_check,skill,import_export,proxy,global_proxy,auth,lightweight,webdav} 中死命令 + 对应 dao/service 独占部分。
 
 **教训**：pnpm store 版本错配时 `pnpm remove` 会拒；改用编辑 package.json + `pnpm install --lockfile-only` 再 `pnpm install`。
+
+## 2026-10-15 v3.23.0 发版审计
+
+**用量明细零数据三连查的教训**
+- "调用处写了日志却零输出" = future 在外层 `timeout()` 内被取消——既不走 Ok 也不走 Err 分支。分页型拉取必须按数据量×页延迟估超时，且逐页打点才能看见掐断点。
+- `usage_path` 这类校验型构造函数放 `?` 之前要有 warn 日志，否则合法请求死于静默校验（本轮真凶之一：毫秒级 `created_at` → 5 万年后日期 → start>=end）。
+- new-api 服务器会把 `page_size=200` 静默钳回 100——分页收尾必须按"实际返回页长"判断，不能按请求页长。
+- `/api/data/self`（聚合桶，含未计费/失败请求）与 `/api/log/self type=2`（仅计费行）口径天然不同，差额如实标注而非视为拉取失败。
+
+**CSS 覆盖链**：同名类在 brand/polish/workspace/account 四个文件里层层覆盖且懒加载顺序不定——删旧选择器前必须全库 grep TSX+动态模板（`rd-x--${state}`），wallet 双栏两次"修了没生效"都是别处无条件覆盖残留。
+
+**发版流程**：推送走 osxkeychain，`git credential fill` 可直接取 token 调 REST API 替代缺失的 gh CLI；删旧 release 用 DELETE /releases/{id} + /git/refs/tags/{tag}。updater 端点是 `releases/latest/download/latest.json`——旧 release 要等新版发布成功后再删，否则端点悬空。
+
+**本轮清理**：~190 行死 CSS（rd-launch*/rd-model-*/rd-wallet-checkout/form-grid/quote-item/rd-connection-art/rd-env-guide-row/rd-env-platform/rd-account-status/rd-chart-pair/rd-detail-toggle/rd-usage-total-row/rd-wallet-contract-note/rd-warning-text/rd-group/rd-version/rd-group-routing-* 旧结构）、quotaToUsd、docs/release-notes 82 文件、test-build 远端发布与本地旧产物。
