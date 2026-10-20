@@ -220,10 +220,26 @@ fn build_updater(app: &AppHandle) -> Result<tauri_plugin_updater::Updater, Strin
         .map_err(|e| format!("初始化更新器失败: {e}"))
 }
 
+/// 更新服务是否可用：CI 构建会烘焙 RELAYDESK_UPDATE_ENDPOINT；本地构建没有
+/// 该环境变量，但 tauri.conf 的 updater.endpoints 同样会让 app.updater() 生效——
+/// 此前只认环境变量，本地构建一律误报"未配置"。
+fn updater_configured(app: &AppHandle) -> bool {
+    if UPDATE_ENDPOINT.is_some() {
+        return true;
+    }
+    app.config()
+        .plugins
+        .0
+        .get("updater")
+        .and_then(|v| v.get("endpoints"))
+        .and_then(|v| v.as_array())
+        .is_some_and(|a| !a.is_empty())
+}
+
 /// 查询 RelayDesk 应用更新：返回更新服务是否已配置，以及可用新版本号。
 #[tauri::command]
 pub async fn relay_check_update(app: AppHandle) -> Result<RelayUpdateCheck, String> {
-    if UPDATE_ENDPOINT.is_none() {
+    if !updater_configured(&app) {
         return Ok(RelayUpdateCheck {
             configured: false,
             version: None,
