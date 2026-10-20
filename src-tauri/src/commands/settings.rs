@@ -251,7 +251,17 @@ pub async fn relay_check_update(app: AppHandle) -> Result<RelayUpdateCheck, Stri
     let update = updater
         .check()
         .await
-        .map_err(|_| "update.check_failed".to_string())?;
+        .map_err(|e| {
+            log::warn!("[Update] 检查更新失败: {e}");
+            "update.check_failed".to_string()
+        })?;
+    log::info!(
+        "[Update] 检查完成: {}",
+        update
+            .as_ref()
+            .map(|u| format!("发现新版本 {}", u.version))
+            .unwrap_or_else(|| "已是最新".to_string())
+    );
     Ok(RelayUpdateCheck {
         configured: true,
         version: update.as_ref().map(|u| u.version.clone()),
