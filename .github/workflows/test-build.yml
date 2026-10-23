@@ -85,7 +85,7 @@ jobs:
       - name: Setup Rust
         # 与仓库 rust-toolchain.toml 保持一致：1.95+ 移除了 proc-macro-hack，
         # 旧版 phf_macros/cssparser 链在新编译器上无法构建。
-        uses: dtolnay/rust-toolchain@1.90.0
+        uses: dtolnay/rust-toolchain@1.120.0
 
       - name: Setup pnpm
         env:
