@@ -159,3 +159,11 @@
 **"Gateway couldn't serve" 根因**：pricing 分组列出的模型在上游可能不可路由（Kiro 组 5 个里 haiku-4.5 实际不服务）。修复=cc-switch 行为：写 desktop profile 前用分组 key 调 /v1/models 得可服务集合，不可服务者剔除（filter_servable_models，None=拉取失败不回归）。apply 与 post_switch 两条路径同步过滤。
 
 **教训**：sync 上下文（spawn_blocking）里跑 async reqwest 只能 `tauri::async_runtime::block_on`——futures::executor::block_on 会因没有 tokio reactor 而 panic。
+
+## 2026-10-23 发布管线加固 + 死代码清理（子代理审计）
+
+**发布五修（全为历史复发坑）**：①latest.json 改与资产同批上传（原子发布，消悬空窗口，jq 校验+空 platforms fail）②prune 豁免 test-build 桥接（删了存量装机更新端点永久 404）③tag 版本门禁（三处 version 不一致直接拒发）④.sig 缺失全平台 fail（warn 曾让平台静默掉出 latest.json）⑤test-build.yml run 块内残留 markdown 清出（每次必 command-not-found）+ WSL2/CI 浮动 stable 钉 1.90。
+
+**死代码**：3 个死 relay 封装全链删（前端 wrapper→command→service→client→type→lib.rs 注册）、tray.rs refresh_all_usage_in_tray+statics、onUpdateInstallStart、smol-toml 依赖。types.ts/settings.ts 大文件死成员**有意保留**——正则切多行成员易截断语法，需 AST 工具或逐块人工，ROI 低。
+
+**教训**：①i18n 插值统一 {{var}}——新键用 {var} 会原文显示；②CSS 在 .rd-form label 容器规则下，子组件类名优先级必须更高（勾选清单竖排）；③删成员函数别用正则，用依赖闭包+AST。
