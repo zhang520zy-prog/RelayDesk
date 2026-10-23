@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Info, RefreshCw } from "lucide-react";
 import { ApiKeysSection } from "./ApiKeysSection";
+import { CustomProviders } from "../models/CustomProviders";
 import type { RelayGroup } from "@/lib/api/relay";
 
 /** 通用接入凭据独立页：给 CherryStudio / WorkBuddy 这类
@@ -34,6 +35,7 @@ export function CredentialsPage({
         )}
       </div>
       <ApiKeysSection baseUrl={baseUrl} groups={groups} loading={loading} />
+      <CustomProviders program={null} />
       <p className="rd-info-note">
         <Info size={17} />
         {t("credentialsNotice")}

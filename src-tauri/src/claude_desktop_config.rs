@@ -138,6 +138,36 @@ pub fn apply_provider(db: &Database, provider: &Provider) -> Result<(), AppError
 /// 安全形态都写进 inferenceModels（Desktop 模型菜单一次给全，同 cc-switch 行为）；
 /// 不安全者逐个跳过并 warn（Desktop fail-all validator 会拒收整组，必须剔除）；
 /// [1M] 后缀剥成 supports1m 字段。一个安全模型都没有才返回 Err。
+/// 调供应商 `GET /v1/models`，返回该 key 实际可服务的模型 id。
+/// 等价 cc-switch 的"自动屏蔽不可服务模型"：pricing 里的模型名在上游可能
+/// 根本路由不通（如 Kiro 组里的 claude-haiku-4.5），/v1/models 按 key 的
+/// 分组返回真正可服务集合。复用 model_fetch 的候选 URL + 代理感知客户端。
+pub async fn fetch_servable_models(base_url: &str, api_key: &str) -> Result<Vec<String>, String> {
+    crate::services::model_fetch::fetch_models(base_url, api_key, false, None, None, None, None)
+        .await
+        .map(|items| items.into_iter().map(|m| m.id).collect())
+}
+
+/// 按 key 实际可服务集合过滤候选模型名（大小写不敏感）。
+/// `servable = None`（拉取失败/无法验证）时全量保留——不为不可验证而回归。
+/// 返回 (保留, 剔除)；剔除者由调用方记 warn。
+pub(crate) fn filter_servable_models(
+    candidates: &[String],
+    servable: Option<&[String]>,
+) -> (Vec<String>, Vec<String>) {
+    match servable {
+        None => (candidates.to_vec(), Vec::new()),
+        Some(set) => {
+            let lower: std::collections::HashSet<String> =
+                set.iter().map(|s| s.to_ascii_lowercase()).collect();
+            candidates
+                .iter()
+                .cloned()
+                .partition(|m| lower.contains(&m.to_ascii_lowercase()))
+        }
+    }
+}
+
 pub(crate) fn apply_relay_gateway(
     db: &Database,
     name: &str,
@@ -1486,6 +1516,25 @@ mod tests {
     use crate::provider::{ClaudeDesktopModelRoute, ProviderMeta};
     use serde_json::json;
     use tempfile::TempDir;
+
+    #[test]
+    fn filter_servable_keeps_only_servable_ids() {
+        let candidates = vec!["claude-opus-5".to_string(), "claude-haiku-4.5".to_string()];
+        // Kiro 组现象：pricing 列出 5 个，/v1/models 只服务 4 个——
+        // 不可服务者必须被剔除，否则 Desktop 报 "Gateway couldn't serve"。
+        let servable = vec!["Claude-Opus-5".to_string()];
+        let (kept, dropped) = filter_servable_models(&candidates, Some(&servable));
+        assert_eq!(kept, vec!["claude-opus-5".to_string()]);
+        assert_eq!(dropped, vec!["claude-haiku-4.5".to_string()]);
+    }
+
+    #[test]
+    fn filter_servable_none_keeps_everything() {
+        let candidates = vec!["claude-opus-5".to_string()];
+        let (kept, dropped) = filter_servable_models(&candidates, None);
+        assert_eq!(kept, candidates);
+        assert!(dropped.is_empty());
+    }
 
     fn test_paths(home: &Path) -> ClaudeDesktopPaths {
         paths_from_dirs(

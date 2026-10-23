@@ -5967,6 +5967,22 @@ impl ProviderService {
                 models.push(existing);
             }
         }
+        // 与 apply 路径同款"屏蔽不可服务模型"：/v1/models 按 key 返回真实
+        // 可服务集合，写进 profile 的必须是 gateway 能实际路由的，否则
+        // Desktop 启动即报 "Gateway couldn't serve <model>"。
+        let servable = tauri::async_runtime::block_on(
+            crate::claude_desktop_config::fetch_servable_models(base_url, api_key),
+        )
+        .map_err(|e| log::warn!("[Switch] desktop servable-model fetch failed: {e}"))
+        .ok();
+        let (models, dropped) =
+            crate::claude_desktop_config::filter_servable_models(&models, servable.as_deref());
+        if !dropped.is_empty() {
+            log::warn!(
+                "[Switch] desktop profile dropped unservable models: {}",
+                dropped.join(", ")
+            );
+        }
         match crate::claude_desktop_config::apply_relay_gateway(
             &state.db,
             &provider.name,

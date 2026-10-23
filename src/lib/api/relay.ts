@@ -661,6 +661,21 @@ export const universalApi = {
       id: `universal-${app}-${universalId}`,
     });
   },
+  /** 请求地址连通性测速：返回每个 URL 的延迟(ms)/HTTP 状态/错误 */
+  async testEndpoints(
+    urls: string[],
+  ): Promise<
+    { url: string; latency: number | null; status: number | null; error: string | null }[]
+  > {
+    return await invoke("test_api_endpoints", { urls, timeoutSecs: 8 });
+  },
+  /** 通过 OpenAI 兼容 GET /v1/models 拉取供应商可用模型 */
+  async fetchProviderModels(
+    baseUrl: string,
+    apiKey: string,
+  ): Promise<{ id: string; ownedBy?: string }[]> {
+    return await invoke("fetch_models_for_config", { baseUrl, apiKey });
+  },
 };
 
 /** 给尚未配置的中转站分组生成一次性建议；模型名不参与路由。 */

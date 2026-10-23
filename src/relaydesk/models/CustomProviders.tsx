@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Download, Gauge, Loader2, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -45,9 +45,7 @@ export function CustomProviders({ program }: { program: ModelProgram | null }) {
     : list;
 
   const invalidate = () =>
-    client.invalidateQueries({
-      queryKey: ["relaydesk", "universal-providers"],
-    });
+    client.invalidateQueries({ queryKey: ["relaydesk", "universal-providers"] });
 
   return (
     <div className="rd-custom-providers">
@@ -167,10 +165,50 @@ function AddProviderDialog({
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
+  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+  const [latency, setLatency] = useState<{
+    state: "idle" | "testing" | "ok" | "fail";
+    text?: string;
+  }>({ state: "idle" });
   const [targets, setTargets] = useState<RelayTarget[]>(
     defaultTargets.length > 0 ? defaultTargets : ["claude"],
   );
   const [locked, setLocked] = useState(false);
+
+  const testLatency = useMutation({
+    mutationFn: async () => {
+      const [r] = await universalApi.testEndpoints([baseUrl.trim()]);
+      return r;
+    },
+    onSuccess: (r) => {
+      if (r?.latency != null) {
+        setLatency({ state: "ok", text: `${r.latency}ms` });
+      } else {
+        setLatency({ state: "fail", text: r?.error ?? t("unreachable") });
+      }
+    },
+    onError: (e) => setLatency({ state: "fail", text: String(e) }),
+  });
+
+  const fetchModels = useMutation({
+    mutationFn: async () => {
+      const items = await universalApi.fetchProviderModels(
+        baseUrl.trim().replace(/\/+$/, ""),
+        apiKey.trim(),
+      );
+      return items.map((m) => m.id).filter(Boolean);
+    },
+    onSuccess: (ids) => {
+      if (ids.length === 0) {
+        toast.warning(t("noModelsFetched"));
+      } else {
+        setFetchedModels(ids);
+        if (!model) setModel(ids[0]);
+        toast.success(t("modelsFetched", { count: ids.length }));
+      }
+    },
+    onError: (e) => toast.error(String(e)),
+  });
 
   const save = useMutation({
     mutationFn: async () => {
@@ -239,12 +277,41 @@ function AddProviderDialog({
           </label>
           <label>
             <span>{t("providerBaseUrl")}</span>
-            <Field
-              value={baseUrl}
-              placeholder="https://…"
-              onChange={(e) => setBaseUrl(e.target.value)}
-            />
+            <div className="rd-inline-field">
+              <Field
+                value={baseUrl}
+                placeholder="https://…"
+                onChange={(e) => {
+                  setBaseUrl(e.target.value);
+                  setLatency({ state: "idle" });
+                }}
+              />
+              <Action
+                disabled={!baseUrl.trim() || testLatency.isPending}
+                onClick={() => testLatency.mutate()}
+                aria-label={t("testEndpoint")}
+              >
+                {testLatency.isPending ? (
+                  <Loader2 size={13} className="rd-spin" />
+                ) : (
+                  <Gauge size={13} />
+                )}
+                {t("testEndpoint")}
+              </Action>
+            </div>
           </label>
+          {latency.state !== "idle" && (
+            <p
+              className={`rd-endpoint-result rd-endpoint-result--${latency.state}`}
+              role="status"
+            >
+              {latency.state === "ok" ? <CheckCircle2 size={13} /> : null}
+              {latency.state === "testing" ? (
+                <Loader2 size={13} className="rd-spin" />
+              ) : null}
+              {latency.text}
+            </p>
+          )}
           <label>
             <span>{t("providerApiKey")}</span>
             <Field
@@ -256,11 +323,33 @@ function AddProviderDialog({
           </label>
           <label>
             <span>{t("providerModel")}</span>
-            <Field
-              value={model}
-              placeholder={t("providerModelHint")}
-              onChange={(e) => setModel(e.target.value)}
-            />
+            <div className="rd-inline-field">
+              <Field
+                value={model}
+                list="rd-fetched-models"
+                placeholder={t("providerModelHint")}
+                onChange={(e) => setModel(e.target.value)}
+              />
+              <Action
+                disabled={
+                  !baseUrl.trim() || !apiKey.trim() || fetchModels.isPending
+                }
+                onClick={() => fetchModels.mutate()}
+                aria-label={t("fetchModels")}
+              >
+                {fetchModels.isPending ? (
+                  <Loader2 size={13} className="rd-spin" />
+                ) : (
+                  <Download size={13} />
+                )}
+                {t("fetchModels")}
+              </Action>
+            </div>
+            <datalist id="rd-fetched-models">
+              {fetchedModels.map((id) => (
+                <option key={id} value={id} />
+              ))}
+            </datalist>
           </label>
           <fieldset>
             <legend>{t("providerTargets")}</legend>

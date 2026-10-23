@@ -151,3 +151,11 @@
 **自建供应**：`universalApi` 前端封装（get/upsert/delete/sync/switch 复用既有命令）+ CustomProviders 组件（relay- 前缀过滤掉 apply 自动建的）。save → upsert + sync_universal_provider；use → 逐 app switch_provider（claude 走 post_switch 钩子自动写 3p 桌面端 profile）。后端补齐两处 grok 缺口：sync_universal_to_apps 漏 GrokBuild、delete_universal 级联漏 grok 子供应商（且注意 child id 短名 grok ≠ as_str() grokbuild）。
 
 **教训**：新增 apply 路径时先 grep `ProviderService::switch` 的全部调用方——托盘/deeplink/profile 都可能成为绕过主链路的暗通道；枚举不足会在某个入口静默丢副作用。
+
+## 2026-10-23 供应能力补全 + Kiro 组模型不可服务修复
+
+**自建供应**：挪到凭证页（凭据域归属，解模型页臃肿）；表单补测速（test_api_endpoints→ms/错误）与拉模型（fetch_models_for_config→datalist）。
+
+**"Gateway couldn't serve" 根因**：pricing 分组列出的模型在上游可能不可路由（Kiro 组 5 个里 haiku-4.5 实际不服务）。修复=cc-switch 行为：写 desktop profile 前用分组 key 调 /v1/models 得可服务集合，不可服务者剔除（filter_servable_models，None=拉取失败不回归）。apply 与 post_switch 两条路径同步过滤。
+
+**教训**：sync 上下文（spawn_blocking）里跑 async reqwest 只能 `tauri::async_runtime::block_on`——futures::executor::block_on 会因没有 tokio reactor 而 panic。

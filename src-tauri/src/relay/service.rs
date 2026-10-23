@@ -1163,10 +1163,26 @@ fn seed_claude_desktop_gateway(
     base_url: &str,
     key: &str,
 ) {
+    // cc-switch 等价行为：/v1/models 按 key 返回真正可服务集合——pricing 里的
+    // 模型名上游可能路由不通（Kiro 组的 haiku-4.5），写入必炸 Desktop 校验。
+    // spawn_blocking 线程没有 tokio 上下文，必须用 tauri 的 runtime block_on。
+    let servable = tauri::async_runtime::block_on(
+        crate::claude_desktop_config::fetch_servable_models(base_url, key),
+    )
+    .map_err(|e| log::warn!("[Relay] desktop servable-model fetch failed: {e}"))
+    .ok();
+    let (models, dropped) =
+        crate::claude_desktop_config::filter_servable_models(models, servable.as_deref());
+    if !dropped.is_empty() {
+        log::warn!(
+            "[Relay] desktop profile dropped unservable models: {}",
+            dropped.join(", ")
+        );
+    }
     match crate::claude_desktop_config::apply_relay_gateway(
         &state.db,
         &format!("中转站 · {group}"),
-        models,
+        &models,
         base_url,
         key,
     ) {

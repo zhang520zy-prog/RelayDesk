@@ -19,7 +19,6 @@ import {
 import { Action, Field } from "../ui";
 import type { ApplyReport } from "../state/useRelayApply";
 import { CurrentModelCard } from "./CurrentModelCard";
-import { CustomProviders } from "./CustomProviders";
 import { ModelGroupCards } from "./ModelGroupCards";
 import { ModelTargetQuickBar } from "./ModelTargetQuickBar";
 import {
@@ -211,7 +210,6 @@ export function ModelCenterPage({
             )}
           </div>
         </div>
-        {!program && <CustomProviders program={null} />}
         {loadingError && models.length > 0 && (
           <div role="alert" className="rd-alert warning">
             {t("staleModels")}
@@ -271,7 +269,6 @@ export function ModelCenterPage({
                     {t("programGroupCount", { count: sectionGroups.length })}
                   </span>
                 </header>
-                {program && p && <CustomProviders program={p} />}
                 <ModelGroupCards
                   groups={sectionGroups}
                   search={search}

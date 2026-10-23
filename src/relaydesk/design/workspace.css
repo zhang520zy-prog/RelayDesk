@@ -589,6 +589,32 @@
   font-size: var(--rd-font-caption);
   color: var(--rd-text);
 }
+/* 表单内联控件：输入框 + 操作按钮同一行 */
+.rd-inline-field {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.rd-inline-field input {
+  flex: 1;
+  min-width: 0;
+}
+.rd-endpoint-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 0;
+  font-size: var(--rd-font-caption);
+}
+.rd-endpoint-result--ok {
+  color: var(--rd-success);
+}
+.rd-endpoint-result--fail {
+  color: var(--rd-danger);
+}
+.rd-endpoint-result--testing {
+  color: var(--rd-muted);
+}
 /* ── 程序化分区（模型目录按 AI 程序分节）────────────── */
 .rd-program-section {
   margin-top: 14px;
