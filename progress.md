@@ -167,3 +167,9 @@
 **死代码**：3 个死 relay 封装全链删（前端 wrapper→command→service→client→type→lib.rs 注册）、tray.rs refresh_all_usage_in_tray+statics、onUpdateInstallStart、smol-toml 依赖。types.ts/settings.ts 大文件死成员**有意保留**——正则切多行成员易截断语法，需 AST 工具或逐块人工，ROI 低。
 
 **教训**：①i18n 插值统一 {{var}}——新键用 {var} 会原文显示；②CSS 在 .rd-form label 容器规则下，子组件类名优先级必须更高（勾选清单竖排）；③删成员函数别用正则，用依赖闭包+AST。
+
+## 2026-10-23 补充教训
+
+**删代码后必须跑 `cargo test` 不是 `cargo check`**：cfg(test) 代码 check 不编译，测试里的结构体字面量/函数引用只在 test 编译时报错。CI Backend Checks 抓到了（exit 101），本地漏了。
+
+**正则批量改结构体字面量危险**：`ClaudeModelConfig{...}` 的正则 `[^}]*` 在嵌套 `}` 处截断、在 `..Default::default()` 后插入字段造成语法错误。教训：多行结构体字面量编辑走逐项精确替换或直接手工，别套正则。
