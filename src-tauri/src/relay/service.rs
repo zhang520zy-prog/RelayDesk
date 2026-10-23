@@ -1073,12 +1073,25 @@ fn apply_model_blocking(
         })();
 
         match attempt {
-            Ok(child_id) => RelayApplyResult {
-                app,
-                ok: true,
-                provider_id: Some(child_id),
-                error: None,
-            },
+            Ok(child_id) => {
+                if app == "claude" {
+                    // 复刻 cc-switch 的"跳过登录"门卡：~/.claude/config.json 的
+                    // primaryApiKey="any" + ~/.claude.json 的 hasCompletedOnboarding。
+                    // 两者均为增量写入，保留用户其它字段；失败不阻断应用结果。
+                    if let Err(e) = crate::claude_plugin::write_claude_config() {
+                        log::warn!("[Relay] claude primaryApiKey seed failed: {e}");
+                    }
+                    if let Err(e) = crate::claude_mcp::set_has_completed_onboarding() {
+                        log::warn!("[Relay] claude onboarding-skip seed failed: {e}");
+                    }
+                }
+                RelayApplyResult {
+                    app,
+                    ok: true,
+                    provider_id: Some(child_id),
+                    error: None,
+                }
+            }
             Err(_) => {
                 log::warn!("RelayDesk 同步 {app} 失败");
                 RelayApplyResult {
