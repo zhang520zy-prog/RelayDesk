@@ -1,5 +1,13 @@
 import { useMemo } from "react";
-import { Search, X, Boxes, Wallet, BarChart3, Layers } from "lucide-react";
+import {
+  Search,
+  X,
+  Boxes,
+  Wallet,
+  BarChart3,
+  Layers,
+  Package,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   type RelayAccountInfo,
@@ -19,6 +27,16 @@ import {
   uniqueModelCount,
   type ModelProgram,
 } from "./modelPresentation";
+import { TOOL_VENDORS } from "../environment/toolIcons";
+
+/** 目录分区顺序：relay 目标在前、deploy-only 殿后；不属于任何家族的分组进"其他"。 */
+const PROGRAM_ORDER: ModelProgram[] = [
+  "claude",
+  "codex",
+  "gemini",
+  "grok",
+  "devin",
+];
 export function ModelCenterPage({
   account,
   groups,
@@ -74,6 +92,24 @@ export function ModelCenterPage({
       program ? models.filter((g) => groupMatchesProgram(g, program)) : models,
     [models, program],
   );
+  // 程序化分区：cc-switch 的"按程序看供应商"心智——每个程序一节，未选程序
+  // 时全部铺开；识别不了任何家族的分组归入"其他"，选中程序时只有该节。
+  const sections = useMemo(() => {
+    const order = program ? [program] : PROGRAM_ORDER;
+    const out = order
+      .map((p) => ({
+        program: p as ModelProgram | null,
+        groups: visibleModels.filter((g) => groupMatchesProgram(g, p)),
+      }))
+      .filter((s) => s.groups.length > 0);
+    if (!program) {
+      const rest = visibleModels.filter(
+        (g) => !PROGRAM_ORDER.some((p) => groupMatchesProgram(g, p)),
+      );
+      if (rest.length > 0) out.push({ program: null, groups: rest });
+    }
+    return out;
+  }, [visibleModels, program]);
   const query = search.trim().toLocaleLowerCase();
   const matchCount = useMemo(() => {
     if (!query) return uniqueModelCount(visibleModels);
@@ -175,7 +211,7 @@ export function ModelCenterPage({
             )}
           </div>
         </div>
-        <CustomProviders program={program} />
+        {!program && <CustomProviders program={null} />}
         {loadingError && models.length > 0 && (
           <div role="alert" className="rd-alert warning">
             {t("staleModels")}
@@ -216,12 +252,35 @@ export function ModelCenterPage({
             </Action>
           </div>
         ) : matchCount ? (
-          <ModelGroupCards
-            groups={visibleModels}
-            search={search}
-            current={account.lastApplied}
-            {...{ busy, report, apply }}
-          />
+          sections.map(({ program: p, groups: sectionGroups }) => {
+            const vendor = p ? TOOL_VENDORS[p] : undefined;
+            const ProgramIcon = vendor?.Icon ?? Package;
+            const programName = vendor?.name ?? t("otherPrograms");
+            return (
+              <section
+                key={p ?? "other"}
+                className="rd-program-section"
+                aria-label={programName}
+              >
+                <header className="rd-program-section__head">
+                  <span className="rd-program-section__title">
+                    <ProgramIcon size={16} />
+                    {programName}
+                  </span>
+                  <span className="rd-program-section__count">
+                    {t("programGroupCount", { count: sectionGroups.length })}
+                  </span>
+                </header>
+                {program && p && <CustomProviders program={p} />}
+                <ModelGroupCards
+                  groups={sectionGroups}
+                  search={search}
+                  current={account.lastApplied}
+                  {...{ busy, report, apply }}
+                />
+              </section>
+            );
+          })
         ) : (
           <div className="rd-empty">
             <Search size={30} />

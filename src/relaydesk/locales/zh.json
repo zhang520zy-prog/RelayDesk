@@ -120,6 +120,8 @@
   "providerDeleted": "已删除 {name}",
   "useProvider": "使用",
   "deleteProvider": "删除",
+  "otherPrograms": "其他",
+  "programGroupCount": "{count} 个分组",
   "sessions": "会话管理",
   "loadingSessions": "正在读取会话…",
   "sessionLoadError": "读取会话失败",

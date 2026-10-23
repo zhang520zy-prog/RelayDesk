@@ -120,6 +120,8 @@
   "providerDeleted": "Deleted {name}",
   "useProvider": "Use",
   "deleteProvider": "Delete",
+  "otherPrograms": "Other",
+  "programGroupCount": "{count} groups",
   "sessions": "Sessions",
   "loadingSessions": "Reading sessions…",
   "sessionLoadError": "Failed to read sessions",

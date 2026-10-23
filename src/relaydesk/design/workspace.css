@@ -589,6 +589,34 @@
   font-size: var(--rd-font-caption);
   color: var(--rd-text);
 }
+/* ── 程序化分区（模型目录按 AI 程序分节）────────────── */
+.rd-program-section {
+  margin-top: 14px;
+}
+.rd-program-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px 8px;
+  border-bottom: 1px solid var(--rd-line);
+  margin-bottom: 10px;
+}
+.rd-program-section__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--rd-font-body);
+  font-weight: 600;
+  color: var(--rd-text);
+}
+.rd-program-section__title svg {
+  color: var(--rd-accent);
+}
+.rd-program-section__count {
+  font-size: var(--rd-font-caption);
+  color: var(--rd-muted);
+}
 .rd-page-loading {
   display: flex;
   align-items: center;
