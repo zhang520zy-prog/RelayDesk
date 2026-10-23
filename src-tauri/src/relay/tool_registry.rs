@@ -71,9 +71,10 @@ pub fn builtin_registry() -> ToolRegistry {
                         // ~/.claude/settings.json——正是 relay 写入的目标文件。
                         reads_cli_config: true,
                         bundle_id: Some("com.anthropic.claudefordesktop".to_string()),
-                        // 主界面登录后才进得去内嵌 Code 会话；纯中转站用户无
-                        // Anthropic 账号时应引导去 CLI。
-                        requires_login: true,
+                        // 1p 模式才需 Anthropic 账号；RelayDesk apply 会写 3p 网关
+                        // profile（deploymentMode=3p + inferenceGateway*）直通中转站，
+                        // 全新安装的桌面端免登录即用。
+                        requires_login: false,
                         // Windows 版为 Electron 安装包：卸载登记名 "Claude"，
                         // 安装目录 %LOCALAPPDATA%\AnthropicClaude。
                         windows_names: vec!["Claude".to_string(), "AnthropicClaude".to_string()],

@@ -22,7 +22,8 @@ use super::types::{
 use crate::app_config::AppType;
 use crate::error::AppError;
 use crate::provider::{
-    ClaudeModelConfig, CodexModelConfig, GeminiModelConfig, GrokRelayModel, UniversalProvider,
+    ClaudeModelConfig, CodexModelConfig, GeminiModelConfig, GrokRelayModel, Provider,
+    UniversalProvider,
 };
 use crate::services::ProviderService;
 use crate::store::AppState;
@@ -1088,6 +1089,13 @@ fn apply_model_blocking(
                     if let Err(e) = crate::claude_mcp::set_has_completed_onboarding() {
                         log::warn!("[Relay] claude onboarding-skip seed failed: {e}");
                     }
+                    seed_claude_desktop_gateway(
+                        state,
+                        group,
+                        model,
+                        &expected_session.base_url,
+                        key,
+                    );
                 }
                 RelayApplyResult {
                     app,
@@ -1121,6 +1129,70 @@ fn apply_model_blocking(
 }
 
 // ── 工具 ────────────────────────────────────────────────────
+
+/// Claude Desktop 3P 网关模式：写 deploymentMode=3p + configLibrary profile，
+/// inferenceGatewayBaseUrl 直指中转站——这是 cc-switch 让 Claude.app 免登录的
+/// 真正机制（1p 模式才走 Anthropic 账号门）。全新安装的桌面端因此开箱即用。
+/// 直连模式要求模型名为 claude-*/anthropic/claude-* 安全形态；不合规时跳过
+/// 桌面端写入但绝不阻断 CLI 的 apply 结果。
+fn seed_claude_desktop_gateway(
+    state: &AppState,
+    group: &str,
+    model: &str,
+    base_url: &str,
+    key: &str,
+) {
+    let trimmed = model.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    // Desktop schema 不接受 "[1M]" 后缀——剥成 supports1m 字段（同 cc-switch 导入边界）。
+    let (route_id, supports_1m) = lower
+        .strip_suffix(crate::claude_desktop_config::ONE_M_CONTEXT_MARKER)
+        .map(|_| (trimmed[..trimmed.len() - 4].trim_end().to_string(), Some(true)))
+        .unwrap_or_else(|| (trimmed.to_string(), None));
+
+    if !crate::claude_desktop_config::is_claude_safe_model_id(&route_id) {
+        log::warn!(
+            "[Relay] claude desktop skipped: model '{model}' is not a claude-safe route id (needs claude-*/anthropic/claude-*)"
+        );
+        return;
+    }
+
+    let provider = Provider {
+        id: format!("relay-desktop-{group}"),
+        name: format!("中转站 · {group}"),
+        settings_config: serde_json::json!({
+            "env": {
+                "ANTHROPIC_BASE_URL": base_url,
+                "ANTHROPIC_AUTH_TOKEN": key,
+            }
+        }),
+        website_url: None,
+        category: Some("aggregator".to_string()),
+        created_at: Some(now_ts()),
+        sort_index: None,
+        notes: None,
+        meta: Some(crate::provider::ProviderMeta {
+            claude_desktop_mode: Some(crate::provider::ClaudeDesktopMode::Direct),
+            claude_desktop_model_routes: std::collections::HashMap::from([(
+                route_id.clone(),
+                crate::provider::ClaudeDesktopModelRoute {
+                    model: route_id,
+                    label_override: None,
+                    supports_1m,
+                },
+            )]),
+            ..Default::default()
+        }),
+        icon: None,
+        icon_color: None,
+        in_failover_queue: false,
+    };
+
+    match crate::claude_desktop_config::apply_provider(&state.db, &provider) {
+        Ok(()) => log::info!("[Relay] claude desktop 3p gateway profile written for model '{model}'"),
+        Err(e) => log::warn!("[Relay] claude desktop profile write failed: {e}"),
+    }
+}
 
 fn require_account(state: &AppState) -> Result<RelayAccount, AppError> {
     state
@@ -2501,6 +2573,83 @@ mod tests {
         assert_eq!(
             live["env"]["ANTHROPIC_MODEL"].as_str(),
             Some("fixture-new-model")
+        );
+
+        match previous_test_home {
+            Some(value) => std::env::set_var("RELAYDESK_TEST_HOME", value),
+            None => std::env::remove_var("RELAYDESK_TEST_HOME"),
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn claude_desktop_gateway_seed_writes_3p_profile_and_skips_unsafe_models() {
+        let temp = tempfile::tempdir().expect("isolated home");
+        let previous_test_home = std::env::var_os("RELAYDESK_TEST_HOME");
+        std::env::set_var("RELAYDESK_TEST_HOME", temp.path());
+        crate::settings::reload_settings().unwrap();
+
+        let db = Arc::new(Database::memory().unwrap());
+        let state = AppState::new(db);
+
+        seed_claude_desktop_gateway(
+            &state,
+            "paid",
+            "claude-opus-5-5",
+            "https://relay.example",
+            "sk-test",
+        );
+
+        let config_library =
+            crate::claude_desktop_config::get_config_library_path().expect("config library path");
+        let profile_path =
+            config_library.join(format!("{}.json", crate::claude_desktop_config::PROFILE_ID));
+        assert!(profile_path.exists(), "3p profile must be written");
+        let threep = config_library
+            .parent()
+            .expect("configLibrary has parent dir")
+            .to_path_buf();
+
+        let profile: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(&profile_path).expect("profile readable"),
+        )
+        .unwrap();
+        assert_eq!(
+            profile["inferenceGatewayBaseUrl"].as_str(),
+            Some("https://relay.example")
+        );
+        assert_eq!(profile["inferenceGatewayApiKey"].as_str(), Some("sk-test"));
+        assert_eq!(
+            profile["inferenceProvider"].as_str(),
+            Some("gateway"),
+            "gateway provider mode is what lets a fresh desktop skip Anthropic login"
+        );
+        let models = profile["inferenceModels"].as_array().expect("model list");
+        assert_eq!(models.len(), 1);
+
+        let deployment: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(threep.join("claude_desktop_config.json"))
+                .expect("3p config readable"),
+        )
+        .unwrap();
+        assert_eq!(deployment["deploymentMode"].as_str(), Some("3p"));
+
+        // 非 claude-safe 模型名不得写 profile（Desktop fail-all validator 会拒收整组）。
+        seed_claude_desktop_gateway(
+            &state,
+            "paid",
+            "opus5.5-krio",
+            "https://other.example",
+            "sk-other",
+        );
+        let after: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(&profile_path).expect("profile readable"),
+        )
+        .unwrap();
+        assert_eq!(
+            after["inferenceGatewayBaseUrl"].as_str(),
+            Some("https://relay.example"),
+            "unsafe model must not overwrite the working profile"
         );
 
         match previous_test_home {

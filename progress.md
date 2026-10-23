@@ -126,3 +126,12 @@
 **发版流程**：推送走 osxkeychain，`git credential fill` 可直接取 token 调 REST API 替代缺失的 gh CLI；删旧 release 用 DELETE /releases/{id} + /git/refs/tags/{tag}。updater 端点是 `releases/latest/download/latest.json`——旧 release 要等新版发布成功后再删，否则端点悬空。
 
 **本轮清理**：~190 行死 CSS（rd-launch*/rd-model-*/rd-wallet-checkout/form-grid/quote-item/rd-connection-art/rd-env-guide-row/rd-env-platform/rd-account-status/rd-chart-pair/rd-detail-toggle/rd-usage-total-row/rd-wallet-contract-note/rd-warning-text/rd-group/rd-version/rd-group-routing-* 旧结构）、quotaToUsd、docs/release-notes 82 文件、test-build 远端发布与本地旧产物。
+
+## 2026-10-23 Claude Desktop 免登录机制（3p 网关）审计修复
+
+**用户反馈**：Claude.app 应用分组后要求登录，而 cc-switch 下桌面端"免登录"可用。排查结论：
+
+- cc-switch 的"免登录"不是 primaryApiKey 门卡（那只是 CLI 引导跳过），而是 **Claude Desktop 的 3p 部署模式**：写 `~/Library/Application Support/Claude{,-3p}/claude_desktop_config.json` 的 `deploymentMode: "3p"` + `Claude-3p/configLibrary/<PROFILE_ID>.json` 网关 profile（inferenceGatewayBaseUrl/ApiKey/inferenceProvider=gateway）+ `_meta.json` 激活——整套设施在 `claude_desktop_config.rs`，fork 继承但 relay-apply 漏接。
+- 用户本机"关网关也不登录"是因历史账号会话残留，无法在全新机器复现；**全新安装 = 1p 默认 + 无账号 = 必弹登录**。
+- 修复：`seed_claude_desktop_gateway` 在 claude apply 成功臂写入 Direct 模式 profile（模型须 `claude-*`/`anthropic/claude-*` 安全名，否则 Desktop fail-all validator 拒收整组；[1M] 后缀剥成 supports1m）。RelayDesk 用独立 PROFILE_ID（`...0dea1d`）不与 cc-switch 的 `...157210` 互踩；`appliedId` 单活跃是 Anthropic 固有设计。
+- **教训**：对比"竞品能用我们不行"时，先找目标应用的原生扩展机制（这里是 3p 部署模式），别在登录态文件上猜——门卡理论（primaryApiKey/onboarding）只对 CLI 成立，桌面端完全是另一套配置域（App Support 而非 ~/.claude）。

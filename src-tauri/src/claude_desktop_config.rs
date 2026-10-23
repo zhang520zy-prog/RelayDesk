@@ -11,7 +11,10 @@ use crate::database::CLAUDE_DESKTOP_OFFICIAL_PROVIDER_ID;
 use crate::error::AppError;
 use crate::provider::{ClaudeDesktopMode, Provider};
 
-pub const PROFILE_ID: &str = "00000000-0000-4000-8000-000000157210";
+// RelayDesk 专属 profile id——不复用 cc-switch 的 157210：两应用各自写自己的
+// profile 文件互不覆盖，_meta.appliedId 谁最后 apply 谁生效（单活跃是
+// Claude Desktop 的固有设计）。
+pub const PROFILE_ID: &str = "00000000-0000-4000-8000-0000000dea1d";
 pub const PROFILE_NAME: &str = "RelayDesk";
 
 #[cfg(any(target_os = "macos", windows, target_os = "linux", test))]
