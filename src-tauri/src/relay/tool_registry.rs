@@ -19,6 +19,14 @@ pub struct DesktopToolDefinition {
     pub display_name: String,
     #[serde(default)]
     pub reads_cli_config: bool,
+    /// macOS 身份核验：Some 时目录命中还须 CFBundleIdentifier 一致才认账——
+    /// 同名第三方壳（比如非官方"Claude.app"）不会被误检误启。
+    #[serde(default)]
+    pub bundle_id: Option<String>,
+    /// 桌面端自身有账号门控（如 Claude.app 不登录进不去主界面）：应用配置
+    /// 只对其内嵌 Code 会话生效，无官方账号的用户应走 CLI。
+    #[serde(default)]
+    pub requires_login: bool,
     /// Windows 检测线索：常见安装目录名、卸载注册表 DisplayName 子串、MSIX 包名
     /// 共用同一名称做大小写不敏感匹配。为空表示该桌面端无 Windows 版本。
     #[serde(default)]
@@ -62,6 +70,10 @@ pub fn builtin_registry() -> ToolRegistry {
                         // settingSources:["user"] 启动，user 源即
                         // ~/.claude/settings.json——正是 relay 写入的目标文件。
                         reads_cli_config: true,
+                        bundle_id: Some("com.anthropic.claudefordesktop".to_string()),
+                        // 主界面登录后才进得去内嵌 Code 会话；纯中转站用户无
+                        // Anthropic 账号时应引导去 CLI。
+                        requires_login: true,
                         // Windows 版为 Electron 安装包：卸载登记名 "Claude"，
                         // 安装目录 %LOCALAPPDATA%\AnthropicClaude。
                         windows_names: vec!["Claude".to_string(), "AnthropicClaude".to_string()],
@@ -80,6 +92,9 @@ pub fn builtin_registry() -> ToolRegistry {
                             app_name: "ChatGPT.app".to_string(),
                             display_name: "ChatGPT (Codex)".to_string(),
                             reads_cli_config: true,
+                            bundle_id: Some("com.openai.codex".to_string()),
+                            // ChatGPT 桌面端同样账号门控（OpenAI 登录）。
+                            requires_login: true,
                             // Windows 版为 Store MSIX（OpenAI.ChatGPT-Desktop），
                             // 卸载表与 Appx 查询均按 "ChatGPT" 子串命中。
                             windows_names: vec!["ChatGPT".to_string()],
@@ -88,6 +103,8 @@ pub fn builtin_registry() -> ToolRegistry {
                             app_name: "Codex.app".to_string(),
                             display_name: "Codex (legacy name)".to_string(),
                             reads_cli_config: true,
+                            bundle_id: Some("com.openai.codex".to_string()),
+                            requires_login: true,
                             windows_names: vec!["Codex".to_string()],
                         },
                     ],
@@ -106,6 +123,8 @@ pub fn builtin_registry() -> ToolRegistry {
                         app_name: "Gemini.app".to_string(),
                         display_name: "Gemini desktop".to_string(),
                         reads_cli_config: false,
+                        bundle_id: None,
+                        requires_login: true,
                         // Windows 版卸载登记/包名按 "Gemini" 子串命中。
                         windows_names: vec!["Gemini".to_string()],
                     }],
@@ -123,6 +142,8 @@ pub fn builtin_registry() -> ToolRegistry {
                         app_name: "Grok.app".to_string(),
                         display_name: "Grok desktop".to_string(),
                         reads_cli_config: false,
+                        bundle_id: None,
+                        requires_login: true,
                         windows_names: vec!["Grok".to_string()],
                     }],
                 },
@@ -141,6 +162,8 @@ pub fn builtin_registry() -> ToolRegistry {
                             app_name: "Devin.app".to_string(),
                             display_name: "Devin Desktop".to_string(),
                             reads_cli_config: false,
+                            bundle_id: None,
+                            requires_login: true,
                             // Windows 安装登记名可能仍是旧名 Windsurf。
                             windows_names: vec!["Devin".to_string(), "Windsurf".to_string()],
                         },
@@ -148,6 +171,8 @@ pub fn builtin_registry() -> ToolRegistry {
                             app_name: "Windsurf.app".to_string(),
                             display_name: "Windsurf (旧名)".to_string(),
                             reads_cli_config: false,
+                            bundle_id: None,
+                            requires_login: true,
                             windows_names: vec![],
                         },
                     ],

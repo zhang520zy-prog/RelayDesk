@@ -213,6 +213,13 @@ export function LaunchChoices({
                     })}
                   </p>
                 )}
+                {hasDesktop && installed?.desktopRequiresLogin && (
+                  <p className="rd-alert rd-launch-feedback">
+                    {t("launchDesktopLoginHint", {
+                      name: installed.desktopName ?? t("launchDesktop"),
+                    })}
+                  </p>
+                )}
                 {guide === app && <ToolInstallGuide app={app} />}
               </>
             )}

@@ -341,7 +341,7 @@ fn running_apps(bundle_id: &str) -> Result<Vec<RunningAppInfo>, RestartOpError> 
 }
 
 #[cfg(target_os = "macos")]
-fn read_info_plist_string(app_root: &Path, key: &str) -> Option<String> {
+pub(crate) fn read_info_plist_string(app_root: &Path, key: &str) -> Option<String> {
     let info = app_root.join("Contents").join("Info.plist");
     let from_plutil = std::process::Command::new("plutil")
         .args(["-extract", key, "raw", "-o", "-"])
@@ -1213,6 +1213,8 @@ mod tests {
                 app_name: "Evil.app".to_string(),
                 display_name: "Evil".to_string(),
                 reads_cli_config: true,
+                bundle_id: None,
+                requires_login: false,
                 windows_names: vec![],
             });
         let mut ops = FakeOps::default();

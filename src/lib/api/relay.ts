@@ -99,6 +99,7 @@ export interface RelayTargetInstall {
   desktopApp?: string;
   desktopName?: string;
   desktopReadsCliConfig?: boolean;
+  desktopRequiresLogin?: boolean;
   desktopCandidates?: string[];
   desktopUrl?: string;
 }

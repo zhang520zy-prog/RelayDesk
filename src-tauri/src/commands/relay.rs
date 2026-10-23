@@ -316,6 +316,9 @@ pub struct RelayTargetInstall {
     desktop_app: Option<String>,
     desktop_name: Option<String>,
     desktop_reads_cli_config: Option<bool>,
+    /// 桌面端自身账号门控（如 Claude.app 需 Anthropic 登录才进主界面）——
+    /// 前端据此前置提示"无账号请走 CLI"，避免"装了却不能用"的落差。
+    desktop_requires_login: Option<bool>,
     /// 全部桌面候选的显示名（含未安装的），前端据此决定是否渲染桌面端行
     desktop_candidates: Vec<String>,
     /// 桌面端官方下载页；None 表示该工具不提供桌面端入口
@@ -359,6 +362,9 @@ pub async fn relay_detect_target_installations(
                     desktop_reads_cli_config: desktop
                         .as_ref()
                         .map(|(_, definition)| definition.reads_cli_config),
+                    desktop_requires_login: desktop
+                        .as_ref()
+                        .map(|(_, definition)| definition.requires_login),
                     // 有官方下载页或已检测到桌面端时才暴露候选，避免渲染无关行
                     desktop_candidates: definition
                         .filter(|d| d.desktop_url.is_some() || desktop.is_some())
@@ -514,9 +520,26 @@ fn find_desktop_app(
             home.join("Applications"),
         ] {
             let candidate = base.join(&desktop.app_name);
-            if candidate.is_dir() {
-                return Some((candidate, desktop.clone()));
+            if !candidate.is_dir() {
+                continue;
             }
+            // 目录名命中只是线索：声明了 bundle id 的桌面端必须核验
+            // CFBundleIdentifier，同名第三方壳不算已安装、更不能被拉起。
+            if let Some(expected) = &desktop.bundle_id {
+                let actual = crate::relay::restart::read_info_plist_string(
+                    &candidate,
+                    "CFBundleIdentifier",
+                );
+                if actual.as_deref() != Some(expected.as_str()) {
+                    log::warn!(
+                        "[Desktop] {app}: {} 目录命中但 bundle id 不符（{:?} ≠ {expected}），跳过",
+                        candidate.display(),
+                        actual
+                    );
+                    continue;
+                }
+            }
+            return Some((candidate, desktop.clone()));
         }
     }
     None
@@ -648,6 +671,7 @@ fn find_desktop_app(
 #[cfg(target_os = "macos")]
 fn launch_desktop_app(app: &str, registry: &ToolRegistry) -> Result<(), String> {
     let (path, _) = find_desktop_app(app, registry).ok_or("relay.desktop_not_found".to_string())?;
+    log::info!("[Launch] {app} desktop -> {}", path.display());
     std::process::Command::new("open")
         .arg(&path)
         .spawn()
@@ -664,6 +688,7 @@ fn launch_desktop_app(_app: &str, _registry: &ToolRegistry) -> Result<(), String
 fn launch_target_cli(app: &str) -> Result<(), String> {
     let path =
         crate::commands::locate_tool_executable(app).ok_or("relay.cli_not_found".to_string())?;
+    log::info!("[Launch] {app} cli -> {}", path.display());
     let script = format!(
         "tell application \"Terminal\" to do script \"{}\"",
         path.to_string_lossy()
@@ -682,6 +707,7 @@ fn launch_target_cli(app: &str) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     let path =
         crate::commands::locate_tool_executable(app).ok_or("relay.cli_not_found".to_string())?;
+    log::info!("[Launch] {app} cli -> {}", path.display());
     // 外层 cmd 只负责 start 转交，其自身控制台会闪——CREATE_NO_WINDOW 抑制；
     // start 出来的目标终端窗口不受影响
     std::process::Command::new("cmd")
