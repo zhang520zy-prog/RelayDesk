@@ -11,9 +11,14 @@ import {
 import { Action, Field } from "../ui";
 import type { ApplyReport } from "../state/useRelayApply";
 import { CurrentModelCard } from "./CurrentModelCard";
+import { CustomProviders } from "./CustomProviders";
 import { ModelGroupCards } from "./ModelGroupCards";
 import { ModelTargetQuickBar } from "./ModelTargetQuickBar";
-import { uniqueModelCount } from "./modelPresentation";
+import {
+  groupMatchesProgram,
+  uniqueModelCount,
+  type ModelProgram,
+} from "./modelPresentation";
 export function ModelCenterPage({
   account,
   groups,
@@ -29,14 +34,16 @@ export function ModelCenterPage({
   apply,
   details,
   targets,
-  openDeployment,
   viewAccount,
   viewWallet,
   filters,
   onFiltersChange,
 }: {
-  filters: { search: string };
-  onFiltersChange: (filters: { search: string }) => void;
+  filters: { search: string; program?: ModelProgram | null };
+  onFiltersChange: (filters: {
+    search: string;
+    program?: ModelProgram | null;
+  }) => void;
   account: RelayAccountInfo;
   groups: RelayGroup[];
   models: RelayGroupModels[];
@@ -51,20 +58,26 @@ export function ModelCenterPage({
   apply: (group: string, model: string) => void;
   details: () => void;
   targets: (app?: RelayTarget) => void;
-  openDeployment?: () => void;
   viewAccount: () => void;
   viewWallet: () => void;
 }) {
   const { t } = useTranslation("relaydesk");
-  const { search } = filters;
+  const { search, program = null } = filters;
   const setSearch = (search: string) => onFiltersChange({ ...filters, search });
+  const setProgram = (program: ModelProgram | null) =>
+    onFiltersChange({ ...filters, program });
   const groupNames = [
     ...new Set([...groups.map((g) => g.name), ...models.map((g) => g.group)]),
   ].sort();
+  const visibleModels = useMemo(
+    () =>
+      program ? models.filter((g) => groupMatchesProgram(g, program)) : models,
+    [models, program],
+  );
   const query = search.trim().toLocaleLowerCase();
   const matchCount = useMemo(() => {
-    if (!query) return uniqueModelCount(models);
-    return models.reduce(
+    if (!query) return uniqueModelCount(visibleModels);
+    return visibleModels.reduce(
       (sum, g) =>
         sum +
         g.models.filter((m) =>
@@ -74,7 +87,7 @@ export function ModelCenterPage({
         ).length,
       0,
     );
-  }, [models, query]);
+  }, [visibleModels, query]);
   const metrics = [
     {
       key: "balance",
@@ -120,8 +133,9 @@ export function ModelCenterPage({
         apps={account.applyApps}
         report={report}
         busy={busy}
+        program={program}
+        onProgram={setProgram}
         onConfigure={targets}
-        onDeployOnly={openDeployment}
       />
       {notice && (
         <div className="rd-alert warning" role="alert">
@@ -161,6 +175,7 @@ export function ModelCenterPage({
             )}
           </div>
         </div>
+        <CustomProviders program={program} />
         {loadingError && models.length > 0 && (
           <div role="alert" className="rd-alert warning">
             {t("staleModels")}
@@ -202,7 +217,7 @@ export function ModelCenterPage({
           </div>
         ) : matchCount ? (
           <ModelGroupCards
-            groups={models}
+            groups={visibleModels}
             search={search}
             current={account.lastApplied}
             {...{ busy, report, apply }}

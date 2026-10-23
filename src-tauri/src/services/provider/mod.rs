@@ -7656,6 +7656,11 @@ impl ProviderService {
                 let gemini_id = format!("universal-gemini-{id}");
                 let _ = state.db.delete_provider("gemini", &gemini_id);
             }
+            if p.apps.grok {
+                // 子供应商 id 用工具短名 "grok"（to_grok_provider），不是 AppType 的 grokbuild
+                let grok_id = format!("universal-grok-{id}");
+                let _ = state.db.delete_provider("grokbuild", &grok_id);
+            }
         }
 
         Ok(true)
@@ -7668,11 +7673,14 @@ impl ProviderService {
             .get_universal_provider(id)?
             .ok_or_else(|| AppError::Message(format!("统一供应商 {id} 不存在")))?;
 
+        // (AppType, enabled, 子供应商 id 中的工具短名)——grok 的短名是 "grok"，
+        // 不是 as_str() 的 "grokbuild"（to_grok_provider 沿用短名）。
         let mut failures = Vec::new();
-        for (app_type, enabled) in [
-            (AppType::Claude, provider.apps.claude),
-            (AppType::Codex, provider.apps.codex),
-            (AppType::Gemini, provider.apps.gemini),
+        for (app_type, enabled, child_prefix) in [
+            (AppType::Claude, provider.apps.claude, "claude"),
+            (AppType::Codex, provider.apps.codex, "codex"),
+            (AppType::Gemini, provider.apps.gemini, "gemini"),
+            (AppType::GrokBuild, provider.apps.grok, "grok"),
         ] {
             if enabled {
                 if let Err(err) = Self::sync_universal_to_app(state, id, app_type.clone()) {
@@ -7680,7 +7688,7 @@ impl ProviderService {
                     failures.push(app_type.as_str().to_string());
                 }
             } else {
-                let child_id = format!("universal-{}-{id}", app_type.as_str());
+                let child_id = format!("universal-{child_prefix}-{id}");
                 if let Err(err) = state.db.delete_provider(app_type.as_str(), &child_id) {
                     log::warn!("删除已禁用的统一供应商子项 {child_id} 失败: {err}");
                     failures.push(app_type.as_str().to_string());

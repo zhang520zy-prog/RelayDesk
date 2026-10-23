@@ -611,6 +611,58 @@ export const relayApi = {
   },
 };
 
+/** 自建统一供应商（跨应用共享一份 baseUrl/apiKey/model），对应后端
+ * `get_universal_providers`/`upsert_universal_provider`/`switch_provider`。 */
+export interface UniversalProviderApps {
+  claude: boolean;
+  codex: boolean;
+  gemini: boolean;
+  grok: boolean;
+}
+export interface UniversalProvider {
+  id: string;
+  name: string;
+  providerType: string;
+  apps: UniversalProviderApps;
+  baseUrl: string;
+  apiKey: string;
+  models?: {
+    claude?: { model?: string };
+    codex?: { model?: string };
+    gemini?: { model?: string };
+    grok?: { model?: string };
+  };
+  websiteUrl?: string;
+  notes?: string;
+  icon?: string;
+  iconColor?: string;
+  meta?: unknown;
+  createdAt?: number;
+  sortIndex?: number;
+}
+
+export const universalApi = {
+  async list(): Promise<Record<string, UniversalProvider>> {
+    return await invoke("get_universal_providers");
+  },
+  async upsert(provider: UniversalProvider): Promise<boolean> {
+    return await invoke("upsert_universal_provider", { provider });
+  },
+  async remove(id: string): Promise<boolean> {
+    return await invoke("delete_universal_provider", { id });
+  },
+  async sync(id: string): Promise<boolean> {
+    return await invoke("sync_universal_provider", { id });
+  },
+  /** 使某应用的 universal 子供应商成为当前（写 live + 触发 claude 桌面端 side effects） */
+  async activate(app: RelayTarget, universalId: string): Promise<void> {
+    await invoke("switch_provider", {
+      app,
+      id: `universal-${app}-${universalId}`,
+    });
+  },
+};
+
 /** 给尚未配置的中转站分组生成一次性建议；模型名不参与路由。 */
 export function inferRelayTargets(
   group: string,

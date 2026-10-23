@@ -475,10 +475,119 @@
   border-color: color-mix(in srgb, var(--rd-warning) 30%, var(--rd-line));
   background: color-mix(in srgb, var(--rd-warning) 8%, var(--rd-raised));
 }
-/* 仅部署工具（Devin）：灰点边，点击跳环境部署页而非配置目标 */
+/* 仅部署工具（Devin）：灰点边，作为程序筛选 chip */
 .rd-target-quick-bar__chip--deploy {
   border-style: dotted;
   color: var(--rd-muted);
+}
+/* 程序筛选激活态：品牌主色描边 + 弱填充 */
+.rd-target-quick-bar__chip--active {
+  border-style: solid;
+  border-color: var(--rd-accent);
+  color: var(--rd-accent);
+  background: color-mix(in srgb, var(--rd-accent) 12%, var(--rd-raised));
+}
+/* ── 自定义 API 供应（模型中心内联区）────────────────── */
+.rd-custom-providers {
+  margin: 10px 0 4px;
+  border: 1px dashed var(--rd-line);
+  border-radius: var(--rd-control-radius);
+  padding: 10px 12px;
+}
+.rd-custom-providers__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rd-custom-providers__head h3 {
+  margin: 0;
+  font-size: var(--rd-font-caption);
+  color: var(--rd-muted);
+  font-weight: 500;
+}
+.rd-custom-providers__list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rd-custom-provider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-control-radius);
+  background: var(--rd-raised);
+}
+.rd-custom-provider__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.rd-custom-provider__meta .rd-muted {
+  font-size: var(--rd-font-caption);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rd-custom-provider__apps {
+  display: flex;
+  gap: 4px;
+}
+.rd-custom-provider__app {
+  font-size: var(--rd-font-caption);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--rd-line);
+  color: var(--rd-muted);
+}
+.rd-custom-provider__ops {
+  display: flex;
+  gap: 6px;
+}
+/* 添加供应弹窗表单 */
+.rd-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0;
+}
+.rd-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--rd-font-caption);
+  color: var(--rd-muted);
+}
+.rd-form fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.rd-form legend {
+  font-size: var(--rd-font-caption);
+  color: var(--rd-muted);
+  padding: 0;
+}
+.rd-check-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.rd-check-row label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--rd-font-caption);
+  color: var(--rd-text);
 }
 .rd-page-loading {
   display: flex;

@@ -143,3 +143,11 @@
 **频繁登出根因**：日志每次登录都有 `获取系统访问令牌失败，降级使用短期登录凭据`——`GET /api/user/token` 只认 `data` 为裸字符串，new-api 各 fork 返回 object/数组时解析失败 → 降级 15min JWT → vault 里存的是短票 → 过 15 分钟恢复即失效，表现就是"保存密码没用+频繁登出"。修复：`extract_system_token` 宽容解析（string/对象常见键/数组递归），warn 带失败原因（状态码/shape，不落 token）。
 
 **教训**：副作用（门卡/profile）必须挂在所有入口的汇合点（ProviderService::switch），不能绑在某一条 UI 路径上——托盘/deeplink/profile 都会绕过 apply。第二个教训同型：解析服务端响应按形状枚举而非假设单一 schema，new-api fork 差异全藏在信封 data 的形状里。
+
+## 2026-10-23 模型中心程序化分组 + 自建 API 供应
+
+**程序筛选**：QuickBar chips 从"跳目标设置"改为程序筛选（claude/codex/gemini/grok/devin 含 deploy-only），组名或组内模型命中 inferRelayTargets/inferDeployTools 家族即归属；`设置应用目标`按钮保留原功能。
+
+**自建供应**：`universalApi` 前端封装（get/upsert/delete/sync/switch 复用既有命令）+ CustomProviders 组件（relay- 前缀过滤掉 apply 自动建的）。save → upsert + sync_universal_provider；use → 逐 app switch_provider（claude 走 post_switch 钩子自动写 3p 桌面端 profile）。后端补齐两处 grok 缺口：sync_universal_to_apps 漏 GrokBuild、delete_universal 级联漏 grok 子供应商（且注意 child id 短名 grok ≠ as_str() grokbuild）。
+
+**教训**：新增 apply 路径时先 grep `ProviderService::switch` 的全部调用方——托盘/deeplink/profile 都可能成为绕过主链路的暗通道；枚举不足会在某个入口静默丢副作用。

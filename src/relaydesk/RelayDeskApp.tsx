@@ -135,9 +135,14 @@ export default function RelayDeskApp() {
     isOnboardingDismissed() ? "models" : "deployment",
   );
   const [onboardingOpen, setOnboardingOpen] = useState(false);
-  const [modelFilters, setModelFilters] = useState({
+  const [modelFilters, setModelFilters] = useState<{
+    epoch: number;
+    search: string;
+    program?: import("./models/modelPresentation").ModelProgram | null;
+  }>({
     epoch: -1,
     search: "",
+    program: null,
   });
   const [showEnvironmentIntro, setShowEnvironmentIntro] = useState(false);
   const [focusTarget, setFocusTarget] = useState<RelayTarget | null>(null);
@@ -302,7 +307,7 @@ export default function RelayDeskApp() {
               filters={
                 modelFilters.epoch === session.generation.current
                   ? modelFilters
-                  : { search: "" }
+                  : { search: "", program: null }
               }
               onFiltersChange={(filters) =>
                 setModelFilters({
@@ -329,7 +334,6 @@ export default function RelayDeskApp() {
                 setPage("targets");
                 setFocusTarget(app ?? null);
               }}
-              openDeployment={() => setPage("deployment")}
               viewAccount={() => setPage("settings")}
               viewWallet={() => setPage("wallet")}
             />

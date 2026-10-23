@@ -8,26 +8,29 @@ import {
   type ApplyReport,
 } from "../state/useRelayApply";
 import { TOOL_VENDORS } from "../environment/toolIcons";
+import type { ModelProgram } from "./modelPresentation";
 import { Action } from "../ui";
 
 export function ModelTargetQuickBar({
   apps,
   report,
   busy,
+  program,
+  onProgram,
   onConfigure,
-  onDeployOnly,
 }: {
   apps: RelayApplyApps;
   report: ApplyReport | null;
   busy: boolean;
+  /** 当前选中的程序筛选；null = 全部 */
+  program: ModelProgram | null;
+  onProgram: (program: ModelProgram | null) => void;
   onConfigure: (app?: RelayTarget) => void;
-  /** 仅部署、不接中转站写入的工具（Devin）点击时跳环境部署页 */
-  onDeployOnly?: (id: string) => void;
 }) {
   const { t } = useTranslation("relaydesk");
   return (
     <section className="rd-target-quick-bar" aria-label={t("applyTargets")}>
-      <div className="rd-target-quick-bar__icons">
+      <div className="rd-target-quick-bar__icons" role="tablist">
         {targetIds.map((app) => {
           const vendor = TOOL_VENDORS[app];
           const enabled = apps?.[app];
@@ -46,12 +49,15 @@ export function ModelTargetQuickBar({
                 ? "syncFailed"
                 : state;
           const name = vendor?.name ?? targetLabels[app];
+          const active = program === app;
           return (
             <button
               key={app}
               type="button"
-              className={`rd-target-quick-bar__chip rd-target-quick-bar__chip--${state}`}
-              onClick={() => onConfigure(app)}
+              role="tab"
+              aria-selected={active}
+              className={`rd-target-quick-bar__chip rd-target-quick-bar__chip--${state}${active ? " rd-target-quick-bar__chip--active" : ""}`}
+              onClick={() => onProgram(active ? null : app)}
               disabled={busy}
               aria-label={`${name} · ${t(stateKey)}`}
               title={`${name} · ${t(stateKey)}`}
@@ -61,17 +67,19 @@ export function ModelTargetQuickBar({
             </button>
           );
         })}
-        {/* 仅部署工具（Devin 走自有账号体系，不接中转站配置）：
-            与环境部署页 AI 工具行对齐展示，点击去部署页 */}
+        {/* deploy-only 工具（Devin）同样作为程序筛选 chip：只显示其家族分组 */}
         {deployOnlyIds.map((id) => {
           const vendor = TOOL_VENDORS[id];
           const name = vendor?.name ?? id;
+          const active = program === id;
           return (
             <button
               key={id}
               type="button"
-              className="rd-target-quick-bar__chip rd-target-quick-bar__chip--deploy"
-              onClick={() => onDeployOnly?.(id)}
+              role="tab"
+              aria-selected={active}
+              className={`rd-target-quick-bar__chip rd-target-quick-bar__chip--deploy${active ? " rd-target-quick-bar__chip--active" : ""}`}
+              onClick={() => onProgram(active ? null : id)}
               aria-label={name}
               title={name}
             >
