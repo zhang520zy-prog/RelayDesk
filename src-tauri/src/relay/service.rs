@@ -209,8 +209,9 @@ impl RelayService {
 
         // 换长效系统访问令牌；失败则降级用 15min JWT（下次 refresh 时会自然失效，提示重登）
         let jwt_client = RelayClient::new(base_url, &login.access_token);
-        let access_token = jwt_client.system_token().await.unwrap_or_else(|_| {
-            log::warn!("获取系统访问令牌失败，降级使用短期登录凭据");
+        let access_token = jwt_client.system_token().await.unwrap_or_else(|e| {
+            // 带原因但绝不落 token 本体——e 只有状态码/形状描述
+            log::warn!("获取系统访问令牌失败({e})，降级使用短期登录凭据");
             login.access_token.clone()
         });
 
@@ -892,6 +893,25 @@ impl RelayService {
         })?;
         let targets = resolve_apply_targets(&account.apply_apps, target_apps)?;
 
+        // 拉全组模型给 Claude Desktop profile（Desktop 模型菜单一次给全，同
+        // cc-switch 行为）；拉取失败降级为只写选中模型，不阻断 apply。
+        let group_models = match client.models_by_group().await {
+            Ok(mut by_group) => {
+                let mut ids: Vec<String> = by_group
+                    .remove(group)
+                    .map(|items| items.into_iter().map(|m| m.id).collect())
+                    .unwrap_or_default();
+                if !ids.iter().any(|id| id == model) {
+                    ids.push(model.to_string());
+                }
+                ids
+            }
+            Err(e) => {
+                log::warn!("[Relay] group model list fetch failed, desktop profile gets applied model only: {e}");
+                vec![model.to_string()]
+            }
+        };
+
         // 2-4. DB 与 live 文件写入放到阻塞线程（switch 内含 fs IO 与代理锁）
         let state2 = state.clone();
         let group_owned = group.to_string();
@@ -904,6 +924,7 @@ impl RelayService {
                 &model_owned,
                 &key,
                 targets,
+                group_models,
                 &progress,
             )
         })
@@ -989,6 +1010,7 @@ async fn ensure_group_token(
 }
 
 /// 阻塞段：upsert 统一供应商 → 同步 → 逐应用 switch
+#[allow(clippy::too_many_arguments)]
 fn apply_model_blocking(
     state: &AppState,
     account: &mut RelayAccount,
@@ -996,6 +1018,7 @@ fn apply_model_blocking(
     model: &str,
     key: &str,
     targets: Vec<AppType>,
+    group_models: Vec<String>,
     progress: &(dyn Fn(&str, Option<&str>) + Send + Sync),
 ) -> Result<Vec<RelayApplyResult>, AppError> {
     let universal_id = format!("{UNIVERSAL_ID_PREFIX}{group}");
@@ -1091,7 +1114,7 @@ fn apply_model_blocking(
                     seed_claude_desktop_gateway(
                         state,
                         group,
-                        model,
+                        &group_models,
                         &expected_session.base_url,
                         key,
                     );
@@ -1136,19 +1159,22 @@ fn apply_model_blocking(
 fn seed_claude_desktop_gateway(
     state: &AppState,
     group: &str,
-    model: &str,
+    models: &[String],
     base_url: &str,
     key: &str,
 ) {
     match crate::claude_desktop_config::apply_relay_gateway(
         &state.db,
         &format!("中转站 · {group}"),
-        model,
+        models,
         base_url,
         key,
     ) {
         Ok(()) => {
-            log::info!("[Relay] claude desktop 3p gateway profile written for model '{model}'")
+            log::info!(
+                "[Relay] claude desktop 3p gateway profile written ({} models)",
+                models.len()
+            )
         }
         Err(e) => log::warn!("[Relay] claude desktop profile write failed: {e}"),
     }
@@ -2513,6 +2539,7 @@ mod tests {
             "fixture-new-model",
             "sk-synthetic-relay",
             vec![AppType::Claude],
+            vec!["fixture-new-model".to_string()],
             &|_, _| {},
         )
         .unwrap();
@@ -2555,7 +2582,11 @@ mod tests {
         seed_claude_desktop_gateway(
             &state,
             "paid",
-            "claude-opus-5-5",
+            &[
+                "claude-opus-5-5".to_string(),
+                "claude-sonnet-4-5".to_string(),
+                "opus5.5-krio".to_string(),
+            ],
             "https://relay.example",
             "sk-test",
         );
@@ -2585,7 +2616,11 @@ mod tests {
             "gateway provider mode is what lets a fresh desktop skip Anthropic login"
         );
         let models = profile["inferenceModels"].as_array().expect("model list");
-        assert_eq!(models.len(), 1);
+        assert_eq!(
+            models.len(),
+            2,
+            "two claude-safe models in, 'opus5.5-krio' rejected"
+        );
 
         let deployment: serde_json::Value = serde_json::from_str(
             &std::fs::read_to_string(threep.join("claude_desktop_config.json"))
@@ -2594,11 +2629,11 @@ mod tests {
         .unwrap();
         assert_eq!(deployment["deploymentMode"].as_str(), Some("3p"));
 
-        // 非 claude-safe 模型名不得写 profile（Desktop fail-all validator 会拒收整组）。
+        // 全非安全模型名不得写 profile（Desktop fail-all validator 会拒收整组）。
         seed_claude_desktop_gateway(
             &state,
             "paid",
-            "opus5.5-krio",
+            &["opus5.5-krio".to_string()],
             "https://other.example",
             "sk-other",
         );

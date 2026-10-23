@@ -5957,16 +5957,28 @@ impl ProviderService {
             log::warn!("[Switch] claude onboarding-skip seed failed: {e}");
         }
 
-        let model = cred("ANTHROPIC_MODEL").unwrap_or_default();
+        // apply 会一次写全组模型；托盘/deeplink 只带单个模型——与既有
+        // profile 的 inferenceModels 合并，避免后续切换把组内其它模型覆盖掉。
+        let mut models: Vec<String> = cred("ANTHROPIC_MODEL")
+            .map(|m| vec![m.to_string()])
+            .unwrap_or_default();
+        for existing in crate::claude_desktop_config::current_profile_model_ids() {
+            if !models.contains(&existing) {
+                models.push(existing);
+            }
+        }
         match crate::claude_desktop_config::apply_relay_gateway(
             &state.db,
             &provider.name,
-            model,
+            &models,
             base_url,
             api_key,
         ) {
             Ok(()) => {
-                log::info!("[Switch] claude desktop 3p gateway profile written for model '{model}'")
+                log::info!(
+                    "[Switch] claude desktop 3p gateway profile written ({} models)",
+                    models.len()
+                )
             }
             Err(e) => log::warn!("[Switch] claude desktop profile write failed: {e}"),
         }

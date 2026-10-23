@@ -135,3 +135,11 @@
 - 用户本机"关网关也不登录"是因历史账号会话残留，无法在全新机器复现；**全新安装 = 1p 默认 + 无账号 = 必弹登录**。
 - 修复：`seed_claude_desktop_gateway` 在 claude apply 成功臂写入 Direct 模式 profile（模型须 `claude-*`/`anthropic/claude-*` 安全名，否则 Desktop fail-all validator 拒收整组；[1M] 后缀剥成 supports1m）。RelayDesk 用独立 PROFILE_ID（`...0dea1d`）不与 cc-switch 的 `...157210` 互踩；`appliedId` 单活跃是 Anthropic 固有设计。
 - **教训**：对比"竞品能用我们不行"时，先找目标应用的原生扩展机制（这里是 3p 部署模式），别在登录态文件上猜——门卡理论（primaryApiKey/onboarding）只对 CLI 成立，桌面端完全是另一套配置域（App Support 而非 ~/.claude）。
+
+## 2026-10-23 Claude Desktop 3p 全组模型 + 频繁登出根因
+
+**Desktop 模型清单**：cc-switch 把分组全部 claude-safe 模型写进 inferenceModels；我们曾只写选中模型。改为 `apply_relay_gateway(db, name, models, base_url, key)` 收列表：apply 路径先 `models_by_group()` 拉全组（失败降级单模型），switch 路径（托盘/deeplink）把 provider 模型与既有 profile inferenceModels 合并——增量不丢。
+
+**频繁登出根因**：日志每次登录都有 `获取系统访问令牌失败，降级使用短期登录凭据`——`GET /api/user/token` 只认 `data` 为裸字符串，new-api 各 fork 返回 object/数组时解析失败 → 降级 15min JWT → vault 里存的是短票 → 过 15 分钟恢复即失效，表现就是"保存密码没用+频繁登出"。修复：`extract_system_token` 宽容解析（string/对象常见键/数组递归），warn 带失败原因（状态码/shape，不落 token）。
+
+**教训**：副作用（门卡/profile）必须挂在所有入口的汇合点（ProviderService::switch），不能绑在某一条 UI 路径上——托盘/deeplink/profile 都会绕过 apply。第二个教训同型：解析服务端响应按形状枚举而非假设单一 schema，new-api fork 差异全藏在信封 data 的形状里。

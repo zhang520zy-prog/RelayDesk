@@ -134,34 +134,60 @@ pub fn apply_provider(db: &Database, provider: &Provider) -> Result<(), AppError
 }
 
 /// 以中转站凭据直连写入 3P 网关 profile（供 relay-apply 与任意 ProviderService::switch
-/// 路径共用）。模型名必须是 claude-*/anthropic/claude-* 安全形态——Desktop
-/// fail-all validator 会拒收整组；[1M] 后缀剥成 supports1m 字段。
-/// 不合规模型名直接返回 Err，由调用方决定 warn 级处理。
+/// 路径共用）。`models` 为该分组/供应商已知的全部模型——凡是 claude-*/anthropic/claude-*
+/// 安全形态都写进 inferenceModels（Desktop 模型菜单一次给全，同 cc-switch 行为）；
+/// 不安全者逐个跳过并 warn（Desktop fail-all validator 会拒收整组，必须剔除）；
+/// [1M] 后缀剥成 supports1m 字段。一个安全模型都没有才返回 Err。
 pub(crate) fn apply_relay_gateway(
     db: &Database,
     name: &str,
-    model: &str,
+    models: &[String],
     base_url: &str,
     api_key: &str,
 ) -> Result<(), AppError> {
     use crate::provider::{ClaudeDesktopMode, ClaudeDesktopModelRoute, ProviderMeta};
 
-    let trimmed = model.trim();
-    let lower = trimmed.to_ascii_lowercase();
-    let (route_id, supports_1m) = lower
-        .strip_suffix(ONE_M_CONTEXT_MARKER)
-        .map(|_| {
-            (
-                trimmed[..trimmed.len() - 4].trim_end().to_string(),
-                Some(true),
-            )
-        })
-        .unwrap_or_else(|| (trimmed.to_string(), None));
-
-    if !is_claude_safe_model_id(&route_id) {
+    let mut routes = std::collections::HashMap::new();
+    let mut rejected: Vec<String> = Vec::new();
+    for model in models {
+        let trimmed = model.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let lower = trimmed.to_ascii_lowercase();
+        let (route_id, supports_1m) = lower
+            .strip_suffix(ONE_M_CONTEXT_MARKER)
+            .map(|_| {
+                (
+                    trimmed[..trimmed.len() - 4].trim_end().to_string(),
+                    Some(true),
+                )
+            })
+            .unwrap_or_else(|| (trimmed.to_string(), None));
+        if !is_claude_safe_model_id(&route_id) {
+            rejected.push(trimmed.to_string());
+            continue;
+        }
+        routes.insert(
+            route_id.clone(),
+            ClaudeDesktopModelRoute {
+                model: route_id,
+                label_override: None,
+                supports_1m,
+            },
+        );
+    }
+    if routes.is_empty() {
         return Err(AppError::Message(format!(
-            "model '{model}' is not a claude-safe route id"
+            "no claude-safe models for desktop profile (got {})",
+            models.len()
         )));
+    }
+    if !rejected.is_empty() {
+        log::warn!(
+            "[ClaudeDesktop] skipped non-claude-safe model ids: {}",
+            rejected.join(", ")
+        );
     }
 
     let provider = Provider {
@@ -180,14 +206,7 @@ pub(crate) fn apply_relay_gateway(
         notes: None,
         meta: Some(ProviderMeta {
             claude_desktop_mode: Some(ClaudeDesktopMode::Direct),
-            claude_desktop_model_routes: std::collections::HashMap::from([(
-                route_id.clone(),
-                ClaudeDesktopModelRoute {
-                    model: route_id,
-                    label_override: None,
-                    supports_1m,
-                },
-            )]),
+            claude_desktop_model_routes: routes,
             ..Default::default()
         }),
         icon: None,
@@ -196,6 +215,32 @@ pub(crate) fn apply_relay_gateway(
     };
 
     apply_provider(db, &provider)
+}
+
+/// 读取当前已写入 profile 的 inferenceModels 名（switch 路径做增量合并用：
+/// apply 给全组、托盘切换把新模型并入既有清单而不是覆盖丢光）。
+pub(crate) fn current_profile_model_ids() -> Vec<String> {
+    let path = match get_config_library_path() {
+        Ok(p) => p.join(format!("{PROFILE_ID}.json")),
+        Err(_) => return Vec::new(),
+    };
+    let raw = match std::fs::read_to_string(&path) {
+        Ok(r) => r,
+        Err(_) => return Vec::new(),
+    };
+    let Ok(profile) = serde_json::from_str::<Value>(&raw) else {
+        return Vec::new();
+    };
+    profile
+        .get("inferenceModels")
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item.get("name").and_then(Value::as_str).map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 pub fn get_status(db: &Database, proxy_running: bool) -> Result<ClaudeDesktopStatus, AppError> {

@@ -150,6 +150,50 @@ impl RelayClient {
 
     // ── 账号链路 ────────────────────────────────────────────
 
+    /// 从各种形态里找系统访问令牌字符串。只关心"字符串存在"，不做内容校验；
+    /// 永不把它写入日志。
+    fn token_str(v: &Value) -> Option<String> {
+        v.as_str()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+    }
+
+    /// 常见 token 字段名（new-api 各 fork 命名不一致）。
+    const TOKEN_KEYS: &[&str] = &[
+        "token",
+        "access_token",
+        "system_token",
+        "token_key",
+        "key",
+        "jwt",
+        "session_token",
+    ];
+
+    fn extract_system_token(data: &Value) -> Option<String> {
+        if let Some(s) = Self::token_str(data) {
+            return Some(s);
+        }
+        match data {
+            Value::Object(map) => Self::TOKEN_KEYS
+                .iter()
+                .find_map(|k| map.get(*k).and_then(Self::token_str)),
+            Value::Array(items) => items.iter().find_map(Self::extract_system_token),
+            _ => None,
+        }
+    }
+
+    fn json_shape_name(v: &Value) -> &'static str {
+        match v {
+            Value::Null => "null",
+            Value::Bool(_) => "bool",
+            Value::Number(_) => "number",
+            Value::String(_) => "string",
+            Value::Array(_) => "array",
+            Value::Object(_) => "object",
+        }
+    }
+
     /// `POST /api/user/login` → JWT access_token
     pub async fn login(
         base_url: &str,
@@ -175,13 +219,17 @@ impl RelayClient {
         Ok(LoginResult { access_token })
     }
 
-    /// `GET /api/user/token` → 系统访问令牌（长效免登凭据）
+    /// `GET /api/user/token` → 系统访问令牌（长效免登凭据）。
+    /// new-api 各发行版响应形状不一：裸字符串 / {"token":..} 类对象 /
+    /// 列表首项——逐层兼容，避免无谓降级成 15min JWT（会让"记住登录"形同虚设）。
     pub async fn system_token(&self) -> Result<String, AppError> {
         let data = self.get("/api/user/token").await?;
-        data.as_str()
-            .map(str::to_string)
-            .filter(|s| !s.is_empty())
-            .ok_or_else(|| AppError::Message("系统访问令牌响应格式异常".to_string()))
+        Self::extract_system_token(&data).ok_or_else(|| {
+            AppError::Message(format!(
+                "系统访问令牌响应格式异常: {}",
+                Self::json_shape_name(&data)
+            ))
+        })
     }
 
     /// `GET /api/user/self` → {id, username, quota, used_quota, group, ...}
