@@ -482,38 +482,6 @@ pub struct RelayUsageModelRow {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RelayUsageOverview {
-    pub start: String,
-    pub end: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub timezone: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub as_of: Option<String>,
-    pub is_complete: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub request_count: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub input_tokens: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub output_tokens: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub total_tokens: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub charged_quota: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub charged_amount: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub currency: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub currency_symbol: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub data_delay_seconds: Option<i64>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub unavailable_fields: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct RelayUsageBucket {
     pub timestamp: i64,
     pub model_id: String,

@@ -20,8 +20,3 @@ export function updateInstallInFlight(): boolean {
   return inFlight;
 }
 
-export function onUpdateInstallStart(listener: () => void): () => void {
-  const handler = () => listener();
-  window.addEventListener(UPDATE_INSTALL_START, handler);
-  return () => window.removeEventListener(UPDATE_INSTALL_START, handler);
-}

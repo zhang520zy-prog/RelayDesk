@@ -8,8 +8,8 @@ use crate::relay::{
     restart::{self, RelayRestartCapability, RelayRestartProgress, RelayRestartResult},
     tool_registry::{self, DesktopToolDefinition, ToolRegistry},
     RelayAccountInfo, RelayApplyApps, RelayApplyProgress, RelayApplyResult, RelayCreatedToken,
-    RelayGroup, RelayGroupModels, RelayService, RelayToken, RelayTopupHistory, RelayTopupInfo,
-    RelayTopupOrder, RelayTopupQuote, RelayUsageModels, RelayUsageOverview, RelayUsageQuery,
+    RelayGroup, RelayGroupModels, RelayService, RelayToken, RelayTopupInfo, RelayTopupOrder,
+    RelayTopupQuote, RelayUsageModels, RelayUsageQuery,
 };
 use crate::store::AppState;
 
@@ -48,11 +48,6 @@ pub fn relay_list_saved_logins(
     state: State<'_, AppState>,
 ) -> Result<Vec<crate::relay::credentials::SavedLoginInfo>, String> {
     RelayService::saved_logins(state.inner()).map_err(|e| safe_relay_error(&e, false))
-}
-
-#[tauri::command]
-pub fn relay_saved_login_name(state: State<'_, AppState>) -> Result<Option<String>, String> {
-    RelayService::saved_login_name(state.inner()).map_err(|e| safe_relay_error(&e, false))
 }
 
 #[tauri::command]
@@ -163,21 +158,6 @@ pub async fn relay_create_topup_payment(
     Ok(order)
 }
 
-#[tauri::command]
-pub async fn relay_list_topup_history(
-    state: State<'_, AppState>,
-    page: Option<u32>,
-    page_size: Option<u32>,
-) -> Result<RelayTopupHistory, String> {
-    RelayService::topup_history(
-        state.inner(),
-        page.unwrap_or(1).max(1),
-        page_size.unwrap_or(20).clamp(1, 100),
-    )
-    .await
-    .map_err(|e| safe_relay_error(&e, false))
-}
-
 /// 兑换码兑换额度：与站点网页端"兑换额度"同源（new-api `/api/user/topup {key}`）。
 /// 返回兑换到账的配额值（站点未返回时为 null）。
 #[tauri::command]
@@ -212,16 +192,6 @@ pub async fn relay_get_usage_models(
     query: RelayUsageQuery,
 ) -> Result<RelayUsageModels, String> {
     RelayService::usage_models(state.inner(), query)
-        .await
-        .map_err(|e| safe_relay_error(&e, false))
-}
-
-#[tauri::command]
-pub async fn relay_get_usage_summary(
-    state: State<'_, AppState>,
-    query: RelayUsageQuery,
-) -> Result<RelayUsageOverview, String> {
-    RelayService::usage_summary(state.inner(), query)
         .await
         .map_err(|e| safe_relay_error(&e, false))
 }

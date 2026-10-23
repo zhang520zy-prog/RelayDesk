@@ -52,7 +52,6 @@ beforeEach(async () => {
       removeEventListener: vi.fn(),
     })),
   });
-  vi.spyOn(relayApi, "savedLoginName").mockResolvedValue(null);
   installRelayTranslations();
   await i18n.changeLanguage("zh");
   vi.spyOn(relayApi, "getTopupInfo").mockRejectedValue(
@@ -67,14 +66,6 @@ beforeEach(async () => {
   vi.spyOn(relayApi, "getUsageModels").mockRejectedValue(
     new Error("relay.usage_models_not_ready"),
   );
-  vi.spyOn(relayApi, "getUsageSummary").mockResolvedValue({
-    start: "2026-09-13T00:00:00Z",
-    end: "2026-09-20T00:00:00Z",
-    timezone: "Asia/Shanghai",
-    asOf: "2026-09-20T10:00:00Z",
-    isComplete: false,
-    unavailableFields: ["cache_read_tokens"],
-  });
 });
 
 describe("wallet and usage UI", () => {

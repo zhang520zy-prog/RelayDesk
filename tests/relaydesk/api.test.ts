@@ -179,9 +179,7 @@ describe("relay model ingress", () => {
     await relayApi.getTopupInfo();
     await relayApi.calculateTopupAmount("epay", 10);
     await relayApi.createTopupPayment("epay", 10, "request-1");
-    await relayApi.listTopupHistory();
     await relayApi.getUsageModels({ start: "a", end: "b" });
-    await relayApi.getUsageSummary({ start: "a", end: "b" });
     expect(calls).toEqual([
       { command: "quote", body: { method: "epay", amount: 10 } },
       {

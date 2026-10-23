@@ -20,5 +20,5 @@ pub use types::{
     RelayGroupToken, RelayModelInfo, RelayRechargeHistory, RelayRechargeRecord, RelayToken,
     RelayTokenUpdate, RelayTopupAmountOption, RelayTopupHistory, RelayTopupInfo, RelayTopupOrder,
     RelayTopupPaymentMethod, RelayTopupQuote, RelayUsageModelRow, RelayUsageModels,
-    RelayUsageOverview, RelayUsageQuery,
+    RelayUsageQuery,
 };

@@ -17,7 +17,7 @@ use super::types::{
     RelayCreatedToken, RelayGroup, RelayGroupModels, RelayGroupToken, RelayRechargeHistory,
     RelayRechargeRecord, RelayToken, RelayTopupAmountOption, RelayTopupHistory, RelayTopupInfo,
     RelayTopupOrder, RelayTopupPaymentMethod, RelayTopupQuote, RelayUsageModelRow,
-    RelayUsageModels, RelayUsageOverview, RelayUsageQuery, TOKEN_NAME_PREFIX, UNIVERSAL_ID_PREFIX,
+    RelayUsageModels, RelayUsageQuery, TOKEN_NAME_PREFIX, UNIVERSAL_ID_PREFIX,
 };
 use crate::app_config::AppType;
 use crate::error::AppError;
@@ -449,13 +449,6 @@ impl RelayService {
         Ok(())
     }
 
-    pub fn saved_login_name(state: &AppState) -> Result<Option<String>, AppError> {
-        Ok(Self::saved_logins(state)?
-            .into_iter()
-            .next()
-            .map(|account| account.username))
-    }
-
     pub fn forget_login(state: &AppState, saved_id: Option<&str>) -> Result<(), AppError> {
         let _permit = state
             .relay_auth_gate
@@ -851,19 +844,6 @@ impl RelayService {
             _ => models.details_status = "failed".into(),
         }
         Ok(models)
-    }
-
-    pub async fn usage_summary(
-        state: &AppState,
-        query: RelayUsageQuery,
-    ) -> Result<RelayUsageOverview, AppError> {
-        let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
-        let raw = client.usage_summary(&query).await.map_err(|error| {
-            usage_contract_error(state, &account, error, "relay.usage_summary_not_ready")
-        })?;
-        parse_usage_summary(&raw, &query, &account)
-            .ok_or_else(|| AppError::Message("relay.usage_summary_not_ready".to_string()))
     }
 
     // ── 一键应用 ────────────────────────────────────────────
@@ -1901,37 +1881,6 @@ fn enrich_usage_details(models: &mut RelayUsageModels, raw: &Value) {
                 .any(|row| row.cache_write_tokens.is_none()),
             _ => true,
         });
-}
-
-fn parse_usage_summary(
-    raw: &Value,
-    query: &RelayUsageQuery,
-    _account: &RelayAccount,
-) -> Option<RelayUsageOverview> {
-    let models = parse_usage_models(raw, query)?;
-    let (mut count, mut tokens, mut quota) = (0i64, 0i64, 0i64);
-    for row in models.items {
-        count = count.checked_add(row.request_count?)?;
-        tokens = tokens.checked_add(row.total_tokens?)?;
-        quota = quota.checked_add(row.charged_quota?)?;
-    }
-    Some(RelayUsageOverview {
-        start: query.start.clone(),
-        end: query.end.clone(),
-        timezone: query.timezone.clone(),
-        as_of: None,
-        is_complete: false,
-        request_count: Some(count),
-        total_tokens: Some(tokens),
-        charged_quota: Some(quota),
-        input_tokens: None,
-        output_tokens: None,
-        charged_amount: None,
-        currency: None,
-        currency_symbol: None,
-        data_delay_seconds: None,
-        unavailable_fields: models.unavailable_fields,
-    })
 }
 
 fn now_ts() -> i64 {

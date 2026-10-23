@@ -307,10 +307,6 @@ impl RelayClient {
         self.get(&usage_path(query)?).await
     }
 
-    pub async fn usage_summary(&self, query: &RelayUsageQuery) -> Result<Value, AppError> {
-        self.get(&usage_path(query)?).await
-    }
-
     pub async fn usage_details(&self, query: &RelayUsageQuery) -> Result<Value, AppError> {
         // 站点日志保留期可能比查询窗短（limitLogTimeRange 直接报错），
         // 失败时退化为不带时间窗的全量日志——按 model_name 匹配仍准确。

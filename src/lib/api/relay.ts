@@ -232,12 +232,6 @@ export interface RelayTopupOrder {
   expiresAt?: string;
 }
 
-export interface RelayTopupHistory {
-  items: RelayTopupOrder[];
-  total?: number;
-  isComplete?: boolean;
-  nextCursor?: string;
-}
 
 /** 统一充值记录：source="log" 为到账日志（与站点充值记录同源），"order" 为支付订单 */
 export interface RelayRechargeRecord {
@@ -285,23 +279,6 @@ export interface RelayUsageModelRow {
   source?: string | null;
 }
 
-export interface RelayUsageOverview {
-  start: string;
-  end: string;
-  timezone?: string;
-  asOf?: string;
-  isComplete: boolean;
-  requestCount?: number;
-  inputTokens?: number;
-  outputTokens?: number;
-  totalTokens?: number;
-  chargedQuota?: number;
-  chargedAmount?: string;
-  currency?: string;
-  currencySymbol?: string;
-  dataDelaySeconds?: number;
-  unavailableFields?: string[];
-}
 
 export interface RelayUsageBucket {
   timestamp: number;
@@ -407,9 +384,6 @@ export const relayApi = {
     });
   },
 
-  async savedLoginName(): Promise<string | null> {
-    return invoke("relay_saved_login_name");
-  },
   async listSavedLogins(): Promise<RelaySavedLogin[]> {
     return invoke("relay_list_saved_logins");
   },
@@ -454,9 +428,6 @@ export const relayApi = {
     });
   },
 
-  async listTopupHistory(page = 1, pageSize = 20): Promise<RelayTopupHistory> {
-    return await invoke("relay_list_topup_history", { page, pageSize });
-  },
 
   /** 与站点网页端"充值记录"同源：到账日志(type=1) ∪ 未完结支付订单 */
   async listRechargeHistory(
@@ -475,9 +446,6 @@ export const relayApi = {
     return await invoke("relay_get_usage_models", { query });
   },
 
-  async getUsageSummary(query: RelayUsageQuery): Promise<RelayUsageOverview> {
-    return await invoke("relay_get_usage_summary", { query });
-  },
 
   async logout(): Promise<boolean> {
     return await invoke("relay_logout");
