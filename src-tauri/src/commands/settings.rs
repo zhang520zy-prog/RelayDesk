@@ -248,13 +248,10 @@ pub async fn relay_check_update(app: AppHandle) -> Result<RelayUpdateCheck, Stri
         });
     }
     let updater = build_updater(&app)?;
-    let update = updater
-        .check()
-        .await
-        .map_err(|e| {
-            log::warn!("[Update] 检查更新失败: {e}");
-            "update.check_failed".to_string()
-        })?;
+    let update = updater.check().await.map_err(|e| {
+        log::warn!("[Update] 检查更新失败: {e}");
+        "update.check_failed".to_string()
+    })?;
     log::info!(
         "[Update] 检查完成: {}",
         update

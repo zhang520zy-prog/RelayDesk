@@ -5875,7 +5875,7 @@ impl ProviderService {
             ));
         }
 
-        if should_hot_switch {
+        let result = if should_hot_switch {
             // Proxy takeover mode: hot-switch without restoring upstream Live config.
             // The proxy layer may still refresh proxy-safe Live fields so client labels
             // follow the selected provider while endpoints remain local.
@@ -5894,11 +5894,82 @@ impl ProviderService {
 
             // The proxy server will route requests to the new provider via is_current.
             // MCP sync is intentionally skipped while Live config is owned by takeover.
-            return Ok(SwitchResult::default());
+            Ok(SwitchResult::default())
+        } else {
+            // Normal mode: full switch with Live config write
+            Self::switch_normal(state, app_type.clone(), id, &providers)
+        };
+
+        // apply/托盘/deeplink/profile 全部切换路径在此汇合——Claude 的副作用
+        // （登录门卡 + Desktop 3p 网关）不能只绑在 relay apply 一条路上。
+        if result.is_ok() && matches!(app_type, AppType::Claude) {
+            Self::post_switch_claude_effects(state, _provider);
+        }
+        result
+    }
+
+    /// 切换成功后的 Claude 生态副作用，全入口统一：带
+    /// ANTHROPIC_BASE_URL+AUTH_TOKEN 的第三方（中转站类）写 ~/.claude 门卡
+    /// （primaryApiKey/onboarding）+ Desktop 3p 直连网关 profile；官方供应商
+    /// 恢复 1p 部署模式（apply_provider 内置 restore 语义）。失败仅 warn，
+    /// 永不反转切换结果。
+    fn post_switch_claude_effects(state: &AppState, provider: &Provider) {
+        if crate::claude_desktop_config::is_official_provider(provider) {
+            if let Err(e) = crate::claude_desktop_config::apply_provider(&state.db, provider) {
+                log::warn!("[Switch] claude desktop official restore failed: {e}");
+            }
+            return;
         }
 
-        // Normal mode: full switch with Live config write
-        Self::switch_normal(state, app_type, id, &providers)
+        let env = provider
+            .settings_config
+            .get("env")
+            .and_then(Value::as_object);
+        let cred = |key: &str| {
+            env.and_then(|e| e.get(key))
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|v| !v.is_empty())
+        };
+        let (Some(base_url), Some(api_key)) =
+            (cred("ANTHROPIC_BASE_URL"), cred("ANTHROPIC_AUTH_TOKEN"))
+        else {
+            return;
+        };
+
+        // 接管投影凭据（PROXY_MANAGED + 本地代理地址）对 Desktop 不可认证——
+        // Desktop 拿不到本地代理的 gateway token，写入即坏配置。仅真凭据写入。
+        let placeholder = api_key == "PROXY_MANAGED"
+            || base_url.starts_with("http://127.0.0.1")
+            || base_url.starts_with("http://localhost");
+        if placeholder {
+            log::warn!("[Switch] claude desktop skipped: provider carries takeover placeholder credentials");
+            return;
+        }
+
+        if let Err(e) = crate::claude_plugin::write_claude_config() {
+            log::warn!("[Switch] claude config.json seed failed: {e}");
+        }
+        if let Err(e) = crate::claude_mcp::set_primary_api_key() {
+            log::warn!("[Switch] claude .claude.json key seed failed: {e}");
+        }
+        if let Err(e) = crate::claude_mcp::set_has_completed_onboarding() {
+            log::warn!("[Switch] claude onboarding-skip seed failed: {e}");
+        }
+
+        let model = cred("ANTHROPIC_MODEL").unwrap_or_default();
+        match crate::claude_desktop_config::apply_relay_gateway(
+            &state.db,
+            &provider.name,
+            model,
+            base_url,
+            api_key,
+        ) {
+            Ok(()) => {
+                log::info!("[Switch] claude desktop 3p gateway profile written for model '{model}'")
+            }
+            Err(e) => log::warn!("[Switch] claude desktop profile write failed: {e}"),
+        }
     }
 
     /// Normal switch flow (non-proxy mode)

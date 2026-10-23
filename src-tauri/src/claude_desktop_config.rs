@@ -133,6 +133,71 @@ pub fn apply_provider(db: &Database, provider: &Provider) -> Result<(), AppError
     apply_provider_to_paths(db, provider, &paths)
 }
 
+/// 以中转站凭据直连写入 3P 网关 profile（供 relay-apply 与任意 ProviderService::switch
+/// 路径共用）。模型名必须是 claude-*/anthropic/claude-* 安全形态——Desktop
+/// fail-all validator 会拒收整组；[1M] 后缀剥成 supports1m 字段。
+/// 不合规模型名直接返回 Err，由调用方决定 warn 级处理。
+pub(crate) fn apply_relay_gateway(
+    db: &Database,
+    name: &str,
+    model: &str,
+    base_url: &str,
+    api_key: &str,
+) -> Result<(), AppError> {
+    use crate::provider::{ClaudeDesktopMode, ClaudeDesktopModelRoute, ProviderMeta};
+
+    let trimmed = model.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    let (route_id, supports_1m) = lower
+        .strip_suffix(ONE_M_CONTEXT_MARKER)
+        .map(|_| {
+            (
+                trimmed[..trimmed.len() - 4].trim_end().to_string(),
+                Some(true),
+            )
+        })
+        .unwrap_or_else(|| (trimmed.to_string(), None));
+
+    if !is_claude_safe_model_id(&route_id) {
+        return Err(AppError::Message(format!(
+            "model '{model}' is not a claude-safe route id"
+        )));
+    }
+
+    let provider = Provider {
+        id: format!("relay-desktop-{name}"),
+        name: name.to_string(),
+        settings_config: json!({
+            "env": {
+                "ANTHROPIC_BASE_URL": base_url,
+                "ANTHROPIC_AUTH_TOKEN": api_key,
+            }
+        }),
+        website_url: None,
+        category: Some("aggregator".to_string()),
+        created_at: None,
+        sort_index: None,
+        notes: None,
+        meta: Some(ProviderMeta {
+            claude_desktop_mode: Some(ClaudeDesktopMode::Direct),
+            claude_desktop_model_routes: std::collections::HashMap::from([(
+                route_id.clone(),
+                ClaudeDesktopModelRoute {
+                    model: route_id,
+                    label_override: None,
+                    supports_1m,
+                },
+            )]),
+            ..Default::default()
+        }),
+        icon: None,
+        icon_color: None,
+        in_failover_queue: false,
+    };
+
+    apply_provider(db, &provider)
+}
+
 pub fn get_status(db: &Database, proxy_running: bool) -> Result<ClaudeDesktopStatus, AppError> {
     if !is_supported_platform() {
         return Ok(ClaudeDesktopStatus {

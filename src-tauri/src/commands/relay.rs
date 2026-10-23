@@ -526,10 +526,8 @@ fn find_desktop_app(
             // 目录名命中只是线索：声明了 bundle id 的桌面端必须核验
             // CFBundleIdentifier，同名第三方壳不算已安装、更不能被拉起。
             if let Some(expected) = &desktop.bundle_id {
-                let actual = crate::relay::restart::read_info_plist_string(
-                    &candidate,
-                    "CFBundleIdentifier",
-                );
+                let actual =
+                    crate::relay::restart::read_info_plist_string(&candidate, "CFBundleIdentifier");
                 if actual.as_deref() != Some(expected.as_str()) {
                     log::warn!(
                         "[Desktop] {app}: {} 目录命中但 bundle id 不符（{:?} ≠ {expected}），跳过",
