@@ -172,6 +172,35 @@ pub fn set_has_completed_onboarding() -> Result<bool, AppError> {
     Ok(true)
 }
 
+/// 在 ~/.claude.json 根对象写入 primaryApiKey="any"——新版 Claude Code 从
+/// ~/.claude.json（而非 ~/.claude/config.json）读取该字段判断"已配置 key"，
+/// 从而跳过登录。仅增量写入该字段，其他字段保持不变。
+pub fn set_primary_api_key() -> Result<bool, AppError> {
+    let path = user_config_path();
+    let mut root = if path.exists() {
+        read_json_value(&path)?
+    } else {
+        serde_json::json!({})
+    };
+
+    let obj = root
+        .as_object_mut()
+        .ok_or_else(|| AppError::Config("~/.claude.json 根必须是对象".into()))?;
+
+    let already = obj
+        .get("primaryApiKey")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        == "any";
+    if already {
+        return Ok(false);
+    }
+
+    obj.insert("primaryApiKey".into(), Value::String("any".into()));
+    write_json_value(&path, &root)?;
+    Ok(true)
+}
+
 /// 删除 ~/.claude.json 根对象的 hasCompletedOnboarding 字段（恢复 Claude Code 初次安装确认）
 /// 仅增量删除该字段，其他字段保持不变
 pub fn clear_has_completed_onboarding() -> Result<bool, AppError> {

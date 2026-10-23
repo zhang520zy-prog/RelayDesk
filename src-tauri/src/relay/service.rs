@@ -1075,11 +1075,15 @@ fn apply_model_blocking(
         match attempt {
             Ok(child_id) => {
                 if app == "claude" {
-                    // 复刻 cc-switch 的"跳过登录"门卡：~/.claude/config.json 的
-                    // primaryApiKey="any" + ~/.claude.json 的 hasCompletedOnboarding。
-                    // 两者均为增量写入，保留用户其它字段；失败不阻断应用结果。
+                    // 复刻 cc-switch 的"跳过登录"门卡并补强：primaryApiKey 同时写
+                    // ~/.claude/config.json（cc-switch 旧位置）与 ~/.claude.json
+                    // （新版 Claude Code 的实际读取点），再加 hasCompletedOnboarding。
+                    // 均为增量写入，保留用户其它字段；失败不阻断应用结果。
                     if let Err(e) = crate::claude_plugin::write_claude_config() {
-                        log::warn!("[Relay] claude primaryApiKey seed failed: {e}");
+                        log::warn!("[Relay] claude config.json seed failed: {e}");
+                    }
+                    if let Err(e) = crate::claude_mcp::set_primary_api_key() {
+                        log::warn!("[Relay] claude .claude.json key seed failed: {e}");
                     }
                     if let Err(e) = crate::claude_mcp::set_has_completed_onboarding() {
                         log::warn!("[Relay] claude onboarding-skip seed failed: {e}");
