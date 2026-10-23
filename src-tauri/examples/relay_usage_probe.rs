@@ -42,10 +42,7 @@ async fn main() {
         }
         Err(e) => println!("models=failed {e}"),
     }
-    match RelayService::usage_summary(&state, query()).await {
-        Ok(s) => println!("summary=ok nonzero={}", s.total_tokens.unwrap_or(0) > 0),
-        Err(e) => println!("summary=failed {e}"),
-    }
+
     if std::env::var("RELAY_PROBE_CHECKOUT").as_deref() == Ok("1") {
         match RelayService::create_topup_payment(&state, "alipay", 10.0, "manual-checkout-probe")
             .await

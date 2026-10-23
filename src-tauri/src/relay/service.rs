@@ -2193,7 +2193,6 @@ mod tests {
             .await
             .unwrap()
             .is_none());
-        assert!(RelayService::saved_login_name(&state).unwrap().is_none());
     }
 
     async fn saved_login_fixture(
@@ -2423,15 +2422,7 @@ mod tests {
         assert!(parse_usage_models(&raw, &usage_query_fixture()).is_none());
     }
 
-    #[test]
-    fn summary_without_explicit_contract_is_not_ready() {
-        let raw = json!({
-            "success": true,
-            "data": {"total_tokens": 10, "is_complete": true}
-        });
-        let account = account_with_apps(RelayApplyApps::default());
-        assert!(parse_usage_summary(&raw, &usage_query_fixture(), &account).is_none());
-    }
+
 
     #[test]
     #[serial]

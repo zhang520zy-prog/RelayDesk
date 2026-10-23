@@ -19,4 +19,3 @@ export function endUpdateInstall(): void {
 export function updateInstallInFlight(): boolean {
   return inFlight;
 }
-

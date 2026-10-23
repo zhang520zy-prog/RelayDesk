@@ -232,7 +232,6 @@ export interface RelayTopupOrder {
   expiresAt?: string;
 }
 
-
 /** 统一充值记录：source="log" 为到账日志（与站点充值记录同源），"order" 为支付订单 */
 export interface RelayRechargeRecord {
   refId: string;
@@ -278,7 +277,6 @@ export interface RelayUsageModelRow {
   /** null means the server could not safely attribute the tool. */
   source?: string | null;
 }
-
 
 export interface RelayUsageBucket {
   timestamp: number;
@@ -428,7 +426,6 @@ export const relayApi = {
     });
   },
 
-
   /** 与站点网页端"充值记录"同源：到账日志(type=1) ∪ 未完结支付订单 */
   async listRechargeHistory(
     page = 1,
@@ -445,7 +442,6 @@ export const relayApi = {
   async getUsageModels(query: RelayUsageQuery): Promise<RelayUsageModels> {
     return await invoke("relay_get_usage_models", { query });
   },
-
 
   async logout(): Promise<boolean> {
     return await invoke("relay_logout");
@@ -630,9 +626,7 @@ export const universalApi = {
     });
   },
   /** 请求地址连通性测速：返回每个 URL 的延迟(ms)/HTTP 状态/错误 */
-  async testEndpoints(
-    urls: string[],
-  ): Promise<
+  async testEndpoints(urls: string[]): Promise<
     {
       url: string;
       latency: number | null;

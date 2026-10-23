@@ -1286,6 +1286,7 @@ mod tests {
             haiku_model: Some("claude-haiku".to_string()),
             sonnet_model: Some("claude-sonnet".to_string()),
             opus_model: Some("claude-opus".to_string()),
+            model_list: None,
         });
 
         let provider = universal.to_claude_provider().expect("claude provider");
