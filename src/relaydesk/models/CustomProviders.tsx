@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Download, Gauge, Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Download,
+  Eye,
+  EyeOff,
+  Gauge,
+  Loader2,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -23,8 +32,15 @@ const RELAY_MANAGED_PREFIX = "relay-";
 
 /** 自建 API 供应（非本中转站）：让用户把别家 relay 接进 RelayDesk 用。
  *  写入走 universal provider → sync → switch，claude 的 3p 桌面端 profile
- *  由 switch 钩子自动写。 */
-export function CustomProviders({ program }: { program: ModelProgram | null }) {
+ *  由 switch 钩子自动写。
+ *  compact=true 时收进模型中心的程序节内（只留行列表 + 添加按钮）。 */
+export function CustomProviders({
+  program,
+  compact = false,
+}: {
+  program: ModelProgram | null;
+  compact?: boolean;
+}) {
   const { t } = useTranslation("relaydesk");
   const client = useQueryClient();
   const [adding, setAdding] = useState(false);
@@ -45,22 +61,67 @@ export function CustomProviders({ program }: { program: ModelProgram | null }) {
     : list;
 
   const invalidate = () =>
-    client.invalidateQueries({ queryKey: ["relaydesk", "universal-providers"] });
+    client.invalidateQueries({
+      queryKey: ["relaydesk", "universal-providers"],
+    });
+
+  // 节内紧凑形态：没有任何内容时只留一个小 "+"，不占地
+  if (compact && visible.length === 0) {
+    return (
+      <>
+        <button
+          type="button"
+          className="rd-section-add"
+          onClick={() => setAdding(true)}
+          aria-label={t("addProvider")}
+          title={t("addProvider")}
+        >
+          <Plus size={13} />
+        </button>
+        {adding && (
+          <AddProviderDialog
+            defaultTargets={
+              program && program !== "devin" ? [program] : ["claude"]
+            }
+            onClose={() => setAdding(false)}
+            onSaved={invalidate}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
-    <div className="rd-custom-providers">
-      <div className="rd-custom-providers__head">
-        <h3>{t("customProviders")}</h3>
-        <Action onClick={() => setAdding(true)} aria-label={t("addProvider")}>
-          <Plus size={14} />
-          {t("addProvider")}
-        </Action>
-      </div>
+    <div
+      className={`rd-custom-providers${compact ? " rd-custom-providers--compact" : ""}`}
+    >
+      {!compact && (
+        <div className="rd-custom-providers__head">
+          <h3>{t("customProviders")}</h3>
+          <Action onClick={() => setAdding(true)} aria-label={t("addProvider")}>
+            <Plus size={14} />
+            {t("addProvider")}
+          </Action>
+        </div>
+      )}
       {visible.length > 0 && (
         <ul className="rd-custom-providers__list">
           {visible.map((p) => (
             <CustomProviderRow key={p.id} provider={p} onChanged={invalidate} />
           ))}
+          {compact && (
+            <li>
+              <button
+                type="button"
+                className="rd-section-add"
+                onClick={() => setAdding(true)}
+                aria-label={t("addProvider")}
+                title={t("addProvider")}
+              >
+                <Plus size={13} />
+              </button>
+            </li>
+          )}
         </ul>
       )}
       {adding && (
@@ -164,8 +225,11 @@ function AddProviderDialog({
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
   const [model, setModel] = useState("");
+  // 拉到的模型清单 → 多选（默认全选），勾选的写进 modelList 供 Desktop 菜单
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+  const [checked, setChecked] = useState<Set<string>>(new Set());
   const [latency, setLatency] = useState<{
     state: "idle" | "testing" | "ok" | "fail";
     text?: string;
@@ -203,6 +267,7 @@ function AddProviderDialog({
         toast.warning(t("noModelsFetched"));
       } else {
         setFetchedModels(ids);
+        setChecked(new Set(ids));
         if (!model) setModel(ids[0]);
         toast.success(t("modelsFetched", { count: ids.length }));
       }
@@ -210,9 +275,19 @@ function AddProviderDialog({
     onError: (e) => toast.error(String(e)),
   });
 
+  const toggleModel = (id: string) =>
+    setChecked((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   const save = useMutation({
     mutationFn: async () => {
       const id = `custom-${Date.now().toString(36)}`;
+      const checkedList = fetchedModels.filter((m) => checked.has(m));
+      const defaultModel = model.trim() || checkedList[0] || undefined;
       const provider: UniversalProvider = {
         id,
         name: name.trim(),
@@ -227,17 +302,18 @@ function AddProviderDialog({
         apiKey: apiKey.trim(),
         models: {
           claude: targets.includes("claude")
-            ? { model: model.trim() || undefined }
+            ? {
+                model: defaultModel,
+                modelList: checkedList.length > 0 ? checkedList : undefined,
+              }
             : undefined,
           codex: targets.includes("codex")
-            ? { model: model.trim() || undefined }
+            ? { model: defaultModel }
             : undefined,
           gemini: targets.includes("gemini")
-            ? { model: model.trim() || undefined }
+            ? { model: defaultModel }
             : undefined,
-          grok: targets.includes("grok")
-            ? { model: model.trim() || undefined }
-            : undefined,
+          grok: targets.includes("grok") ? { model: defaultModel } : undefined,
         },
       };
       await universalApi.upsert(provider);
@@ -314,19 +390,29 @@ function AddProviderDialog({
           )}
           <label>
             <span>{t("providerApiKey")}</span>
-            <Field
-              type="password"
-              value={apiKey}
-              placeholder="sk-…"
-              onChange={(e) => setApiKey(e.target.value)}
-            />
+            <div className="rd-inline-field">
+              <Field
+                type={showKey ? "text" : "password"}
+                value={apiKey}
+                placeholder="sk-…"
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+              <button
+                type="button"
+                className="rd-icon-btn"
+                onClick={() => setShowKey((v) => !v)}
+                aria-label={showKey ? t("hideKey") : t("showKey")}
+                title={showKey ? t("hideKey") : t("showKey")}
+              >
+                {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
           </label>
           <label>
             <span>{t("providerModel")}</span>
             <div className="rd-inline-field">
               <Field
                 value={model}
-                list="rd-fetched-models"
                 placeholder={t("providerModelHint")}
                 onChange={(e) => setModel(e.target.value)}
               />
@@ -345,12 +431,24 @@ function AddProviderDialog({
                 {t("fetchModels")}
               </Action>
             </div>
-            <datalist id="rd-fetched-models">
-              {fetchedModels.map((id) => (
-                <option key={id} value={id} />
-              ))}
-            </datalist>
           </label>
+          {fetchedModels.length > 0 && (
+            <fieldset>
+              <legend>{t("includedModels", { count: checked.size })}</legend>
+              <div className="rd-model-checklist">
+                {fetchedModels.map((id) => (
+                  <label key={id} className="rd-model-checklist__item">
+                    <input
+                      type="checkbox"
+                      checked={checked.has(id)}
+                      onChange={() => toggleModel(id)}
+                    />
+                    <span className="rd-mono">{id}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
           <fieldset>
             <legend>{t("providerTargets")}</legend>
             <div className="rd-check-row">

@@ -615,6 +615,68 @@
 .rd-endpoint-result--testing {
   color: var(--rd-muted);
 }
+/* 图标小按钮（key 显隐等） */
+.rd-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: var(--rd-control-radius);
+  border: 1px solid var(--rd-line);
+  background: var(--rd-raised);
+  color: var(--rd-muted);
+  cursor: pointer;
+}
+.rd-icon-btn:hover {
+  background: var(--rd-hover);
+  color: var(--rd-text);
+}
+/* 拉取模型的多选清单 */
+.rd-model-checklist {
+  max-height: 160px;
+  overflow-y: auto;
+  margin-top: 6px;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-control-radius);
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rd-model-checklist__item {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--rd-font-caption);
+  color: var(--rd-text);
+}
+/* 程序节内的"添加供应"小按钮 */
+.rd-section-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: 4px 0 8px;
+  border-radius: var(--rd-control-radius);
+  border: 1px dashed var(--rd-line);
+  background: transparent;
+  color: var(--rd-muted);
+  cursor: pointer;
+}
+.rd-section-add:hover {
+  color: var(--rd-accent);
+  border-color: var(--rd-accent);
+}
+.rd-custom-providers--compact {
+  border: none;
+  padding: 0;
+  margin: 0 0 8px;
+}
+.rd-custom-providers--compact .rd-custom-providers__list {
+  margin-top: 0;
+}
 /* ── 程序化分区（模型目录按 AI 程序分节）────────────── */
 .rd-program-section {
   margin-top: 14px;

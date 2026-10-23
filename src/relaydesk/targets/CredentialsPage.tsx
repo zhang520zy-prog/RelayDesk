@@ -34,8 +34,8 @@ export function CredentialsPage({
           </button>
         )}
       </div>
-      <ApiKeysSection baseUrl={baseUrl} groups={groups} loading={loading} />
       <CustomProviders program={null} />
+      <ApiKeysSection baseUrl={baseUrl} groups={groups} loading={loading} />
       <p className="rd-info-note">
         <Info size={17} />
         {t("credentialsNotice")}

@@ -627,7 +627,7 @@ export interface UniversalProvider {
   baseUrl: string;
   apiKey: string;
   models?: {
-    claude?: { model?: string };
+    claude?: { model?: string; modelList?: string[] };
     codex?: { model?: string };
     gemini?: { model?: string };
     grok?: { model?: string };
@@ -665,7 +665,12 @@ export const universalApi = {
   async testEndpoints(
     urls: string[],
   ): Promise<
-    { url: string; latency: number | null; status: number | null; error: string | null }[]
+    {
+      url: string;
+      latency: number | null;
+      status: number | null;
+      error: string | null;
+    }[]
   > {
     return await invoke("test_api_endpoints", { urls, timeoutSecs: 8 });
   },

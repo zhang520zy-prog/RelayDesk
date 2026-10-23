@@ -5962,6 +5962,15 @@ impl ProviderService {
         let mut models: Vec<String> = cred("ANTHROPIC_MODEL")
             .map(|m| vec![m.to_string()])
             .unwrap_or_default();
+        // 自建供应商的多模型清单（universal models.claude.modelList →
+        // to_claude_provider 投影成 RELAYDESK_MODELS）并入 Desktop 菜单。
+        if let Some(list) = cred("RELAYDESK_MODELS") {
+            for m in list.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+                if !models.iter().any(|e| e == m) {
+                    models.push(m.to_string());
+                }
+            }
+        }
         for existing in crate::claude_desktop_config::current_profile_model_ids() {
             if !models.contains(&existing) {
                 models.push(existing);

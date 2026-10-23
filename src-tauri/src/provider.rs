@@ -662,6 +662,11 @@ pub struct ClaudeModelConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "opusModel")]
     pub opus_model: Option<String>,
+    /// 供应商可服务的模型全集（多选）——写 Claude Desktop 3p profile 的
+    /// inferenceModels 用；CLI 的 ANTHROPIC_MODEL 仍是单个默认模型。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "modelList")]
+    pub model_list: Option<Vec<String>>,
 }
 
 /// Codex 模型配置
@@ -799,16 +804,22 @@ impl UniversalProvider {
             .and_then(|m| m.opus_model.clone())
             .unwrap_or_else(|| model.clone());
 
-        let settings_config = serde_json::json!({
-            "env": {
-                "ANTHROPIC_BASE_URL": self.base_url,
-                "ANTHROPIC_AUTH_TOKEN": self.api_key,
-                "ANTHROPIC_MODEL": model,
-                "ANTHROPIC_DEFAULT_HAIKU_MODEL": haiku,
-                "ANTHROPIC_DEFAULT_SONNET_MODEL": sonnet,
-                "ANTHROPIC_DEFAULT_OPUS_MODEL": opus,
-            }
+        let mut env = serde_json::json!({
+            "ANTHROPIC_BASE_URL": self.base_url,
+            "ANTHROPIC_AUTH_TOKEN": self.api_key,
+            "ANTHROPIC_MODEL": model,
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL": haiku,
+            "ANTHROPIC_DEFAULT_SONNET_MODEL": sonnet,
+            "ANTHROPIC_DEFAULT_OPUS_MODEL": opus,
         });
+        // 供应商多模型清单 → Claude Desktop 3p profile（post_switch 钩子读）
+        if let Some(list) = models
+            .and_then(|m| m.model_list.as_ref())
+            .filter(|l| !l.is_empty())
+        {
+            env["RELAYDESK_MODELS"] = serde_json::json!(list.join(","));
+        }
+        let settings_config = serde_json::json!({ "env": env });
 
         Some(Provider {
             id: format!("universal-claude-{}", self.id),

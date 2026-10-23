@@ -19,6 +19,7 @@ import {
 import { Action, Field } from "../ui";
 import type { ApplyReport } from "../state/useRelayApply";
 import { CurrentModelCard } from "./CurrentModelCard";
+import { CustomProviders } from "./CustomProviders";
 import { ModelGroupCards } from "./ModelGroupCards";
 import { ModelTargetQuickBar } from "./ModelTargetQuickBar";
 import {
@@ -269,6 +270,7 @@ export function ModelCenterPage({
                     {t("programGroupCount", { count: sectionGroups.length })}
                   </span>
                 </header>
+                {p && <CustomProviders program={p} compact />}
                 <ModelGroupCards
                   groups={sectionGroups}
                   search={search}
