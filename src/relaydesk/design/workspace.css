@@ -643,13 +643,15 @@
   flex-direction: column;
   gap: 4px;
 }
-.rd-model-checklist__item {
+/* 注意：必须高过 .rd-form label（column 布局），否则勾选框与文字竖排 */
+.rd-form .rd-model-checklist__item {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
   gap: 8px;
   font-size: var(--rd-font-caption);
   color: var(--rd-text);
+  cursor: pointer;
 }
 /* 程序节内的"添加供应"小按钮 */
 .rd-section-add {

@@ -330,7 +330,8 @@ jobs:
           # 1) Collect .tar.gz (updater artifact)
           NEW_TAR_GZ="RelayDesk-${VERSION}-macOS.tar.gz"
           cp "$TAR_GZ" "release-assets/$NEW_TAR_GZ"
-          [ -f "$TAR_GZ.sig" ] && cp "$TAR_GZ.sig" "release-assets/$NEW_TAR_GZ.sig" || echo ".sig for macOS not found yet"
+          # .sig 缺失 = 该平台的 updater 渠道静默死——必须 fail，不能放行
+          [ -f "$TAR_GZ.sig" ] && cp "$TAR_GZ.sig" "release-assets/$NEW_TAR_GZ.sig" || { echo "::error::macOS updater .sig missing"; exit 1; }
           echo "macOS updater artifact copied: $NEW_TAR_GZ"
 
           # 2) Collect .app as zip
@@ -509,10 +510,9 @@ jobs:
             if (Test-Path $sigPath) {
               Copy-Item $sigPath (Join-Path release-assets ("$dest.sig"))
               Write-Host "Signature copied: $dest.sig"
-            } elseif ($isArm64) {
-              throw "Signature not found for $($installer.Name)"
             } else {
-              Write-Warning "Signature not found for $($installer.Name)"
+              # .sig 缺失 = updater 渠道死——x64 与 arm64 一样必须 fail
+              throw "Signature not found for $($installer.Name)"
             }
           } elseif ($isArm64) {
             throw 'No Windows ARM64 NSIS installer found'
@@ -571,7 +571,7 @@ jobs:
           if [ -n "$APPIMAGE" ]; then
             NEW_APPIMAGE="RelayDesk-${VERSION}-Linux-${ARCH}.AppImage"
             cp "$APPIMAGE" "release-assets/$NEW_APPIMAGE"
-            [ -f "$APPIMAGE.sig" ] && cp "$APPIMAGE.sig" "release-assets/$NEW_APPIMAGE.sig" || echo ".sig for AppImage not found"
+            [ -f "$APPIMAGE.sig" ] && cp "$APPIMAGE.sig" "release-assets/$NEW_APPIMAGE.sig" || { echo "::error::Linux AppImage .sig missing"; exit 1; }
             echo "AppImage copied: $NEW_APPIMAGE"
           else
             echo "No AppImage found under target/release/bundle" >&2
@@ -656,6 +656,25 @@ jobs:
           set -euo pipefail
           ls -la release-assets
 
+      - name: Verify tag matches packaged version
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(jq -r .version package.json)
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME 与 package.json 版本 $PKG_VERSION 不一致——拒绝发布（会产出自称 $PKG_VERSION 的二进制）"
+            exit 1
+          fi
+          for f in src-tauri/tauri.conf.json src-tauri/Cargo.toml; do
+            V=$(grep -m1 '"version"' "$f" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+            if [ "$V" != "$TAG_VERSION" ]; then
+              echo "::error::$f 版本 $V 与 tag $TAG_VERSION 不一致"
+              exit 1
+            fi
+          done
+          echo "version gate ok: $TAG_VERSION"
+
       - name: Prepare release body
         shell: bash
         run: |
@@ -708,58 +727,10 @@ jobs:
           fi
           echo "=== release body ===" && cat release-body.md
 
-      - name: Upload Release Assets
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: RelayDesk ${{ github.ref_name }}
-          prerelease: false
-          body_path: release-body.md
-          files: release-assets/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Prune old releases (keep only the current tag)
+      # latest.json 与资产同批上传——原子发布，消灭"release 已建但 latest.json 未传"
+      # 的 404 悬空窗口（旧版 assemble-latest-json 独立 job 的结构性缺陷）。
+      - name: Generate latest.json into release assets
         shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          # 发版约定：每次发布只保留当前 tag 的 Release，其余连同其 tag 一并删除。
-          current="${GITHUB_REF_NAME}"
-          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName \
-            --jq '.[].tagName' | while read -r tag; do
-            if [ "$tag" != "$current" ]; then
-              echo "Deleting release + tag: $tag"
-              gh release delete "$tag" --yes --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
-            fi
-          done
-
-  assemble-latest-json:
-    name: Assemble latest.json
-    runs-on: ubuntu-22.04
-    needs: publish-release
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout for release notes
-        uses: actions/checkout@v4
-
-      - name: Prepare GH
-        run: |
-          gh --version || (type -p curl >/dev/null && sudo apt-get update && sudo apt-get install -y gh || true)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Download all release assets
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euxo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          mkdir -p dl
-          gh release download "$TAG" --dir dl --repo "$GITHUB_REPOSITORY"
-          ls -la dl || true
-      - name: Generate latest.json
         env:
           REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
@@ -768,28 +739,27 @@ jobs:
           VERSION="${TAG#v}"
           PUB_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           base_url="https://github.com/$REPO/releases/download/$TAG"
-          # 更新日志注入 latest.json.notes（应用内"关于"页展示）；缺失时回退版本号
           NOTES_FILE="docs/releases/${TAG}.md"
           if [ -f "$NOTES_FILE" ]; then
             NOTES_JSON=$(jq -Rs '.' < "$NOTES_FILE")
           else
             NOTES_JSON="\"Release $TAG\""
           fi
-          # 初始化空平台映射
           mac_url=""; mac_sig=""
           win_x64_url=""; win_x64_sig=""
           win_arm64_url=""; win_arm64_sig=""
           linux_x64_url=""; linux_x64_sig=""
           linux_arm64_url=""; linux_arm64_sig=""
           shopt -s nullglob
-          for sig in dl/*.sig; do
+          for sig in release-assets/*.sig; do
             base=${sig%.sig}
             fname=$(basename "$base")
             url="$base_url/$fname"
             sig_content=$(cat "$sig")
             case "$fname" in
+              *.AppImage.tar.gz)
+                ;; # AppImage 打包副产物不是 macOS 工件——跳过防污染
               *.tar.gz)
-                # 视为 macOS updater artifact
                 mac_url="$url"; mac_sig="$sig_content";;
               *-Windows-arm64-setup.exe)
                 win_arm64_url="$url"; win_arm64_sig="$sig_content";;
@@ -801,7 +771,6 @@ jobs:
                 linux_x64_url="$url"; linux_x64_sig="$sig_content";;
             esac
           done
-          # 构造 JSON（仅包含存在的目标）
           tmp_json=$(mktemp)
           {
             echo '{'
@@ -811,7 +780,6 @@ jobs:
             echo '  "platforms": {'
             first=1
             if [ -n "$mac_url" ] && [ -n "$mac_sig" ]; then
-              # 为兼容 arm64 / x64，重复写入两个键，指向同一 universal 包
               for key in darwin-aarch64 darwin-x86_64; do
                 [ $first -eq 0 ] && echo ','
                 echo "    \"$key\": {\"signature\": \"$mac_sig\", \"url\": \"$mac_url\"}"
@@ -841,11 +809,58 @@ jobs:
             echo '  }'
             echo '}'
           } > "$tmp_json"
-          echo "Generated latest.json:" && cat "$tmp_json"
-          mv "$tmp_json" latest.json
-      - name: Upload latest.json to release
+          jq . "$tmp_json" > /dev/null || { echo "::error::latest.json 生成结果不是合法 JSON"; exit 1; }
+          mv "$tmp_json" release-assets/latest.json
+          echo "=== latest.json ===" && cat release-assets/latest.json
+          # 一个平台都没有等于所有存量装机收不到更新——直接失败
+          if [ "$first" -eq 1 ]; then
+            echo "::error::latest.json platforms 为空——没有任何 .sig 资产可用于更新"
+            exit 1
+          fi
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: RelayDesk ${{ github.ref_name }}
+          prerelease: false
+          body_path: release-body.md
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prune old releases (keep current tag + updater bridge)
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euxo pipefail
-          gh release upload "$GITHUB_REF_NAME" latest.json --clobber --repo "$GITHUB_REPOSITORY"
+          set -euo pipefail
+          # 发版约定：每次发布只保留当前 tag 的 Release，其余连同其 tag 一并删除。
+          # 例外：test-build 桥接 release——存量 test-build 装机的更新端点
+          # 指向 releases/download/test-build/latest.json，删除即永久 404。
+          current="${GITHUB_REF_NAME}"
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName \
+            --jq '.[].tagName' | while read -r tag; do
+            if [ "$tag" != "$current" ] && [ "$tag" != "test-build" ]; then
+              echo "Deleting release + tag: $tag"
+              gh release delete "$tag" --yes --cleanup-tag --repo "$GITHUB_REPOSITORY"
+            fi
+          done
+
+      - name: Verify updater endpoint serves latest.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/latest.json"
+          for i in $(seq 1 12); do
+            code=$(curl -fsSL -o /tmp/latest.json -w '%{http_code}' "$URL" || echo "000")
+            [ "$code" = "200" ] && break
+            echo "attempt $i: HTTP $code — 等待 CDN 刷新"
+            sleep 10
+          done
+          if [ "$code" != "200" ]; then
+            echo "::error::latest.json 发布后仍不可达：$URL → HTTP $code"
+            exit 1
+          fi
+          jq -e '.platforms | length > 0' /tmp/latest.json > /dev/null
+          echo "updater endpoint verified: $URL"

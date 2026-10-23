@@ -234,6 +234,15 @@ jobs:
             > ⚠️ 其余带 `.sig`、`.tar.gz`、`latest.json` 的文件是**应用内自动更新**的数据，
             > 手动下载不需要管它们。
 
+            ## 安装注意
+
+            - **Windows**：如弹出"Windows 已保护你的电脑"（SmartScreen），点 **"更多信息" → "仍要运行"**（测试版未购买代码签名证书，属正常提示）
+            - **macOS**：拖拽进"应用程序"后，如提示"无法打开"，在终端运行
+              `xattr -dr com.apple.quarantine /Applications/RelayDesk.app`
+              或右键点图标选"打开"
+            - **Linux**：`.deb` 用 `sudo dpkg -i` 安装；`.AppImage` 需 `chmod +x` 且系统装有 libfuse2
+            - **自动更新**：装好后在"设置"页可一键检查更新，无需再来这里下载新版
+
       # 滚动 release 只展示当次构建的产物：删掉任何不在本次 dist/ 里的资产，
       # 避免新旧版本号文件并排出现。
       - name: Prune stale assets from rolling release
@@ -251,12 +260,3 @@ jobs:
             echo "pruning stale asset: $name"
             gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id"
           done
-
-            ## 安装注意
-
-            - **Windows**：如弹出"Windows 已保护你的电脑"（SmartScreen），点 **"更多信息" → "仍要运行"**（测试版未购买代码签名证书，属正常提示）
-            - **macOS**：拖拽进"应用程序"后，如提示"无法打开"，在终端运行
-              `xattr -dr com.apple.quarantine /Applications/RelayDesk.app`
-              或右键点图标选"打开"
-            - **Linux**：`.deb` 用 `sudo dpkg -i` 安装；`.AppImage` 需 `chmod +x` 且系统装有 libfuse2
-            - **自动更新**：装好后在"设置"页可一键检查更新，无需再来这里下载新版

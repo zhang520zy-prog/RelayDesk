@@ -658,7 +658,8 @@ describe("RelayDesk user flows", () => {
     expect(
       await screen.findByRole("heading", { name: "模型中心", level: 1 }),
     ).toBeInTheDocument();
-    expect(await screen.findByRole("list")).toBeInTheDocument();
+    // 程序化分区后页面可能存在多个 <ul>（分组列表 + 节内供应列表）
+    expect((await screen.findAllByRole("list")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("$10.00").length).toBeGreaterThan(0);
     // 同名模型出现在不同分组的下拉选项里（standard + value）
     expect(screen.getAllByRole("option", { name: /new-model/ })).toHaveLength(
@@ -1072,7 +1073,7 @@ describe("RelayDesk user flows", () => {
   it("keeps existing rows visible during refresh", async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByRole("list");
+    await screen.findAllByRole("list");
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -1087,7 +1088,7 @@ describe("RelayDesk user flows", () => {
       expect(screen.getByRole("button", { name: "刷新数据" })).toBeEnabled(),
     );
     await user.click(screen.getByRole("button", { name: "刷新数据" }));
-    expect(screen.getByRole("list")).toBeInTheDocument();
+    expect(screen.getAllByRole("list").length).toBeGreaterThan(0);
     release();
     expect(await screen.findByText("当前账户暂无可用模型")).toBeInTheDocument();
   });

@@ -413,6 +413,7 @@ function AddProviderDialog({
             <div className="rd-inline-field">
               <Field
                 value={model}
+                list="rd-fetched-models"
                 placeholder={t("providerModelHint")}
                 onChange={(e) => setModel(e.target.value)}
               />
@@ -431,6 +432,14 @@ function AddProviderDialog({
                 {t("fetchModels")}
               </Action>
             </div>
+            {/* 默认模型下拉：只允许从已勾选（会被写入的）模型里选 */}
+            <datalist id="rd-fetched-models">
+              {fetchedModels
+                .filter((id) => checked.has(id))
+                .map((id) => (
+                  <option key={id} value={id} />
+                ))}
+            </datalist>
           </label>
           {fetchedModels.length > 0 && (
             <fieldset>
