@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { useTranslation } from "react-i18next";
 import {
   Bot,
@@ -7,6 +8,7 @@ import {
   Sparkles,
   Terminal,
   Trash2,
+  ChevronDown,
   Loader2,
   MessageSquareText,
   Monitor,
@@ -15,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Copy,
+  TerminalSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { copyText } from "@/lib/clipboard";
@@ -339,42 +342,73 @@ export function SessionsPage() {
                   <span className="rd-muted">
                     {providerLabel(selected.providerId)}
                   </span>
-                  {selected.resumeCommand && (
-                    <button
-                      type="button"
-                      className="rd-session-resume"
-                      disabled={resumeBusy}
-                      onClick={() => void handleResume(selected)}
-                      aria-label={t("resumeSession")}
-                      title={t("resumeSession")}
-                    >
-                      {resumeBusy ? (
-                        <Loader2
-                          size={13}
-                          className="rd-spin"
-                          aria-hidden="true"
-                        />
-                      ) : (
-                        <Play size={13} aria-hidden="true" />
-                      )}
-                      <span>{t("resumeSession")}</span>
-                    </button>
-                  )}
-                  {desktopInstallFor(selected.providerId) && (
-                    <button
-                      type="button"
-                      className="rd-session-resume"
-                      disabled={resumeBusy}
-                      onClick={() => void handleResumeDesktop(selected)}
-                      aria-label={t("resumeInDesktop")}
-                      title={t("resumeInDesktopHint", {
-                        name:
-                          desktopInstallFor(selected.providerId)?.name ?? "",
-                      })}
-                    >
-                      <Monitor size={13} aria-hidden="true" />
-                      <span>{t("resumeInDesktop")}</span>
-                    </button>
+                  {(selected.resumeCommand ||
+                    desktopInstallFor(selected.providerId)) && (
+                    <DropdownMenuPrimitive.Root>
+                      <DropdownMenuPrimitive.Trigger asChild>
+                        <button
+                          type="button"
+                          className="rd-session-resume"
+                          disabled={resumeBusy}
+                          aria-label={t("resumeWhere")}
+                          title={t("resumeWhere")}
+                        >
+                          {resumeBusy ? (
+                            <Loader2
+                              size={13}
+                              className="rd-spin"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Play size={13} aria-hidden="true" />
+                          )}
+                          <span>{t("resumeWhere")}</span>
+                          <ChevronDown size={12} aria-hidden="true" />
+                        </button>
+                      </DropdownMenuPrimitive.Trigger>
+                      <DropdownMenuPrimitive.Portal>
+                        <DropdownMenuPrimitive.Content
+                          className="rd-resume-menu"
+                          align="end"
+                          sideOffset={6}
+                        >
+                          {selected.resumeCommand && (
+                            <DropdownMenuPrimitive.Item
+                              className="rd-resume-menu__item"
+                              onSelect={() => void handleResume(selected)}
+                            >
+                              <TerminalSquare size={13} aria-hidden="true" />
+                              <div className="rd-resume-menu__text">
+                                <span>{t("resumeSession")}</span>
+                                <small className="rd-muted">
+                                  {t("resumeSessionHint")}
+                                </small>
+                              </div>
+                            </DropdownMenuPrimitive.Item>
+                          )}
+                          {desktopInstallFor(selected.providerId) && (
+                            <DropdownMenuPrimitive.Item
+                              className="rd-resume-menu__item"
+                              onSelect={() =>
+                                void handleResumeDesktop(selected)
+                              }
+                            >
+                              <Monitor size={13} aria-hidden="true" />
+                              <div className="rd-resume-menu__text">
+                                <span>{t("resumeInDesktop")}</span>
+                                <small className="rd-muted">
+                                  {t("resumeInDesktopHint", {
+                                    name:
+                                      desktopInstallFor(selected.providerId)
+                                        ?.name ?? "",
+                                  })}
+                                </small>
+                              </div>
+                            </DropdownMenuPrimitive.Item>
+                          )}
+                        </DropdownMenuPrimitive.Content>
+                      </DropdownMenuPrimitive.Portal>
+                    </DropdownMenuPrimitive.Root>
                   )}
                 </div>
               </header>

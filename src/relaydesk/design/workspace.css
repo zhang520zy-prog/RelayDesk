@@ -1536,3 +1536,42 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* 会话恢复下拉菜单 */
+.rd-resume-menu {
+  min-width: 220px;
+  background: var(--rd-raised);
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-control-radius);
+  padding: 4px;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.rd-resume-menu__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: calc(var(--rd-control-radius) - 2px);
+  font-size: var(--rd-font-caption);
+  color: var(--rd-text);
+  cursor: pointer;
+  outline: none;
+}
+.rd-resume-menu__item:hover,
+.rd-resume-menu__item[data-highlighted] {
+  background: var(--rd-hover);
+}
+.rd-resume-menu__item svg {
+  margin-top: 2px;
+  color: var(--rd-muted);
+  flex-shrink: 0;
+}
+.rd-resume-menu__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rd-resume-menu__text small {
+  font-size: 11px;
+}

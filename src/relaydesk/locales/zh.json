@@ -697,5 +697,7 @@
   "hideKey": "隐藏密钥",
   "includedModels": "包含的模型（已选 {{count}} 个）",
   "resumeInDesktop": "在桌面端打开",
-  "resumeInDesktopHint": "打开 {{name}}，在其会话历史中选择该会话继续"
+  "resumeInDesktopHint": "打开 {{name}}，在历史中选择该会话",
+  "resumeWhere": "恢复会话",
+  "resumeSessionHint": "在终端窗口中运行 resume 命令"
 }

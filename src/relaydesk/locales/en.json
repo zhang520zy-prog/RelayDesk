@@ -697,5 +697,7 @@
   "hideKey": "Hide key",
   "includedModels": "Included models ({{count}} selected)",
   "resumeInDesktop": "Open in desktop",
-  "resumeInDesktopHint": "Opens {{name}} — pick this session from its history to continue"
+  "resumeInDesktopHint": "Opens {{name}} — pick the session from its history",
+  "resumeWhere": "Resume session",
+  "resumeSessionHint": "Run the resume command in a terminal window"
 }
