@@ -40,4 +40,9 @@ export const relaydeskSessionApi = {
       cwd: cwd ?? null,
       customConfig: null,
     }),
+
+  /** 打开供应商桌面端（Claude.app / ChatGPT.app…）。桌面应用与本目录共享
+   *  会话存储，打开后在其历史列表中可继续同一会话。 */
+  launchDesktop: (app: string) =>
+    invoke<void>("relay_launch_target", { app, mode: "desktop" }),
 };

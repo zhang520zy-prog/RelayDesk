@@ -9,6 +9,7 @@ import {
   Trash2,
   Loader2,
   MessageSquareText,
+  Monitor,
   Search,
   Play,
   PanelLeftClose,
@@ -21,6 +22,7 @@ import {
   relaydeskSessionApi,
   type RelaySessionMeta,
 } from "@/lib/api/relaydesk-sessions";
+import { relayApi } from "@/lib/api/relay";
 import { targetLabels } from "../state/useRelayApply";
 
 const providerIcons: Record<string, typeof Bot> = {
@@ -30,6 +32,16 @@ const providerIcons: Record<string, typeof Bot> = {
 };
 
 const providerOrder = ["claude", "codex", "gemini"];
+
+/** 会话 providerId → relay_launch_target 目标 app 名（grokbuild 是内部名，
+ *  桌面端目标叫 grok）。不在表内的 provider 没有桌面端入口。 */
+const desktopAppOf: Record<string, string> = {
+  claude: "claude",
+  codex: "codex",
+  gemini: "gemini",
+  grokbuild: "grok",
+  grok: "grok",
+};
 
 function providerLabel(id: string) {
   return targetLabels[id as keyof typeof targetLabels] ?? id;
@@ -73,6 +85,14 @@ export function SessionsPage() {
   const [search, setSearch] = useState("");
   const [resumeBusy, setResumeBusy] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+
+  // 各目标桌面端安装状态——决定"在桌面端打开"是否可用
+  const installations = useQuery({
+    queryKey: ["relaydesk", "environment", "installations"],
+    queryFn: () => relayApi.detectTargetInstallations(),
+    retry: false,
+    staleTime: 60_000,
+  });
 
   const messages = useQuery({
     queryKey: [
@@ -155,6 +175,27 @@ export function SessionsPage() {
         session.projectDir ?? null,
       );
       if (!ok) toast.error(t("resumeSessionFailed"));
+    } catch {
+      toast.error(t("resumeSessionFailed"));
+    } finally {
+      setResumeBusy(false);
+    }
+  };
+
+  /** 该会话供应商的桌面端是否已安装 */
+  const desktopInstallFor = (providerId: string) => {
+    const app = desktopAppOf[providerId];
+    if (!app) return null;
+    const inst = installations.data?.find((i) => i.app === app);
+    return inst?.desktopApp ? { app, name: inst.desktopName ?? app } : null;
+  };
+
+  const handleResumeDesktop = async (session: RelaySessionMeta) => {
+    const desktop = desktopInstallFor(session.providerId);
+    if (!desktop || resumeBusy) return;
+    setResumeBusy(true);
+    try {
+      await relaydeskSessionApi.launchDesktop(desktop.app);
     } catch {
       toast.error(t("resumeSessionFailed"));
     } finally {
@@ -317,6 +358,22 @@ export function SessionsPage() {
                         <Play size={13} aria-hidden="true" />
                       )}
                       <span>{t("resumeSession")}</span>
+                    </button>
+                  )}
+                  {desktopInstallFor(selected.providerId) && (
+                    <button
+                      type="button"
+                      className="rd-session-resume"
+                      disabled={resumeBusy}
+                      onClick={() => void handleResumeDesktop(selected)}
+                      aria-label={t("resumeInDesktop")}
+                      title={t("resumeInDesktopHint", {
+                        name:
+                          desktopInstallFor(selected.providerId)?.name ?? "",
+                      })}
+                    >
+                      <Monitor size={13} aria-hidden="true" />
+                      <span>{t("resumeInDesktop")}</span>
                     </button>
                   )}
                 </div>

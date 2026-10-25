@@ -695,5 +695,7 @@
   "groupRoutingDeployHint": "识别为 Devin/SWE 系列分组：中转站配置不会写入 Devin，可在环境部署页安装",
   "showKey": "显示密钥",
   "hideKey": "隐藏密钥",
-  "includedModels": "包含的模型（已选 {{count}} 个）"
+  "includedModels": "包含的模型（已选 {{count}} 个）",
+  "resumeInDesktop": "在桌面端打开",
+  "resumeInDesktopHint": "打开 {{name}}，在其会话历史中选择该会话继续"
 }

@@ -695,5 +695,7 @@
   "groupRoutingDeployHint": "Recognized as a Devin/SWE-family group: relay config is not written to Devin; install it from the Environment page",
   "showKey": "Show key",
   "hideKey": "Hide key",
-  "includedModels": "Included models ({{count}} selected)"
+  "includedModels": "Included models ({{count}} selected)",
+  "resumeInDesktop": "Open in desktop",
+  "resumeInDesktopHint": "Opens {{name}} — pick this session from its history to continue"
 }
