@@ -1,6 +1,6 @@
 {
   "name": "relaydesk",
-  "version": "3.24.0",
+  "version": "3.24.1",
   "description": "All-in-One Assistant for Claude Code, Codex & Gemini CLI",
   "type": "module",
   "scripts": {
