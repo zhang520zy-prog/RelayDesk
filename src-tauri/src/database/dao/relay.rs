@@ -186,6 +186,7 @@ mod tests {
         RelayAccount {
             base_url: "https://relay.invalid".to_string(),
             access_token: access_token.to_string(),
+            session_cookie: String::new(),
             remembered: true,
             user_id: Some(42),
             username: "fixture-user".to_string(),

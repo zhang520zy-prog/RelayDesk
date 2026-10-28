@@ -15,14 +15,17 @@ use crate::error::AppError;
 
 const REQ_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// 登录返回（仅需 access_token，其余字段取 user_self 获取）
+/// 登录返回（access_token + 可选的 30d session cookie；其余字段取 user_self）
 pub struct LoginResult {
     pub access_token: String,
+    /// `Set-Cookie` 里全部 `name=value` 对拼接值；站点未种 cookie 时为 None
+    pub session_cookie: Option<String>,
 }
 
 pub struct RelayClient {
     base_url: String,
     access_token: String,
+    session_cookie: Option<String>,
 }
 
 impl RelayClient {
@@ -30,7 +33,23 @@ impl RelayClient {
         Self {
             base_url: normalize_base_url(base_url),
             access_token: access_token.to_string(),
+            session_cookie: None,
         }
+    }
+
+    /// 在 Bearer 之外附加 new-api 30d 会话 Cookie（登录响应 Set-Cookie）。
+    /// 站点禁用 `/api/user/token` 时，Cookie 是 JWT 15min 过期后的唯一长效凭据。
+    pub fn with_session_cookie(mut self, cookie: Option<&str>) -> Self {
+        self.session_cookie = cookie
+            .filter(|c| !c.trim().is_empty())
+            .map(|c| c.trim().to_string());
+        self
+    }
+
+    /// 由账号构造：自动携带已保存的 session cookie（若有）。
+    pub fn for_account(account: &super::types::RelayAccount) -> Self {
+        Self::new(&account.base_url, &account.access_token)
+            .with_session_cookie(Some(account.session_cookie.as_str()))
     }
 
     pub fn base_url(&self) -> &str {
@@ -46,13 +65,14 @@ impl RelayClient {
         format!("{}{}", self.base_url, path)
     }
 
-    /// 统一请求：附加 Bearer（若已持有令牌）、校验 success 并返回完整响应体。
-    async fn request_full(
+    /// 统一请求：附加 Bearer（若已持有令牌）与 session Cookie（若已捕获）、
+    /// 校验 success 并返回（完整响应体, Set-Cookie 列表）。
+    async fn request_full_resp(
         &self,
         method: reqwest::Method,
         path: &str,
         body: Option<Value>,
-    ) -> Result<Value, AppError> {
+    ) -> Result<(Value, Vec<String>), AppError> {
         let client = crate::proxy::http_client::get();
         let mut req = client
             .request(method, self.url(path))
@@ -60,6 +80,9 @@ impl RelayClient {
             .timeout(REQ_TIMEOUT);
         if !self.access_token.is_empty() {
             req = req.header("Authorization", format!("Bearer {}", self.access_token));
+        }
+        if let Some(cookie) = &self.session_cookie {
+            req = req.header(reqwest::header::COOKIE, cookie.clone());
         }
         if let Some(b) = body {
             req = req.json(&b);
@@ -69,6 +92,13 @@ impl RelayClient {
             .send()
             .await
             .map_err(|e| AppError::Message(format!("网络请求失败: {e}")))?;
+        let set_cookies: Vec<String> = resp
+            .headers()
+            .get_all(reqwest::header::SET_COOKIE)
+            .iter()
+            .filter_map(|v| v.to_str().ok())
+            .map(str::to_string)
+            .collect();
         let status = resp.status();
         let raw = resp
             .bytes()
@@ -108,7 +138,16 @@ impl RelayClient {
                 }
             }
         }
-        Ok(body)
+        Ok((body, set_cookies))
+    }
+
+    async fn request_full(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        body: Option<Value>,
+    ) -> Result<Value, AppError> {
+        Ok(self.request_full_resp(method, path, body).await?.0)
     }
 
     /// 同 request_full，但拆开信封只取 data（常规接口用）
@@ -183,6 +222,21 @@ impl RelayClient {
         }
     }
 
+    /// 把 `Set-Cookie` 头列表压成可回放的 `Cookie` 头值：
+    /// 每条取首个 `;` 前的 `name=value`，全部拼接。永不写日志。
+    fn session_cookie_header(set_cookies: &[String]) -> Option<String> {
+        let pairs: Vec<&str> = set_cookies
+            .iter()
+            .filter_map(|raw| raw.split(';').next().map(str::trim))
+            .filter(|pair| !pair.is_empty())
+            .collect();
+        if pairs.is_empty() {
+            None
+        } else {
+            Some(pairs.join("; "))
+        }
+    }
+
     fn json_shape_name(v: &Value) -> &'static str {
         match v {
             Value::Null => "null",
@@ -194,29 +248,40 @@ impl RelayClient {
         }
     }
 
-    /// `POST /api/user/login` → JWT access_token
+    /// `POST /api/user/login` → JWT access_token + session cookie（30d）
+    ///
+    /// session cookie 与 access_token 同敏感：只进内存与加密 vault，永不写日志。
     pub async fn login(
         base_url: &str,
         username: &str,
         password: &str,
     ) -> Result<LoginResult, AppError> {
         let client = Self::new(base_url, "");
-        let data = client
-            .post(
+        let (body, set_cookies) = client
+            .request_full_resp(
+                reqwest::Method::POST,
                 "/api/user/login",
-                serde_json::json!({
+                Some(serde_json::json!({
                     "username": username,
                     "password": password,
-                }),
+                })),
             )
             .await?;
+        let data = if body.as_object().is_some_and(|o| o.contains_key("success")) {
+            body.get("data").cloned().unwrap_or(Value::Null)
+        } else {
+            body
+        };
         let access_token = data
             .get("access_token")
             .and_then(|v| v.as_str())
             .filter(|s| !s.is_empty())
             .ok_or_else(|| AppError::Message("登录响应缺少 access_token".to_string()))?
             .to_string();
-        Ok(LoginResult { access_token })
+        Ok(LoginResult {
+            access_token,
+            session_cookie: Self::session_cookie_header(&set_cookies),
+        })
     }
 
     /// `GET /api/user/token` → 系统访问令牌（长效免登凭据）。

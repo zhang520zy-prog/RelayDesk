@@ -207,15 +207,18 @@ impl RelayService {
     ) -> Result<RelayAccountInfo, AppError> {
         let login = RelayClient::login(base_url, username, password).await?;
 
-        // 换长效系统访问令牌；失败则降级用 15min JWT（下次 refresh 时会自然失效，提示重登）
-        let jwt_client = RelayClient::new(base_url, &login.access_token);
+        // 换长效系统访问令牌；失败则降级用 15min JWT + 30d session cookie
+        // （站点禁用 /api/user/token 时 cookie 是恢复会话的唯一长效凭据）
+        let jwt_client = RelayClient::new(base_url, &login.access_token)
+            .with_session_cookie(login.session_cookie.as_deref());
         let access_token = jwt_client.system_token().await.unwrap_or_else(|e| {
             // 带原因但绝不落 token 本体——e 只有状态码/形状描述
-            log::warn!("获取系统访问令牌失败({e})，降级使用短期登录凭据");
+            log::warn!("获取系统访问令牌失败({e})，降级使用登录会话凭据");
             login.access_token.clone()
         });
 
-        let client = RelayClient::new(base_url, &access_token);
+        let client = RelayClient::new(base_url, &access_token)
+            .with_session_cookie(login.session_cookie.as_deref());
         let self_user = client.user_self().await.unwrap_or_else(|_| {
             log::warn!("登录后获取用户信息失败");
             json!({})
@@ -224,6 +227,7 @@ impl RelayService {
         let mut account = RelayAccount {
             base_url: client.base_url().to_string(),
             access_token,
+            session_cookie: login.session_cookie.clone().unwrap_or_default(),
             remembered: remember,
             user_id: extract_i64(&self_user, "id"),
             username: extract_str(&self_user, "username").unwrap_or_else(|| username.to_string()),
@@ -267,6 +271,7 @@ impl RelayService {
             &account.username,
             account.user_id,
             &account.access_token,
+            &account.session_cookie,
             account.updated_at,
         );
         state
@@ -300,7 +305,8 @@ impl RelayService {
         remembered: bool,
         saved: &SavedLogin,
     ) -> Result<RelayAccountInfo, AppError> {
-        let client = RelayClient::new(base_url, access_token);
+        let client = RelayClient::new(base_url, access_token)
+            .with_session_cookie(Some(saved.session_cookie.as_str()));
         let self_user = client.user_self().await?;
         if saved.user_id.is_some() && extract_i64(&self_user, "id") != saved.user_id {
             return Err(session_expired_error());
@@ -314,9 +320,16 @@ impl RelayService {
                 return Err(session_expired_error());
             }
         }
+        // 恢复时再试一次换长效系统令牌——拿到就升级会话与 vault 里的凭据；
+        // 拿不到（站点禁用 / 403）也没关系：session cookie 已足以免登。
+        let access_token = client.system_token().await.unwrap_or_else(|_| {
+            log::warn!("恢复已保存登录时未获取到系统访问令牌，继续使用会话凭据");
+            access_token.to_string()
+        });
         let mut account = RelayAccount {
             base_url: client.base_url().to_string(),
-            access_token: access_token.to_string(),
+            access_token,
+            session_cookie: saved.session_cookie.clone(),
             remembered,
             user_id: extract_i64(&self_user, "id"),
             username: extract_str(&self_user, "username")
@@ -341,6 +354,11 @@ impl RelayService {
         account.last_applied = persisted.last_applied;
         account.updated_at = persisted.updated_at;
         state.db.set_setting("relay_signed_out", "false")?;
+        // 把 session cookie（及可能升级到的系统令牌）回写 vault——
+        // 失败不阻塞本次恢复，下一次成功恢复还会再写。
+        if remembered {
+            let _ = Self::save_remembered(state, &account);
+        }
         Self::set_session(state, Some(account.clone()))?;
         Ok(account.to_info())
     }
@@ -382,6 +400,7 @@ impl RelayService {
         {
             Ok(account) => Ok(Some(account)),
             Err(error) if is_auth_error(&error) || error.to_string() == "relay.session_expired" => {
+                log::warn!("已保存的中转站登录凭据被站点拒绝({error})，移除该条记住登录");
                 let _ = state
                     .relay_vault
                     .lock()
@@ -396,7 +415,7 @@ impl RelayService {
     /// 刷新额度与账号信息
     pub async fn refresh_account(state: &AppState) -> Result<RelayAccountInfo, AppError> {
         let expected = require_account(state)?;
-        let client = RelayClient::new(&expected.base_url, &expected.access_token);
+        let client = RelayClient::for_account(&expected);
         let self_user = client
             .user_self()
             .await
@@ -523,7 +542,7 @@ impl RelayService {
 
     pub async fn groups(state: &AppState) -> Result<Vec<RelayGroup>, AppError> {
         let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         client
             .groups()
             .await
@@ -533,7 +552,7 @@ impl RelayService {
     /// 分组 → 模型（含倍率/标签），未登录返回空
     pub async fn models(state: &AppState) -> Result<Vec<RelayGroupModels>, AppError> {
         let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         let groups = match client.groups().await {
             Ok(groups) => groups,
             Err(error) if is_auth_error(&error) => {
@@ -562,7 +581,7 @@ impl RelayService {
     /// 令牌列表（供管理页，掩码 key）
     pub async fn tokens(state: &AppState) -> Result<Vec<RelayToken>, AppError> {
         let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         client
             .list_tokens()
             .await
@@ -582,7 +601,7 @@ impl RelayService {
         if name.is_empty() || name.chars().count() > 64 {
             return Err(AppError::Message("relay.token_name_invalid".into()));
         }
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         client
             .create_token(name, group)
             .await
@@ -611,7 +630,7 @@ impl RelayService {
     /// 取回某把令牌的完整 key（供复制到第三方应用）。
     pub async fn api_token_key(state: &AppState, id: i64) -> Result<String, AppError> {
         let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         client
             .get_token_key(id)
             .await
@@ -626,7 +645,7 @@ impl RelayService {
         patch: crate::relay::RelayTokenUpdate,
     ) -> Result<(), AppError> {
         let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         let mut token = client
             .get_token(id)
             .await
@@ -662,7 +681,7 @@ impl RelayService {
     /// 吊销一把令牌（第三方应用接入用）。
     pub async fn delete_api_token(state: &AppState, id: i64) -> Result<(), AppError> {
         let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         client
             .delete_token(id)
             .await
@@ -673,7 +692,7 @@ impl RelayService {
 
     pub async fn topup_info(state: &AppState) -> Result<RelayTopupInfo, AppError> {
         let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         let raw = client
             .topup_info()
             .await
@@ -687,7 +706,7 @@ impl RelayService {
         amount: f64,
     ) -> Result<RelayTopupQuote, AppError> {
         let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         let raw = client
             .topup_quote(method, amount)
             .await
@@ -710,7 +729,7 @@ impl RelayService {
             return Err(AppError::Message("relay.invalid_payment_method".into()));
         }
         let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         let info = parse_topup_info(&client.topup_info().await?);
         let preset_hit = info.amount_options.iter().any(|a| a.amount == amount);
         // 预设金额之外允许自定义整数金额（与站点网页端"自定义金额"一致），下限取 min_amount
@@ -740,7 +759,7 @@ impl RelayService {
         page_size: u32,
     ) -> Result<RelayTopupHistory, AppError> {
         let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         let raw = client
             .topup_history(page, page_size)
             .await
@@ -756,7 +775,7 @@ impl RelayService {
             return Err(AppError::Message("relay.redeem_key_invalid".into()));
         }
         let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         let raw = client
             .redeem_code(key)
             .await
@@ -776,7 +795,7 @@ impl RelayService {
         page_size: u32,
     ) -> Result<RelayRechargeHistory, AppError> {
         let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         let orders_raw = client
             .topup_history(page, page_size)
             .await
@@ -814,7 +833,7 @@ impl RelayService {
         query: RelayUsageQuery,
     ) -> Result<RelayUsageModels, AppError> {
         let account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         let raw = client.usage_models(&query).await.map_err(|error| {
             usage_contract_error(state, &account, error, "relay.usage_models_not_ready")
         })?;
@@ -859,7 +878,7 @@ impl RelayService {
         let _permit = apply_gate().try_enter()?;
         let mut account = require_account(state)?;
         resolve_apply_targets(&account.apply_apps, target_apps)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
 
         // 1. 确保分组专用令牌，取完整 sk- key
         progress("preparing", None);
@@ -920,7 +939,7 @@ impl RelayService {
         group: &str,
     ) -> Result<(String, String), AppError> {
         let mut account = require_account(state)?;
-        let client = RelayClient::new(&account.base_url, &account.access_token);
+        let client = RelayClient::for_account(&account);
         let key = ensure_group_token(state, &client, &mut account, group).await?;
         let prepared = account.group_tokens.get(group).cloned();
         let account = Self::commit_session_update(state, &account, |current| {
@@ -1917,6 +1936,7 @@ mod tests {
         RelayAccount {
             base_url: "https://relay.invalid".to_string(),
             access_token: "test-access-token".to_string(),
+            session_cookie: String::new(),
             remembered: true,
             user_id: Some(7),
             username: "tester".to_string(),
@@ -2421,8 +2441,6 @@ mod tests {
         });
         assert!(parse_usage_models(&raw, &usage_query_fixture()).is_none());
     }
-
-
 
     #[test]
     #[serial]

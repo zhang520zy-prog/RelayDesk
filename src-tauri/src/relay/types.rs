@@ -86,6 +86,11 @@ pub struct RelayAccount {
     /// 系统访问令牌
     #[serde(default, skip_serializing, skip_deserializing)]
     pub access_token: String,
+    /// new-api 30d session cookie（登录响应 Set-Cookie）。站点禁用
+    /// `/api/user/token` 时这是 JWT 15min 过期后的唯一长效凭据。
+    /// 与 access_token 同级敏感：不落库快照，仅存内存 + 加密 vault。
+    #[serde(default, skip_serializing, skip_deserializing)]
+    pub session_cookie: String,
     /// 是否允许在应用重启后恢复本地登录会话。
     ///
     /// 该标记只控制本地会话恢复，不会把密码传给 renderer；旧账号缺失

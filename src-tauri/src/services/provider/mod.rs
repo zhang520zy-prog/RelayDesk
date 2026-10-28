@@ -4636,7 +4636,7 @@ wire_api = "responses"
             universal.models.claude = Some(ClaudeModelConfig {
                 model: Some("claude-old".into()),
                 ..Default::default()
-        });
+            });
             universal.models.codex = Some(crate::provider::CodexModelConfig {
                 model: Some("codex-old".into()),
                 ..Default::default()
@@ -4700,7 +4700,7 @@ wire_api = "responses"
             universal.models.claude = Some(ClaudeModelConfig {
                 model: Some("fixture-old-model".into()),
                 ..Default::default()
-        });
+            });
             state.db.save_universal_provider(&universal).unwrap();
             ProviderService::sync_universal_to_app(state, &universal.id, AppType::Claude).unwrap();
             let child_id = "universal-claude-relay-mcp-boundary";
@@ -4730,7 +4730,7 @@ wire_api = "responses"
             universal.models.claude = Some(ClaudeModelConfig {
                 model: Some("fixture-new-model".into()),
                 ..Default::default()
-        });
+            });
             state.db.save_universal_provider(&universal).unwrap();
 
             ProviderService::sync_universal_to_app(state, &universal.id, AppType::Claude)
@@ -4759,7 +4759,7 @@ wire_api = "responses"
             universal.models.claude = Some(ClaudeModelConfig {
                 model: Some("claude-sonnet-4".to_string()),
                 ..Default::default()
-        });
+            });
             state
                 .db
                 .save_universal_provider(&universal)

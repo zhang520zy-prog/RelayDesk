@@ -28,6 +28,9 @@ pub(crate) struct SavedLogin {
     pub username: String,
     pub user_id: Option<i64>,
     pub access_token: String,
+    /// new-api 30d session cookie；老 vault 条目无此字段时为空串。
+    #[serde(default)]
+    pub session_cookie: String,
     pub updated_at: i64,
 }
 
@@ -47,6 +50,7 @@ impl SavedLogin {
         username: &str,
         user_id: Option<i64>,
         access_token: &str,
+        session_cookie: &str,
         updated_at: i64,
     ) -> Self {
         let base_url = normalize_base_url(base_url);
@@ -57,6 +61,7 @@ impl SavedLogin {
             username: username.to_string(),
             user_id,
             access_token: access_token.to_string(),
+            session_cookie: session_cookie.to_string(),
             updated_at,
         }
     }
@@ -305,7 +310,7 @@ mod tests {
     use tempfile::tempdir;
 
     fn entry(username: &str, token: &str) -> SavedLogin {
-        SavedLogin::new("https://relay.example.test/", username, None, token, 10)
+        SavedLogin::new("https://relay.example.test/", username, None, token, "", 10)
     }
 
     #[test]
@@ -318,6 +323,7 @@ mod tests {
                 "old-name",
                 Some(7),
                 "synthetic-a",
+                "",
                 1,
             ))
             .unwrap();
@@ -327,6 +333,7 @@ mod tests {
                 "other",
                 Some(8),
                 "synthetic-b",
+                "",
                 1,
             ))
             .unwrap();
