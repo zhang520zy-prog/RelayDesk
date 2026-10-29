@@ -199,6 +199,9 @@ export function SessionsPage() {
     setResumeBusy(true);
     try {
       await relaydeskSessionApi.launchDesktop(desktop.app);
+      toast.success(
+        t("resumeDesktopLaunched", { name: desktop.name ?? desktop.app }),
+      );
     } catch {
       toast.error(t("resumeSessionFailed"));
     } finally {

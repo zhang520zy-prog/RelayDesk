@@ -698,6 +698,7 @@
   "includedModels": "Included models ({{count}} selected)",
   "resumeInDesktop": "Open in desktop",
   "resumeInDesktopHint": "Opens {{name}} — pick the session from its history",
+  "resumeDesktopLaunched": "Opened {{name}} — pick the conversation from its history",
   "resumeWhere": "Resume session",
   "resumeSessionHint": "Run the resume command in a terminal window"
 }
