@@ -115,7 +115,7 @@ jobs:
       - name: Setup Rust
         # 与 rust-toolchain.toml 一致：1.95+ 移除了 proc-macro-hack 内置支持，
         # 依赖链中的旧 phf_macros 无法在新版编译器上构建。
-        uses: dtolnay/rust-toolchain@1.90.0
+        uses: dtolnay/rust-toolchain@1.120.0
         with:
           components: rustfmt, clippy
 
@@ -167,7 +167,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@1.90.0  # 与 rust-toolchain.toml 一致；stable 浮动会拉到 1.95+ 编译失败
+        uses: dtolnay/rust-toolchain@1.120.0  # 与 rust-toolchain.toml 一致；stable 浮动会拉到 1.95+ 编译失败
 
       - name: Setup WSL2
         uses: Vampire/setup-wsl@d1da7f2c0322a5ee4f24975344f67fc0f5baf364 # v7
